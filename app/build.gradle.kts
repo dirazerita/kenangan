@@ -100,6 +100,12 @@ tasks.processResources {
     from(ffmpegDist)
 }
 
+// Dev helper: `gradlew :app:run -PdevRoute=settings` opens straight on a screen
+// (used for docs screenshots; no effect on packaged builds).
+tasks.withType<JavaExec>().configureEach {
+    providers.gradleProperty("devRoute").orNull?.let { systemProperty("kenang.devRoute", it) }
+}
+
 compose.desktop {
     application {
         mainClass = "id.kenang.app.MainKt"

@@ -50,6 +50,8 @@ Wizard is skippable ("Lewati dulu") and reopenable from Settings.
 Privacy headline ("foto Anda tidak pernah menyentuh server Kenang"), links to
 privacy/terms/licenses, FFmpeg GPL attribution.
 
+![about](img/about.png)
+
 ## 5. Offline behavior
 
 Network probe fails → amber banner "Anda sedang offline…", key tests disabled,

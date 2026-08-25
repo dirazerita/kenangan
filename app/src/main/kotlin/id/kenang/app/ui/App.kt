@@ -42,8 +42,16 @@ fun App() {
     val keyPool = koinInject<FalKeyPool>()
 
     // First launch goes straight to onboarding → Home. NO license UI (D-002).
+    // -Dkenang.devRoute=home|settings|about|onboarding forces a start screen (dev/screenshots only).
     var route by remember {
-        mutableStateOf<Route>(if (settings.onboardingDone) Route.Home else Route.Onboarding)
+        val devRoute = when (System.getProperty("kenang.devRoute")) {
+            "home" -> Route.Home
+            "settings" -> Route.Settings
+            "about" -> Route.About
+            "onboarding" -> Route.Onboarding
+            else -> null
+        }
+        mutableStateOf(devRoute ?: if (settings.onboardingDone) Route.Home else Route.Onboarding)
     }
     val snackbar = remember { SnackbarHostState() }
     val online by connectivity.online.collectAsState()
