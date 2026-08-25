@@ -85,6 +85,11 @@ class SceneRepository(
             }
         }
 
+    /** Records the downloaded clip file for a generated scene (Phase 04). */
+    suspend fun setClipPath(sceneId: String, path: String?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateSceneClipPath(path, sceneId)
+    }
+
     suspend fun updateMotion(sceneId: String, promptEn: String, summaryId: String) =
         withContext(dispatchers.io) {
             db.kenangQueries.updateSceneMotion(promptEn, summaryId, sceneId)

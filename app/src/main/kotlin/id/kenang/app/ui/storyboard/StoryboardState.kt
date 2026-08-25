@@ -140,11 +140,10 @@ class StoryboardState(
             runCatching {
                 projects.updateTier(projectId, confirmTier)
                 sceneRepository.confirmAll(projectId)
-                generationEvents.requestStart(StartGenerationRequest(projectId, confirmTier))
                 confirmed = true
                 showConfirm = false
-                // Phase 04 subscribes to this event; until then the UI shows the stub notice.
-                snackMessage = Strings.CONFIRM_STUB_TOAST
+                // App.kt collects this and navigates to the generation screen (Phase 04).
+                generationEvents.requestStart(StartGenerationRequest(projectId, confirmTier))
             }.onFailure {
                 Napier.e("confirm failed: ${it.message}")
                 snackMessage = it.message

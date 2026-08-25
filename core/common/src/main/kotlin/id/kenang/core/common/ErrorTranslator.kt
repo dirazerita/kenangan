@@ -57,6 +57,11 @@ object ErrorTranslator {
             title = "Tidak ada koneksi",
             message = "Anda sedang offline. Proyek tetap bisa dibuka, tetapi fitur AI membutuhkan koneksi internet.",
         )
+        is AppError.AssemblyFailed -> UiError(
+            title = "Perakitan video terkendala",
+            message = "Terjadi kendala saat merangkai video di perangkat ini. Tidak ada biaya API untuk langkah ini. " +
+                "Coba lagi; jika berlanjut, pastikan ruang penyimpanan cukup lalu mulai ulang aplikasi.",
+        )
         is AppError.Unknown -> UiError(
             title = "Terjadi kesalahan",
             message = "Terjadi kesalahan yang tidak terduga. Coba lagi; jika berlanjut, mulai ulang aplikasi.",

@@ -273,12 +273,28 @@ private fun StepMusic(state: WizardState) {
     var acked by remember { mutableStateOf(false) }
     var pendingFile by remember { mutableStateOf<File?>(null) }
 
+    val musicLibrary = koinInject<id.kenang.core.data.MusicLibrary>()
+    val bundled = remember { musicLibrary.tracks() }
+
     Column {
         Text(Strings.WIZARD_MUSIC_BUNDLED, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
-        // Bundled royalty-free tracks are a pending asset task (docs/demo-03.md).
-        Text(Strings.WIZARD_MUSIC_BUNDLED_EMPTY, style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        if (bundled.isEmpty()) {
+            Text(Strings.WIZARD_MUSIC_BUNDLED_EMPTY, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        } else {
+            bundled.forEach { track ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = state.musicPath?.endsWith(track.meta.file) == true,
+                        onClick = { state.setMusic(track.file) },
+                        label = { Text(track.meta.labelId) },
+                    )
+                    Text(track.meta.credit, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = {

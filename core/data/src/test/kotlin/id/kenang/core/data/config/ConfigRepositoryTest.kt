@@ -22,10 +22,10 @@ class ConfigRepositoryTest {
     }
 
     @Test
-    fun `hemat is provisional and disabled, resolving to standar`() {
+    fun `hemat is locked disabled, resolving to standar`() {
         val hemat = config.tierRouting.tiers.getValue("hemat")
-        assertFalse(hemat.enabled, "Hemat must stay disabled until the Wan-flash spot-check passes (D-005)")
-        assertTrue(hemat.provisional)
+        assertFalse(hemat.enabled, "Hemat locked DISABLED at launch (D-009): Wan-flash spot-check verdict 3")
+        assertFalse(hemat.provisional, "no longer provisional — decided by D-009")
         val resolved = config.tierRouting.resolve("hemat")
         assertEquals("fal-ai/kling-video/v3/standard/image-to-video", resolved.i2v)
     }

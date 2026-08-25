@@ -7,12 +7,20 @@ import id.kenang.core.common.license.DevFullLicense
 import id.kenang.core.common.license.LicenseGate
 import id.kenang.core.common.events.GenerationEvents
 import id.kenang.core.data.AppDirs
+import id.kenang.core.data.GenJobRepository
+import id.kenang.core.data.MusicLibrary
+import id.kenang.core.data.OutputRepository
 import id.kenang.core.data.PhotoRepository
 import id.kenang.core.data.ProjectRepository
 import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.ffmpeg.FfmpegLocator
+import id.kenang.core.data.ffmpeg.VideoAssembler
+import id.kenang.core.providers.gen.AssemblyService
+import id.kenang.core.providers.gen.ClipDownloader
+import id.kenang.core.providers.gen.GenerationOrchestrator
+import id.kenang.core.providers.gen.TtsService
 import id.kenang.core.db.DatabaseFactory
 import id.kenang.core.db.KenangDb
 import id.kenang.core.providers.AnalysisProvider
@@ -79,4 +87,14 @@ val appModule = module {
     single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { CostEstimator(get(), get()) }
+
+    // Phase 04 — video pipeline (generate → audio → assemble)
+    single { GenJobRepository(get(), get()) }
+    single { OutputRepository(get(), get()) }
+    single { MusicLibrary(get()) }
+    single { VideoAssembler(get(), get()) }
+    single { ClipDownloader(get()) }
+    single { TtsService(get(), get(), get(), get(), get()) }
+    single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { AssemblyService(get(), get(), get(), get(), get(), get(), get()) }
 }

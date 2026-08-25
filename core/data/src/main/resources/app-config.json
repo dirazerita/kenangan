@@ -41,8 +41,8 @@
     "tiers": {
       "hemat": {
         "enabled": false,
-        "provisional": true,
-        "note": "PROVISIONAL (D-005): Wan 2.6 flash pending one scored spot-check; app defaults to standar until enabled.",
+        "provisional": false,
+        "note": "LOCKED DISABLED at launch (D-009): Wan 2.6 flash spot-check scored verdict 3 (<=3). Standar stays default. Re-enable only via config after a better budget model appears.",
         "keyframe": "fal-ai/nano-banana/edit",
         "i2v": "wan/v2.6/image-to-video",
         "i2v_params": { "variant": "flash" }
@@ -84,6 +84,14 @@
     { "id": "pantai", "label_id": "Pantai", "desc_id": "Suasana pantai saat sore", "prompt_en": "a calm tropical beach at golden hour" },
     { "id": "golden_hour", "label_id": "Cahaya senja", "desc_id": "Cahaya keemasan menjelang matahari terbenam", "prompt_en": "warm golden-hour sunlight with a soft nostalgic glow" },
     { "id": "ruang_keluarga", "label_id": "Ruang keluarga", "desc_id": "Suasana rumah yang akrab dan nyaman", "prompt_en": "a cozy Indonesian living room with warm evening lamplight" }
+  ],
+  "bundled_music": [
+    {
+      "id": "heartwarming",
+      "file": "Heartwarming.mp3",
+      "label_id": "Heartwarming — piano hangat",
+      "credit": "\"Heartwarming\" Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0"
+    }
   ],
   "limits": {
     "max_photos": 10,

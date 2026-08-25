@@ -28,7 +28,21 @@ data class AppConfig(
     @SerialName("tier_routing") val tierRouting: TierRouting,
     @SerialName("price_hints") val priceHints: List<PriceHint>,
     val vibes: List<Vibe> = emptyList(),
+    @SerialName("bundled_music") val bundledMusic: List<BundledMusic> = emptyList(),
     val limits: Limits,
+)
+
+/**
+ * Royalty-free track shipped in app resources (`/music/<file>`), selectable in
+ * the wizard's "Musik bawaan" list. [credit] must be shown in About (license
+ * attribution, e.g. CC BY).
+ */
+@Serializable
+data class BundledMusic(
+    val id: String,
+    val file: String,
+    @SerialName("label_id") val labelId: String,
+    val credit: String = "",
 )
 
 @Serializable

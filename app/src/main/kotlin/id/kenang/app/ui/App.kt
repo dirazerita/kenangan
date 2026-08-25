@@ -17,8 +17,10 @@ import id.kenang.app.connectivity.ConnectivityMonitor
 import id.kenang.app.ui.about.AboutScreen
 import id.kenang.app.ui.analysis.AnalysisScreen
 import id.kenang.app.ui.components.OfflineBanner
+import id.kenang.app.ui.generation.GenerationScreen
 import id.kenang.app.ui.home.HomeScreen
 import id.kenang.app.ui.onboarding.OnboardingScreen
+import id.kenang.app.ui.result.ResultScreen
 import id.kenang.app.ui.settings.SettingsScreen
 import id.kenang.app.ui.storyboard.StoryboardScreen
 import id.kenang.app.ui.wizard.WizardScreen
@@ -35,6 +37,8 @@ sealed class Route {
     data class Wizard(val projectId: String?) : Route()
     data class Analysis(val projectId: String) : Route()
     data class Storyboard(val projectId: String) : Route()
+    data class Generation(val projectId: String) : Route()
+    data class Result(val projectId: String) : Route()
     data object Settings : Route()
     data object About : Route()
 }
@@ -44,6 +48,7 @@ fun App() {
     val settings = koinInject<SettingsRepository>()
     val connectivity = koinInject<ConnectivityMonitor>()
     val keyPool = koinInject<FalKeyPool>()
+    val generationEvents = koinInject<id.kenang.core.common.events.GenerationEvents>()
 
     // First launch goes straight to onboarding → Home. NO license UI (D-002).
     // -Dkenang.devRoute=home|settings|about|onboarding|wizard|storyboard:<projectId>
@@ -65,6 +70,15 @@ fun App() {
     val online by connectivity.online.collectAsState()
 
     LaunchedEffect(Unit) { connectivity.start(this) }
+
+    // Storyboard "Buat Video" → generation screen (subscribed for the whole
+    // app lifetime — GenerationEvents has no replay, so this must outlive the
+    // storyboard screen).
+    LaunchedEffect(Unit) {
+        generationEvents.start.collect { request ->
+            route = Route.Generation(request.projectId)
+        }
+    }
 
     // Global toast for fal key failover (AD-14).
     LaunchedEffect(Unit) {
@@ -99,6 +113,8 @@ fun App() {
                             route = when (status) {
                                 "draft" -> Route.Wizard(projectId)
                                 "analyzing" -> Route.Analysis(projectId)
+                                "generating" -> Route.Generation(projectId)
+                                "done" -> Route.Result(projectId)
                                 else -> Route.Storyboard(projectId)
                             }
                         },
@@ -120,6 +136,21 @@ fun App() {
                     }
                     is Route.Storyboard -> StoryboardScreen(
                         projectId = (route as Route.Storyboard).projectId,
+                        snackbar = snackbar,
+                        onBack = { route = Route.Home },
+                    )
+                    is Route.Generation -> {
+                        val id = (route as Route.Generation).projectId
+                        GenerationScreen(
+                            projectId = id,
+                            onDone = { route = Route.Result(id) },
+                            onEditStoryboard = { route = Route.Storyboard(id) },
+                            onOpenKeySettings = { route = Route.Settings },
+                            onBack = { route = Route.Home },
+                        )
+                    }
+                    is Route.Result -> ResultScreen(
+                        projectId = (route as Route.Result).projectId,
                         snackbar = snackbar,
                         onBack = { route = Route.Home },
                     )

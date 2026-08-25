@@ -32,6 +32,9 @@ sealed class AppError(open val cause: Throwable? = null) {
     /** No network at all (offline mode). */
     data object Offline : AppError()
 
+    /** Local FFmpeg assembly failed (no API cost involved). */
+    data class AssemblyFailed(val detail: String? = null, override val cause: Throwable? = null) : AppError(cause)
+
     /** Anything unexpected — must still never surface as a raw exception. */
     data class Unknown(val detail: String? = null, override val cause: Throwable? = null) : AppError(cause)
 }

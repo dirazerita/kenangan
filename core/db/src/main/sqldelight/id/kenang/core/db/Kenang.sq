@@ -191,6 +191,24 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 updateJobStatus:
 UPDATE job SET status = ?, error_code = ?, output_url = ?, updated_at = ? WHERE id = ?;
 
+updateJobSubmitted:
+UPDATE job SET backend_job_id = ?, key_label = ?, status = ?, updated_at = ? WHERE id = ?;
+
+selectJobById:
+SELECT * FROM job WHERE id = ?;
+
+selectJobsByProject:
+SELECT job.* FROM job
+JOIN scene ON job.scene_id = scene.scene_id
+WHERE scene.project_id = ?
+ORDER BY job.created_at;
+
+selectLatestJobForScene:
+SELECT * FROM job WHERE scene_id = ? ORDER BY created_at DESC, id DESC LIMIT 1;
+
+updateSceneClipPath:
+UPDATE scene SET local_clip_path = ? WHERE scene_id = ?;
+
 -- ---------- output ----------
 
 insertOutput:
