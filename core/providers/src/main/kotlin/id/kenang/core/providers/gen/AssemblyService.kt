@@ -126,6 +126,10 @@ class AssemblyService(
             }
         } else null
 
+        // TODO(D-002): Phase 05 — before exporting, consult
+        // licenseGate.state().exportsRemaining (Trial = max 3 exports) and
+        // refuse with an upgrade CTA when exhausted. DevFull stub: unlimited.
+
         // Watermark ONLY via the license seam (D-002) — DevFull stub = never.
         val watermarkFile = if (licenseGate.state().watermarkRequired) {
             VideoAssembler.stageWatermark(File(AppDirs.tools, "watermark"))

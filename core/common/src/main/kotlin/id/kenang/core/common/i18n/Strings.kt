@@ -93,6 +93,7 @@ object Strings {
     const val ABOUT_TERMS = "Ketentuan Layanan"
     const val ABOUT_LICENSES = "Lisensi pihak ketiga"
     const val ABOUT_FFMPEG = "Aplikasi ini menyertakan FFmpeg (lisensi GPL/LGPL) — https://ffmpeg.org"
+    const val ABOUT_MUSIC_PREFIX = "Musik bawaan: "
     const val ABOUT_PRIVACY_HEADLINE = "Foto dan video Anda tidak pernah menyentuh server Kenang. Semua pemrosesan AI berjalan langsung antara perangkat Anda dan penyedia AI pilihan Anda."
 
     // ------------------- Phase 03: wizard -------------------

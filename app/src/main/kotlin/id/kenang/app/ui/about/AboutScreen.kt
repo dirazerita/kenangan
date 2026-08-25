@@ -37,6 +37,13 @@ fun AboutScreen(onBack: () -> Unit) {
         HorizontalDivider()
         Spacer(Modifier.height(16.dp))
         Text(Strings.ABOUT_FFMPEG, style = MaterialTheme.typography.bodySmall)
+        // CC-BY attribution for every bundled track (config-driven, Phase 04).
+        val bundledMusic = org.koin.compose.koinInject<id.kenang.core.data.config.ConfigRepository>()
+            .current().bundledMusic
+        bundledMusic.forEach { track ->
+            Spacer(Modifier.height(4.dp))
+            Text(Strings.ABOUT_MUSIC_PREFIX + track.credit, style = MaterialTheme.typography.bodySmall)
+        }
 
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onBack) { Text(Strings.BACK) }
