@@ -10,6 +10,7 @@ import id.kenang.core.data.PhotoRepository
 import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SceneStatus
 import id.kenang.core.data.config.ConfigRepository
+import id.kenang.core.data.story.UploadPrep
 import id.kenang.core.db.Scene
 import id.kenang.core.providers.CostTracker
 import id.kenang.core.providers.PriceBook
@@ -92,7 +93,10 @@ class KeyframeService(
             val photo = photos[id] ?: continue
             val cached = photo.upload_id
             if (cached != null) urls += cached
-            else when (val up = storage.uploadFile(File(photo.local_path))) {
+            else when (val up = storage.uploadBytes(
+                UploadPrep.prepareJpeg(File(photo.local_path)),
+                "${photo.id}.jpg", "image/jpeg",
+            )) {
                 is AppResult.Ok -> {
                     photoRepository.setUploadUrl(id, up.value)
                     urls += up.value

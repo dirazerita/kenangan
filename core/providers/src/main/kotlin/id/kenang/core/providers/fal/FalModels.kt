@@ -26,6 +26,9 @@ data class SubmittedFalJob(
     val requestId: String,
     val modelSlug: String,
     val keyLabel: String,
+    /** Queue URLs from the submit response; when absent (resumed jobs) they are derived. */
+    val statusUrl: String? = null,
+    val responseUrl: String? = null,
 )
 
 /** Terminal result payload — raw JSON, model-specific parsing happens in Phases 03/04. */

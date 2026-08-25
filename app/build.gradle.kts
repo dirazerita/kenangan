@@ -106,6 +106,15 @@ tasks.withType<JavaExec>().configureEach {
     providers.gradleProperty("devRoute").orNull?.let { systemProperty("kenang.devRoute", it) }
 }
 
+// Scripted Phase-03 demo against real provider APIs (docs/demo-03.md).
+tasks.register<JavaExec>("demoDriver") {
+    group = "verification"
+    description = "Runs the Phase-03 scripted demo (REAL small API spend)"
+    mainClass.set("id.kenang.app.devtools.DemoDriverKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("demoPhotos").orNull?.let { systemProperty("demo.photos", it) }
+}
+
 compose.desktop {
     application {
         mainClass = "id.kenang.app.MainKt"

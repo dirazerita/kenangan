@@ -8,3 +8,4 @@ local.properties
 # Downloaded/staged binaries (re-fetched by Gradle tasks)
 app/ffmpeg-dist/
 *.hprof
+demo-run.log

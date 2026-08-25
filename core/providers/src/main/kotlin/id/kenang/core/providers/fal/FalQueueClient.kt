@@ -71,7 +71,10 @@ class FalQueueClient(
                 response.status.isSuccess() -> {
                     val parsed = runCatching { json.decodeFromString<FalSubmitResponse>(text) }.getOrNull()
                         ?: return AppError.ProviderFailed(Provider.FAL, "Malformed submit response").err()
-                    return SubmittedFalJob(parsed.requestId, modelSlug, key.label).ok()
+                    return SubmittedFalJob(
+                        parsed.requestId, modelSlug, key.label,
+                        statusUrl = parsed.statusUrl, responseUrl = parsed.responseUrl,
+                    ).ok()
                 }
                 isBalanceExhausted(response.status, text) -> {
                     Napier.w("fal key '${key.label}' balance exhausted — cooling down 10 min")
@@ -84,11 +87,24 @@ class FalQueueClient(
         }
     }
 
+    /**
+     * Queue request base: sub-paths after {owner}/{alias} are part of the
+     * SUBMIT URL only — status/result live at {owner}/{alias}/requests/{id}
+     * (same rule as fal_client; "workflows"/"comfy" namespaces keep 3 segments).
+     */
+    internal fun requestBase(modelSlug: String, requestId: String): String {
+        val parts = modelSlug.split("/")
+        val keep = if (parts.firstOrNull() in setOf("workflows", "comfy")) 3 else 2
+        val appBase = parts.take(keep).joinToString("/")
+        return "$baseUrl/$appBase/requests/$requestId"
+    }
+
     /** Polls status using the job's own key (never another). */
     suspend fun status(job: SubmittedFalJob): AppResult<FalStatusResponse> {
         val key = keyPool.keyByLabel(job.keyLabel)
             ?: return AppError.InvalidKey(Provider.FAL, job.keyLabel).err()
-        return request(key.key, "$baseUrl/${job.modelSlug}/requests/${job.requestId}/status") { text ->
+        val url = job.statusUrl ?: (requestBase(job.modelSlug, job.requestId) + "/status")
+        return request(key.key, url) { text ->
             json.decodeFromString<FalStatusResponse>(text)
         }
     }
@@ -97,7 +113,8 @@ class FalQueueClient(
     suspend fun result(job: SubmittedFalJob): AppResult<FalJobResult> {
         val key = keyPool.keyByLabel(job.keyLabel)
             ?: return AppError.InvalidKey(Provider.FAL, job.keyLabel).err()
-        return request(key.key, "$baseUrl/${job.modelSlug}/requests/${job.requestId}") { text ->
+        val url = job.responseUrl ?: requestBase(job.modelSlug, job.requestId)
+        return request(key.key, url) { text ->
             FalJobResult(json.decodeFromString(text))
         }
     }

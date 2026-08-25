@@ -12,6 +12,7 @@ import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.story.ModerationResult
 import id.kenang.core.data.story.PhotoAnalysis
 import id.kenang.core.data.story.ScenePlanItem
+import id.kenang.core.data.story.UploadPrep
 import id.kenang.core.db.Photo
 import id.kenang.core.db.Scene
 import id.kenang.core.providers.CostTracker
@@ -84,7 +85,8 @@ class AnalysisService(
             if (existing != null) {
                 urls[photo.id] = existing
             } else {
-                when (val up = storage.uploadFile(File(photo.local_path))) {
+                val prepared = UploadPrep.prepareJpeg(File(photo.local_path))
+                when (val up = storage.uploadBytes(prepared, "${photo.id}.jpg", "image/jpeg")) {
                     is AppResult.Ok -> {
                         urls[photo.id] = up.value
                         photoRepository.setUploadUrl(photo.id, up.value)

@@ -23,7 +23,8 @@ object KeyframePrompts {
         val base = if (vibe.promptEn.isBlank()) {
             "Restore and enhance this photo subtly while keeping the original setting and composition."
         } else {
-            "Place the exact same $who in a ${vibe.promptEn} setting."
+            // vibe.promptEn carries its own article ("a lush tropical garden …").
+            "Place the exact same $who in ${vibe.promptEn} setting."
         }
         val fusion = if (isFusion) {
             " Combine the $who from the source photos into one natural scene together. " +

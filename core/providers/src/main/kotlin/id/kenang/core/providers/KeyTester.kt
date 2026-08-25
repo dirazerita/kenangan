@@ -42,10 +42,7 @@ class KeyTester(
         }
         return when (val submitted = client.submit(cfg.falSlug, body)) {
             is AppResult.Err -> submitted
-            is AppResult.Ok -> client.awaitResult(
-                SubmittedFalJob(submitted.value.requestId, cfg.falSlug, key.label),
-                timeoutMillis = 60_000,
-            ).map { }
+            is AppResult.Ok -> client.awaitResult(submitted.value, timeoutMillis = 60_000).map { }
         }
     }
 

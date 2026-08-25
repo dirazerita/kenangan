@@ -212,6 +212,9 @@ private fun SceneCard(
                     IconButton(onClick = { onMove(1) }, enabled = index < lastIndex) {
                         Icon(Icons.Default.KeyboardArrowRight, "mundur")
                     }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, Strings.SB_DELETE_SCENE, tint = MaterialTheme.colorScheme.error)
+                    }
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -232,11 +235,7 @@ private fun SceneCard(
                     ) {
                         Icon(Icons.Default.Refresh, null, Modifier.width(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(Strings.SB_REGEN_KEYFRAME + "  ±$" + "%.3f".format(regenCost))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, Strings.SB_DELETE_SCENE, tint = MaterialTheme.colorScheme.error)
+                        Text(Strings.SB_REGEN_KEYFRAME + " ±$" + "%.3f".format(regenCost))
                     }
                 }
             }
