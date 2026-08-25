@@ -35,8 +35,7 @@ class ProjectRepository(
         db.kenangQueries.selectFirstKeyframePath(projectId).executeAsOneOrNull()?.let { it }
             ?: db.kenangQueries.selectFirstPhotoPath(projectId).executeAsOneOrNull()
 
-    /** Placeholder creation — Phase 03 owns the real input wizard. */
-    suspend fun createPlaceholder(name: String, ratio: String, vibe: String, tier: String): String =
+    suspend fun create(name: String, ratio: String, vibe: String, tier: String): String =
         withContext(dispatchers.io) {
             val id = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
@@ -44,12 +43,39 @@ class ProjectRepository(
                 db.kenangQueries.insertProject(
                     id = id, name = name, ratio = ratio, vibe = vibe, tier = tier,
                     narration = null, music_path = null, status = "draft",
-                    created_at = now, updated_at = now,
+                    scene_duration_s = 5L, created_at = now, updated_at = now,
                 )
             }
             AppDirs.projectDir(id)
             id
         }
+
+    suspend fun get(projectId: String) = withContext(dispatchers.io) {
+        db.kenangQueries.selectProjectById(projectId).executeAsOneOrNull()
+    }
+
+    /** Wizard autosave — every step persists immediately (back-safe). */
+    suspend fun updateMeta(
+        projectId: String, name: String, ratio: String, vibe: String, tier: String,
+        narration: String?, musicPath: String?, sceneDurationS: Long,
+    ) = withContext(dispatchers.io) {
+        db.kenangQueries.transaction {
+            db.kenangQueries.updateProjectMeta(
+                name, ratio, vibe, tier, narration, musicPath, sceneDurationS,
+                System.currentTimeMillis(), projectId,
+            )
+        }
+    }
+
+    suspend fun updateStatus(projectId: String, status: String) = withContext(dispatchers.io) {
+        db.kenangQueries.transaction {
+            db.kenangQueries.updateProjectStatus(status, System.currentTimeMillis(), projectId)
+        }
+    }
+
+    suspend fun updateTier(projectId: String, tier: String) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectTier(tier, System.currentTimeMillis(), projectId)
+    }
 
     /** Deletes DB rows (cascade) AND wipes the project folder. */
     suspend fun delete(projectId: String) = withContext(dispatchers.io) {

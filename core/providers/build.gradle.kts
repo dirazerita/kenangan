@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.jna)
     implementation(libs.jna.platform)
+    implementation(libs.jlayer)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -7,7 +7,8 @@
   "fx_idr": 16500,
   "flags": {
     "hemat_enabled": false,
-    "seedance_ab_enabled": false
+    "seedance_ab_enabled": false,
+    "restore_enabled": false
   },
   "analysis": {
     "slug": "openrouter/router/vision",
@@ -78,11 +79,11 @@
     { "model_slug": "fal-ai/minimax/speech-02-hd", "unit": "per_1k_chars", "usd": 0.10 }
   ],
   "vibes": [
-    { "id": "asli", "label_id": "Suasana asli", "desc_id": "Pertahankan suasana foto aslinya" },
-    { "id": "taman", "label_id": "Taman", "desc_id": "Suasana taman yang hangat dan teduh" },
-    { "id": "pantai", "label_id": "Pantai", "desc_id": "Suasana pantai saat sore" },
-    { "id": "golden_hour", "label_id": "Cahaya senja", "desc_id": "Cahaya keemasan menjelang matahari terbenam" },
-    { "id": "ruang_keluarga", "label_id": "Ruang keluarga", "desc_id": "Suasana rumah yang akrab dan nyaman" }
+    { "id": "asli", "label_id": "Suasana asli", "desc_id": "Pertahankan suasana foto aslinya", "prompt_en": "" },
+    { "id": "taman", "label_id": "Taman", "desc_id": "Suasana taman yang hangat dan teduh", "prompt_en": "a lush tropical garden with soft greenery and blooming flowers" },
+    { "id": "pantai", "label_id": "Pantai", "desc_id": "Suasana pantai saat sore", "prompt_en": "a calm tropical beach at golden hour" },
+    { "id": "golden_hour", "label_id": "Cahaya senja", "desc_id": "Cahaya keemasan menjelang matahari terbenam", "prompt_en": "warm golden-hour sunlight with a soft nostalgic glow" },
+    { "id": "ruang_keluarga", "label_id": "Ruang keluarga", "desc_id": "Suasana rumah yang akrab dan nyaman", "prompt_en": "a cozy Indonesian living room with warm evening lamplight" }
   ],
   "limits": {
     "max_photos": 10,

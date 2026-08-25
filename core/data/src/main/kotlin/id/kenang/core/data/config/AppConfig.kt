@@ -110,6 +110,8 @@ data class Vibe(
     val id: String,
     @SerialName("label_id") val labelId: String,
     @SerialName("desc_id") val descId: String = "",
+    /** English setting description injected into keyframe prompts ("" = keep original setting). */
+    @SerialName("prompt_en") val promptEn: String = "",
 )
 
 /** MEMORY §5 hard limits. */

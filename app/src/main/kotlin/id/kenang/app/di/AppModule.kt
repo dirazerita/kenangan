@@ -5,8 +5,11 @@ import id.kenang.core.common.DefaultDispatcherProvider
 import id.kenang.core.common.DispatcherProvider
 import id.kenang.core.common.license.DevFullLicense
 import id.kenang.core.common.license.LicenseGate
+import id.kenang.core.common.events.GenerationEvents
 import id.kenang.core.data.AppDirs
+import id.kenang.core.data.PhotoRepository
 import id.kenang.core.data.ProjectRepository
+import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.ffmpeg.FfmpegLocator
@@ -19,6 +22,11 @@ import id.kenang.core.providers.PriceBook
 import id.kenang.core.providers.TtsProvider
 import id.kenang.core.providers.fal.FalKeyPool
 import id.kenang.core.providers.fal.FalQueueClient
+import id.kenang.core.providers.fal.FalStorage
+import id.kenang.core.providers.story.AnalysisService
+import id.kenang.core.providers.story.CostEstimator
+import id.kenang.core.providers.story.KeyframeService
+import id.kenang.core.providers.story.TtsPreviewService
 import id.kenang.core.providers.optional.ElevenLabsClient
 import id.kenang.core.providers.optional.GeminiClient
 import id.kenang.core.providers.vault.KeyVault
@@ -38,7 +46,10 @@ val appModule = module {
     single { ConfigRepository() }
     single { SettingsRepository(get()) }
     single { ProjectRepository(get(), get()) }
+    single { PhotoRepository(get(), get()) }
+    single { SceneRepository(get(), get()) }
     single { FfmpegLocator() }
+    single { GenerationEvents() }
 
     single {
         HttpClient(CIO) {
@@ -61,4 +72,11 @@ val appModule = module {
     single { AnalysisProvider(get(), get()) }
     single { TtsProvider(get(), get()) }
     single { ConnectivityMonitor() }
+
+    // Phase 03 — storyboard engine services
+    single { FalStorage(get(), get()) }
+    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { TtsPreviewService(get(), get(), get(), get()) }
+    single { CostEstimator(get(), get()) }
 }

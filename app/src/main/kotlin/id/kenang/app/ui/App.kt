@@ -15,22 +15,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import id.kenang.app.connectivity.ConnectivityMonitor
 import id.kenang.app.ui.about.AboutScreen
+import id.kenang.app.ui.analysis.AnalysisScreen
 import id.kenang.app.ui.components.OfflineBanner
 import id.kenang.app.ui.home.HomeScreen
-import id.kenang.app.ui.newproject.NewProjectPlaceholderScreen
 import id.kenang.app.ui.onboarding.OnboardingScreen
 import id.kenang.app.ui.settings.SettingsScreen
+import id.kenang.app.ui.storyboard.StoryboardScreen
+import id.kenang.app.ui.wizard.WizardScreen
 import id.kenang.app.ui.theme.KenangTheme
 import id.kenang.core.common.i18n.Strings
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.providers.fal.FalKeyPool
 import org.koin.compose.koinInject
 
-/** Simple in-memory navigation — Phase 03 may replace with a real nav library. */
+/** Simple in-memory navigation. */
 sealed class Route {
     data object Onboarding : Route()
     data object Home : Route()
-    data object NewProject : Route()
+    data class Wizard(val projectId: String?) : Route()
+    data class Analysis(val projectId: String) : Route()
+    data class Storyboard(val projectId: String) : Route()
     data object Settings : Route()
     data object About : Route()
 }
@@ -86,11 +90,35 @@ fun App() {
                     Route.Home -> HomeScreen(
                         snackbar = snackbar,
                         online = online,
-                        onNewProject = { route = Route.NewProject },
+                        onNewProject = { route = Route.Wizard(null) },
+                        onOpenProject = { projectId, status ->
+                            route = when (status) {
+                                "draft" -> Route.Wizard(projectId)
+                                "analyzing" -> Route.Analysis(projectId)
+                                else -> Route.Storyboard(projectId)
+                            }
+                        },
                         onSettings = { route = Route.Settings },
                         onAbout = { route = Route.About },
                     )
-                    Route.NewProject -> NewProjectPlaceholderScreen(onBack = { route = Route.Home })
+                    is Route.Wizard -> WizardScreen(
+                        existingProjectId = (route as Route.Wizard).projectId,
+                        onBack = { route = Route.Home },
+                        onGoAnalysis = { id -> route = Route.Analysis(id) },
+                    )
+                    is Route.Analysis -> {
+                        val id = (route as Route.Analysis).projectId
+                        AnalysisScreen(
+                            projectId = id,
+                            onDone = { route = Route.Storyboard(id) },
+                            onBackToWizard = { route = Route.Wizard(id) },
+                        )
+                    }
+                    is Route.Storyboard -> StoryboardScreen(
+                        projectId = (route as Route.Storyboard).projectId,
+                        snackbar = snackbar,
+                        onBack = { route = Route.Home },
+                    )
                     Route.Settings -> SettingsScreen(
                         snackbar = snackbar,
                         online = online,

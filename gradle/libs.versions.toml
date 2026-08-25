@@ -38,6 +38,8 @@ napier = { module = "io.github.aakira:napier", version.ref = "napier" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
 # Icons artifact stopped at 1.7.3 (icons are versioned independently of material3)
 compose-material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
+# Tiny MP3 playback for TTS voice previews (LGPL)
+jlayer = { module = "javazoom:jlayer", version = "1.0.1" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 

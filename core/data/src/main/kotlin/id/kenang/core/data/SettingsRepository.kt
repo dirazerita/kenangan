@@ -13,6 +13,8 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_LANGUAGE = "language"
         const val KEY_TELEMETRY_OPT_OUT = "telemetry_opt_out"
         const val KEY_ONBOARDING_DONE = "onboarding_done"
+        /** Rights/consent attestation timestamp (MEMORY §7) — set once, first project. */
+        const val KEY_CONSENT_ACCEPTED_AT = "consent_accepted_at"
         // TODO(D-002): "license_state" + "trial_exports_used" reserved for Phase 05.
     }
 
@@ -35,4 +37,9 @@ class SettingsRepository(private val db: KenangDb) {
     var outputFolder: String?
         get() = get(KEY_OUTPUT_FOLDER)
         set(v) { if (v != null) set(KEY_OUTPUT_FOLDER, v) }
+
+    val consentAccepted: Boolean
+        get() = get(KEY_CONSENT_ACCEPTED_AT) != null
+
+    fun recordConsent() = set(KEY_CONSENT_ACCEPTED_AT, System.currentTimeMillis().toString())
 }

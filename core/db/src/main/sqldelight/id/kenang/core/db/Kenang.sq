@@ -9,7 +9,8 @@ CREATE TABLE project (
   tier TEXT NOT NULL,             -- "hemat" | "standar" | "premium"
   narration TEXT,
   music_path TEXT,
-  status TEXT NOT NULL,           -- "draft" | "storyboard" | "generating" | "done" | "failed"
+  status TEXT NOT NULL,           -- "draft" | "analyzing" | "storyboard" | "generating" | "done" | "failed"
+  scene_duration_s INTEGER NOT NULL DEFAULT 5,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -93,11 +94,18 @@ selectProjectById:
 SELECT * FROM project WHERE id = ?;
 
 insertProject:
-INSERT INTO project(id, name, ratio, vibe, tier, narration, music_path, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO project(id, name, ratio, vibe, tier, narration, music_path, status, scene_duration_s, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateProjectStatus:
 UPDATE project SET status = ?, updated_at = ? WHERE id = ?;
+
+updateProjectMeta:
+UPDATE project SET name = ?, ratio = ?, vibe = ?, tier = ?, narration = ?, music_path = ?, scene_duration_s = ?, updated_at = ?
+WHERE id = ?;
+
+updateProjectTier:
+UPDATE project SET tier = ?, updated_at = ? WHERE id = ?;
 
 deleteProject:
 DELETE FROM project WHERE id = ?;
@@ -114,6 +122,18 @@ insertPhoto:
 INSERT INTO photo(id, project_id, local_path, upload_id, analysis_json)
 VALUES (?, ?, ?, ?, ?);
 
+deletePhoto:
+DELETE FROM photo WHERE id = ?;
+
+updatePhotoUpload:
+UPDATE photo SET upload_id = ? WHERE id = ?;
+
+updatePhotoAnalysis:
+UPDATE photo SET analysis_json = ? WHERE id = ?;
+
+deletePhotosByProject:
+DELETE FROM photo WHERE project_id = ?;
+
 -- ---------- scene ----------
 
 selectScenesByProject:
@@ -129,6 +149,34 @@ INSERT OR REPLACE INTO scene(scene_id, project_id, source_photos_json, type, vib
   keyframe_prompt_en, keyframe_url, motion_prompt_en, motion_summary_id,
   duration_s, regen_count, status, order_index, local_keyframe_path, local_clip_path)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteScene:
+DELETE FROM scene WHERE scene_id = ?;
+
+deleteScenesByProject:
+DELETE FROM scene WHERE project_id = ?;
+
+countScenes:
+SELECT COUNT(*) FROM scene WHERE project_id = ?;
+
+updateSceneStatus:
+UPDATE scene SET status = ? WHERE scene_id = ?;
+
+updateSceneKeyframe:
+UPDATE scene SET status = ?, keyframe_url = ?, local_keyframe_path = ?, regen_count = regen_count + ?
+WHERE scene_id = ?;
+
+updateSceneMotion:
+UPDATE scene SET motion_prompt_en = ?, motion_summary_id = ? WHERE scene_id = ?;
+
+updateSceneOrder:
+UPDATE scene SET order_index = ? WHERE scene_id = ?;
+
+updateSceneDuration:
+UPDATE scene SET duration_s = ? WHERE scene_id = ?;
+
+selectSceneById:
+SELECT * FROM scene WHERE scene_id = ?;
 
 -- ---------- job ----------
 

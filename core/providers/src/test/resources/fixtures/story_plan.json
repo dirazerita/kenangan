@@ -1,0 +1,14 @@
+[
+  {"scene_id":"sc1","source_photos":["p_aaa"],"type":"single",
+   "motion_category":"smile","camera":"slow_push_in","adjectives":"warm and calm",
+   "keyframe_hint":"An elderly woman seated in her living room.",
+   "subject_en":"the elderly woman","subject_id":"Beliau"},
+  {"scene_id":"sc2","source_photos":["p_aaa","p_bbb"],"type":"fusion",
+   "motion_category":"hold_hands","camera":"gentle_pan","adjectives":"",
+   "keyframe_hint":"Mother and daughter together in a garden.",
+   "subject_en":"they","subject_id":"Mereka"},
+  {"scene_id":"sc3","source_photos":["p_bbb"],"type":"single",
+   "motion_category":"dancing wildly","camera":"crash_zoom","adjectives":"joyful spinning fast",
+   "keyframe_hint":"A child playing.",
+   "subject_en":"the child","subject_id":"Sang anak"}
+]

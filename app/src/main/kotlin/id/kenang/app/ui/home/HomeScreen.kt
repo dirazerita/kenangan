@@ -2,6 +2,7 @@ package id.kenang.app.ui.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +60,7 @@ fun HomeScreen(
     snackbar: SnackbarHostState,
     online: Boolean,
     onNewProject: () -> Unit,
+    onOpenProject: (projectId: String, status: String) -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
 ) {
@@ -122,6 +124,7 @@ fun HomeScreen(
                 items(cards, key = { it.project.id }) { card ->
                     ProjectCardView(
                         card = card,
+                        onOpen = { onOpenProject(card.project.id, card.project.status) },
                         onDelete = { deleteTarget = card },
                     )
                 }
@@ -147,8 +150,8 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ProjectCardView(card: ProjectCard, onDelete: () -> Unit) {
-    Card {
+private fun ProjectCardView(card: ProjectCard, onOpen: () -> Unit, onDelete: () -> Unit) {
+    Card(Modifier.clickable(onClick = onOpen)) {
         Column {
             Box(
                 Modifier.fillMaxWidth().height(140.dp)
@@ -180,7 +183,7 @@ private fun ProjectCardView(card: ProjectCard, onDelete: () -> Unit) {
 
 private fun statusLabel(status: String): String = when (status) {
     "draft" -> Strings.STATUS_DRAFT
-    "generating", "storyboard" -> Strings.STATUS_PROCESSING
+    "analyzing", "generating", "storyboard" -> Strings.STATUS_PROCESSING
     "done" -> Strings.STATUS_DONE
     "failed" -> Strings.STATUS_FAILED
     else -> status
