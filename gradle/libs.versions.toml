@@ -25,6 +25,7 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 sqldelight-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.41.2.2" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

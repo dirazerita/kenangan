@@ -140,7 +140,9 @@ object FfmpegGraphBuilder {
 
         // ---- output encoding (spec §4.3) ----
         args += listOf("-c:v", "libx264", "-crf", "20", "-preset", "medium", "-pix_fmt", "yuv420p")
-        if (aLabel != null) args += listOf("-c:a", "aac", "-b:a", "192k")
+        // -ar 48000: loudnorm internally resamples to 192k and would leave 96kHz
+        // AAC in the file — some players/WhatsApp choke on that.
+        if (aLabel != null) args += listOf("-c:a", "aac", "-b:a", "192k", "-ar", "48000")
         args += listOf("-t", fmt(total))
         args += listOf("-movflags", "+faststart")
         args += listOf("-metadata", "comment=AI-generated (Kenang)")

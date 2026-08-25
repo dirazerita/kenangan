@@ -1,6 +1,7 @@
 package id.kenang.core.db
 
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.driver.jdbc.asJdbcDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
 import java.util.Properties
@@ -24,10 +25,27 @@ object DatabaseFactory {
         return KenangDb(driver)
     }
 
+    /**
+     * Phase-04 runs parallel scene writers + poll readers, so the driver must
+     * survive concurrent write transactions (DbConcurrencyTest):
+     * - WAL lets readers coexist with a writer.
+     * - Transactions must open as IMMEDIATE: SQLDelight's stock JdbcSqliteDriver
+     *   issues a deferred `BEGIN`, and a read→write upgrade inside it fails
+     *   instantly with SQLITE_BUSY — busy_timeout never applies to upgrades.
+     *   The DataSource route uses autoCommit-based transactions, where xerial
+     *   honors transaction_mode=IMMEDIATE and busy_timeout queues writers.
+     */
     private fun openDriver(dbFile: File): SqlDriver {
-        val url = "jdbc:sqlite:${dbFile.absolutePath}"
-        val props = Properties().apply { put("foreign_keys", "true") }
-        val driver = JdbcSqliteDriver(url, props)
+        val config = org.sqlite.SQLiteConfig().apply {
+            enforceForeignKeys(true)
+            setJournalMode(org.sqlite.SQLiteConfig.JournalMode.WAL)
+            busyTimeout = 10_000
+            transactionMode = org.sqlite.SQLiteConfig.TransactionMode.IMMEDIATE
+        }
+        val dataSource = org.sqlite.SQLiteDataSource(config).apply {
+            url = "jdbc:sqlite:${dbFile.absolutePath}"
+        }
+        val driver = dataSource.asJdbcDriver()
         migrate(driver)
         return driver
     }

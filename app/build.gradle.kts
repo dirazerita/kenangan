@@ -115,6 +115,17 @@ tasks.register<JavaExec>("demoDriver") {
     providers.gradleProperty("demoPhotos").orNull?.let { systemProperty("demo.photos", it) }
 }
 
+// Scripted Phase-04 E2E against real provider APIs (docs/demo-04.md).
+// Stages: -PdemoStage=a (kill mid-gen) | b:<projectId> (resume) | full[:ratio]
+tasks.register<JavaExec>("demoDriver04") {
+    group = "verification"
+    description = "Runs the Phase-04 scripted E2E (REAL small API spend)"
+    mainClass.set("id.kenang.app.devtools.DemoDriver04Kt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("demoPhotos").orNull?.let { systemProperty("demo.photos", it) }
+    providers.gradleProperty("demoStage").orNull?.let { systemProperty("demo.stage", it) }
+}
+
 compose.desktop {
     application {
         mainClass = "id.kenang.app.MainKt"
