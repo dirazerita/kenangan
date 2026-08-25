@@ -1,4 +1,7 @@
 package id.kenang.app.ui.home
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -99,7 +102,7 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Button(onClick = onNewProject) {
+        SkeuoButton(onClick = onNewProject) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(Strings.HOME_NEW_PROJECT)
@@ -151,7 +154,7 @@ fun HomeScreen(
 
 @Composable
 private fun ProjectCardView(card: ProjectCard, onOpen: () -> Unit, onDelete: () -> Unit) {
-    Card(Modifier.clickable(onClick = onOpen)) {
+    SkeuoCard(Modifier.clickable(onClick = onOpen)) {
         Column {
             Box(
                 Modifier.fillMaxWidth().height(140.dp)

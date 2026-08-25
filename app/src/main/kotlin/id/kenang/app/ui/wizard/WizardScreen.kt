@@ -1,4 +1,7 @@
 package id.kenang.app.ui.wizard
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -87,7 +90,7 @@ fun WizardScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(Strings.WIZARD_TITLE, style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = { state.persistMeta(); onBack() }) { Text(Strings.BACK) }
+            SkeuoOutlinedButton(onClick = { state.persistMeta(); onBack() }) { Text(Strings.BACK) }
         }
         Spacer(Modifier.height(8.dp))
         StepHeader(state.step)
@@ -103,16 +106,16 @@ fun WizardScreen(
         Spacer(Modifier.height(24.dp))
         Row {
             if (state.step > 1) {
-                OutlinedButton(onClick = { state.persistMeta(); state.step-- }) { Text(Strings.BACK) }
+                SkeuoOutlinedButton(onClick = { state.persistMeta(); state.step-- }) { Text(Strings.BACK) }
             }
             Spacer(Modifier.weight(1f))
             if (state.step < 4) {
-                Button(
+                SkeuoButton(
                     onClick = { state.persistMeta(); state.step++ },
                     enabled = state.step != 1 || state.canProceedFromStep1(),
                 ) { Text(Strings.NEXT) }
             } else {
-                Button(
+                SkeuoButton(
                     onClick = { state.requestFinish(onGoAnalysis) },
                     enabled = state.canProceedFromStep1() && !state.finished,
                 ) { Text(Strings.WIZARD_FINISH) }
@@ -127,7 +130,7 @@ fun WizardScreen(
             title = { Text(Strings.CONSENT_TITLE) },
             text = { Text(Strings.CONSENT_BODY) },
             confirmButton = {
-                Button(onClick = { state.acceptConsent(onGoAnalysis) }) { Text(Strings.CONSENT_ACCEPT) }
+                SkeuoButton(onClick = { state.acceptConsent(onGoAnalysis) }) { Text(Strings.CONSENT_ACCEPT) }
             },
             dismissButton = {
                 TextButton(onClick = { state.showConsent = false }) { Text(Strings.CANCEL) }
@@ -155,7 +158,7 @@ private fun StepHeader(current: Int) {
 @Composable
 private fun StepPhotos(state: WizardState) {
     Column {
-        Button(onClick = {
+        SkeuoButton(onClick = {
             val files = pickFiles("Pilih foto", "*.jpg;*.jpeg;*.png;*.webp")
             if (files.isNotEmpty()) state.addPhotos(files)
         }) {
@@ -251,7 +254,7 @@ private fun StepStory(state: WizardState) {
                 )
             }
             Spacer(Modifier.width(8.dp))
-            OutlinedButton(onClick = { state.playPreview() }, enabled = !state.previewPlaying) {
+            SkeuoOutlinedButton(onClick = { state.playPreview() }, enabled = !state.previewPlaying) {
                 if (state.previewPlaying) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                 else Text(Strings.WIZARD_VOICE_PREVIEW)
             }
@@ -297,7 +300,7 @@ private fun StepMusic(state: WizardState) {
         }
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = {
+            SkeuoOutlinedButton(onClick = {
                 val files = pickFiles("Pilih musik", "*.mp3;*.wav")
                 if (files.isNotEmpty()) {
                     pendingFile = files.first()
@@ -328,7 +331,7 @@ private fun StepMusic(state: WizardState) {
                 }
             },
             confirmButton = {
-                Button(
+                SkeuoButton(
                     onClick = {
                         state.setMusic(pendingFile)
                         showCopyright = false
@@ -357,7 +360,7 @@ private fun StepFormat(state: WizardState) {
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             state.config.vibes.forEach { vibe ->
-                Card(
+                SkeuoCard(
                     modifier = Modifier.width(150.dp).clickable { state.vibeId = vibe.id }
                         .then(
                             if (state.vibeId == vibe.id)

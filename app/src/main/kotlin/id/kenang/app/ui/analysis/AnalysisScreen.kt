@@ -1,4 +1,7 @@
 package id.kenang.app.ui.analysis
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -131,8 +134,8 @@ fun AnalysisScreen(
                 Text(ui.message, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onBackToWizard) { Text(Strings.BACK) }
-                    Button(onClick = { runKey++ }) { Text(Strings.RETRY) }
+                    SkeuoOutlinedButton(onClick = onBackToWizard) { Text(Strings.BACK) }
+                    SkeuoButton(onClick = { runKey++ }) { Text(Strings.RETRY) }
                 }
             }
 
@@ -171,8 +174,8 @@ private fun BlockedView(
         )
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = onBack) { Text(Strings.ANALYSIS_BLOCKED_BACK) }
-            Button(onClick = onRemoveAndRetry) { Text(Strings.ANALYSIS_BLOCKED_REMOVE) }
+            SkeuoOutlinedButton(onClick = onBack) { Text(Strings.ANALYSIS_BLOCKED_BACK) }
+            SkeuoButton(onClick = onRemoveAndRetry) { Text(Strings.ANALYSIS_BLOCKED_REMOVE) }
         }
     }
 }

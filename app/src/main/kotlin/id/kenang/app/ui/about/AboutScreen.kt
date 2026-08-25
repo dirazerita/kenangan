@@ -1,4 +1,7 @@
 package id.kenang.app.ui.about
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -46,6 +49,6 @@ fun AboutScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(24.dp))
-        OutlinedButton(onClick = onBack) { Text(Strings.BACK) }
+        SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
     }
 }

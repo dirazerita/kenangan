@@ -1,4 +1,7 @@
 package id.kenang.app.ui.onboarding
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +67,7 @@ fun OnboardingScreen(
     var step by remember { mutableStateOf(1) }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Card(Modifier.widthIn(max = 640.dp).padding(24.dp)) {
+        SkeuoCard(Modifier.widthIn(max = 640.dp).padding(24.dp)) {
             Column(Modifier.padding(32.dp).verticalScroll(rememberScrollState())) {
                 Text(Strings.ONBOARD_TITLE, style = MaterialTheme.typography.headlineMedium)
                 Text(
@@ -85,14 +88,14 @@ fun OnboardingScreen(
                 Spacer(Modifier.height(24.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (step > 1) {
-                        OutlinedButton(onClick = { step-- }) { Text(Strings.BACK) }
+                        SkeuoOutlinedButton(onClick = { step-- }) { Text(Strings.BACK) }
                     }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = onFinished) { Text(Strings.SKIP) }
                     if (step < 3) {
-                        Button(onClick = { step++ }) { Text(Strings.NEXT) }
+                        SkeuoButton(onClick = { step++ }) { Text(Strings.NEXT) }
                     } else {
-                        Button(onClick = onFinished) { Text(Strings.DONE) }
+                        SkeuoButton(onClick = onFinished) { Text(Strings.DONE) }
                     }
                 }
             }
@@ -137,7 +140,7 @@ private fun Step1() {
         Spacer(Modifier.height(8.dp))
         Text(Strings.ONBOARD_STEP1_BODY, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(12.dp))
-        Button(onClick = { openInBrowser(FAL_KEYS_URL) }) { Text(Strings.KEYS_OPEN_FAL) }
+        SkeuoButton(onClick = { openInBrowser(FAL_KEYS_URL) }) { Text(Strings.KEYS_OPEN_FAL) }
         Spacer(Modifier.height(16.dp))
         Text(
             Strings.ONBOARD_BYOK_NOTICE,
@@ -173,7 +176,7 @@ private fun Step2(keyState: KeyManagerState) {
                     modifier = Modifier.weight(1f), singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                 )
-                Button(
+                SkeuoButton(
                     onClick = {
                         if (keyState.addFalKey("Utama", pasted)) {
                             keyState.testFalKey(FalKey("Utama", pasted.trim()))

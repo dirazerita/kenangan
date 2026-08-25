@@ -1,4 +1,7 @@
 package id.kenang.app.ui.generation
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -235,7 +238,7 @@ fun GenerationScreen(
             title = { Text(Strings.GEN_PARTIAL_TITLE) },
             text = { Text(Strings.GEN_PARTIAL_BODY) },
             confirmButton = {
-                Button(onClick = { showPartialDialog = false; proceedToAudio() }) {
+                SkeuoButton(onClick = { showPartialDialog = false; proceedToAudio() }) {
                     Text(Strings.GEN_PARTIAL_CONTINUE)
                 }
             },
@@ -292,7 +295,7 @@ private fun SceneRow(
     onEditStoryboard: () -> Unit,
     onOpenKeySettings: () -> Unit,
 ) {
-    Card(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
+    SkeuoCard(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             val bmp by rememberFileBitmap(scene.local_keyframe_path)
             Box(
@@ -365,15 +368,15 @@ private fun ErrorCard(
     onRetry: () -> Unit,
     retryLabel: String,
 ) {
-    Card(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
+    SkeuoCard(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
             Spacer(Modifier.height(8.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ctaLabel?.let { OutlinedButton(onClick = onCta) { Text(it) } }
-                Button(onClick = onRetry) { Text(retryLabel) }
+                ctaLabel?.let { SkeuoOutlinedButton(onClick = onCta) { Text(it) } }
+                SkeuoButton(onClick = onRetry) { Text(retryLabel) }
             }
         }
     }
@@ -414,7 +417,7 @@ private fun DurationDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onTempo) {
+            SkeuoButton(onClick = onTempo) {
                 Text(Strings.DUR_OPT_TEMPO + if (prompt.tempoFixes) Strings.DUR_RECOMMENDED_SUFFIX else "")
             }
         },
@@ -441,7 +444,7 @@ private fun TrimDialog(initial: String, onSave: (String) -> Unit, onCancel: () -
                 modifier = Modifier.fillMaxWidth(),
             )
         },
-        confirmButton = { Button(onClick = { onSave(text) }) { Text(Strings.SAVE) } },
+        confirmButton = { SkeuoButton(onClick = { onSave(text) }) { Text(Strings.SAVE) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(Strings.CANCEL) } },
     )
 }

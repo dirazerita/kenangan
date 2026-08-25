@@ -1,4 +1,7 @@
 package id.kenang.app.ui.settings
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -82,7 +85,7 @@ fun SettingsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(Strings.SETTINGS_TITLE, style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = onBack) { Text(Strings.BACK) }
+            SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
         }
         Spacer(Modifier.height(24.dp))
 
@@ -260,7 +263,7 @@ private fun AddFalKeyRow(state: KeyManagerState) {
             modifier = Modifier.weight(1f), singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
         )
-        Button(onClick = {
+        SkeuoButton(onClick = {
             if (state.addFalKey(label, key)) {
                 label = ""; key = ""
             }
@@ -297,7 +300,7 @@ fun OptionalKeySection(
                     modifier = Modifier.weight(1f), singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                 )
-                OutlinedButton(onClick = onSave) { Text(Strings.SAVE) }
+                SkeuoOutlinedButton(onClick = onSave) { Text(Strings.SAVE) }
                 TestResultView(testState)
                 TextButton(onClick = onTest, enabled = online && value.isNotBlank()) {
                     Text(Strings.KEYS_TEST)

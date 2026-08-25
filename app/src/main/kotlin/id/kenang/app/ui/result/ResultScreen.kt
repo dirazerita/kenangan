@@ -1,4 +1,7 @@
 package id.kenang.app.ui.result
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -117,13 +120,13 @@ fun ResultScreen(
         Spacer(Modifier.height(12.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
+            SkeuoButton(
                 onClick = { file?.let { runCatching { Desktop.getDesktop().open(it) } } },
                 enabled = file?.isFile == true,
             ) { Text("▶  " + Strings.RESULT_PLAY) }
-            OutlinedButton(
+            SkeuoOutlinedButton(
                 onClick = {
-                    val src = file ?: return@OutlinedButton
+                    val src = file ?: return@SkeuoOutlinedButton
                     val dialog = FileDialog(null as Frame?, Strings.RESULT_SAVE_AS, FileDialog.SAVE)
                     dialog.file = src.name
                     dialog.isVisible = true
@@ -138,11 +141,11 @@ fun ResultScreen(
                 },
                 enabled = file?.isFile == true,
             ) { Text(Strings.RESULT_SAVE_AS) }
-            OutlinedButton(
+            SkeuoOutlinedButton(
                 onClick = { file?.parentFile?.let { runCatching { Desktop.getDesktop().open(it) } } },
                 enabled = file != null,
             ) { Text(Strings.RESULT_OPEN_FOLDER) }
-            OutlinedButton(
+            SkeuoOutlinedButton(
                 onClick = {
                     file?.let {
                         Toolkit.getDefaultToolkit().systemClipboard
@@ -155,7 +158,7 @@ fun ResultScreen(
         }
 
         Spacer(Modifier.height(20.dp))
-        Card(Modifier.widthIn(max = 480.dp).fillMaxWidth()) {
+        SkeuoCard(Modifier.widthIn(max = 480.dp).fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 StatRow(Strings.RESULT_DURATION, durationText)
                 StatRow(
@@ -174,7 +177,7 @@ fun ResultScreen(
 
         Spacer(Modifier.height(16.dp))
         // P2 stub: disabled with a "coming soon" hint (§4.4).
-        OutlinedButton(onClick = {}, enabled = false) {
+        SkeuoOutlinedButton(onClick = {}, enabled = false) {
             Text(Strings.RESULT_OTHER_RATIO + " — " + Strings.RESULT_OTHER_RATIO_SOON)
         }
         Spacer(Modifier.height(8.dp))

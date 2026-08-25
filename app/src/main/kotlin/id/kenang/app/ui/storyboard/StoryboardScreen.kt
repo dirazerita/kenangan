@@ -1,4 +1,7 @@
 package id.kenang.app.ui.storyboard
+import id.kenang.app.ui.theme.SkeuoButton
+import id.kenang.app.ui.theme.SkeuoCard
+import id.kenang.app.ui.theme.SkeuoOutlinedButton
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -119,9 +122,9 @@ fun StoryboardScreen(
                 }
             }
             Spacer(Modifier.width(16.dp))
-            OutlinedButton(onClick = onBack) { Text(Strings.BACK) }
+            SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = { state.showConfirm = true }, enabled = state.allReady() && !state.confirmed) {
+            SkeuoButton(onClick = { state.showConfirm = true }, enabled = state.allReady() && !state.confirmed) {
                 Text(Strings.SB_CREATE_VIDEO)
             }
         }
@@ -190,7 +193,7 @@ private fun SceneCard(
                     SceneStatus.KEYFRAME_FAILED -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(Strings.SB_KEYFRAME_FAILED, color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onRetry) { Text(Strings.SB_RETRY) }
+                        SkeuoOutlinedButton(onClick = onRetry) { Text(Strings.SB_RETRY) }
                     }
                     else -> {
                         val bmp by rememberFileBitmap(scene.local_keyframe_path)
@@ -318,7 +321,7 @@ private fun MotionEditorDialog(
                 )
             }
         },
-        confirmButton = { Button(onClick = { onSave(spec) }) { Text(Strings.SAVE) } },
+        confirmButton = { SkeuoButton(onClick = { onSave(spec) }) { Text(Strings.SAVE) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.CANCEL) } },
     )
 }
@@ -327,7 +330,7 @@ private fun MotionEditorDialog(
 private fun EnumDropdown(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+        SkeuoOutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             Text("$label: $selected")
         }
         androidx.compose.material3.DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -372,7 +375,7 @@ private fun ConfirmDialog(state: StoryboardState) {
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
             }
         },
-        confirmButton = { Button(onClick = { state.confirm() }) { Text(Strings.CONFIRM_GO) } },
+        confirmButton = { SkeuoButton(onClick = { state.confirm() }) { Text(Strings.CONFIRM_GO) } },
         dismissButton = { TextButton(onClick = { state.showConfirm = false }) { Text(Strings.CANCEL) } },
     )
 }

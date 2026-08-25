@@ -92,7 +92,9 @@ fun App() {
     }
 
     KenangTheme {
+        id.kenang.app.ui.theme.SkeuoBackground {
         Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
             snackbarHost = { SnackbarHost(snackbar) },
         ) { padding ->
             Column(Modifier.fillMaxSize()) {
@@ -163,6 +165,7 @@ fun App() {
                     Route.About -> AboutScreen(onBack = { route = Route.Home })
                 }
             }
+        }
         }
     }
 }
