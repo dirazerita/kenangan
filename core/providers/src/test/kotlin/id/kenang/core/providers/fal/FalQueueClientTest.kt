@@ -13,6 +13,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -70,6 +71,7 @@ class FalQueueClientTest {
         }
 
         val result = clientWith(pool, engine).submit("fal-ai/kling-video/v3/standard/image-to-video", submitBody)
+        advanceUntilIdle()
 
         val job = assertIs<AppResult.Ok<SubmittedFalJob>>(result).value
         assertEquals("Cadangan", job.keyLabel)

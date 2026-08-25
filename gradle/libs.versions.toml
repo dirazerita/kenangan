@@ -9,6 +9,8 @@ sqldelight = "2.3.2"
 koin = "4.2.2"
 jna = "5.19.1"
 napier = "2.7.1"
+# Material3 for CMP is versioned independently since 1.9 (latest stable on Maven Central)
+composeMaterial3 = "1.9.0"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -32,6 +34,10 @@ jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 
 napier = { module = "io.github.aakira:napier", version.ref = "napier" }
+
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
+# Icons artifact stopped at 1.7.3 (icons are versioned independently of material3)
+compose-material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 

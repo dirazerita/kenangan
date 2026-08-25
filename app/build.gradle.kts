@@ -1,6 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.net.URI
 import java.security.MessageDigest
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -20,8 +21,8 @@ dependencies {
     implementation(project(":core:providers"))
 
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation(compose.components.resources)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons)
 
     implementation(libs.koin.core)
     implementation(libs.koin.compose)
@@ -82,7 +83,7 @@ val downloadFfmpeg = tasks.register("downloadFfmpeg") {
         }
 
         exeTarget.parentFile.mkdirs()
-        java.util.zip.ZipFile(zipFile).use { zip ->
+        ZipFile(zipFile).use { zip ->
             val entry = zip.entries().asSequence().firstOrNull { it.name.endsWith("bin/ffmpeg.exe") }
                 ?: error("ffmpeg.exe not found in $ffmpegUrl")
             zip.getInputStream(entry).use { input ->
