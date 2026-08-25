@@ -1,0 +1,94 @@
+{
+  "config_version": 1,
+  "updated_at": "2026-08-25",
+  "min_version": "0.1.0",
+  "latest_version": "0.1.0",
+  "latest_url": "",
+  "fx_idr": 16500,
+  "flags": {
+    "hemat_enabled": false,
+    "seedance_ab_enabled": false
+  },
+  "analysis": {
+    "slug": "openrouter/router/vision",
+    "model": "google/gemini-2.5-flash",
+    "note": "LOCKED (D-005). No native JSON mode via router - app must validate PhotoAnalysis JSON and retry."
+  },
+  "key_test": {
+    "fal_slug": "openrouter/router",
+    "fal_model": "google/gemini-2.5-flash",
+    "fal_max_tokens": 1
+  },
+  "tts": {
+    "slug": "fal-ai/minimax/speech-02-hd",
+    "voice": "Calm_Woman",
+    "language_boost": "Indonesian",
+    "max_chars": 500
+  },
+  "tts_premium": {
+    "provider": "elevenlabs",
+    "model_id": "eleven_multilingual_v2",
+    "voices": [
+      { "id": "OKanSStS6li6xyU1WdXa", "name": "Meraki", "gender": "F" },
+      { "id": "U3dExJoUNcmTY5H6GMuG", "name": "Maya", "gender": "F" },
+      { "id": "X8n8hOy3e8VLQnHTUcc5", "name": "Bram", "gender": "M" }
+    ],
+    "note": "Indonesian voices are library voices - paid ElevenLabs plan required for API use (402 on free tier)."
+  },
+  "tier_routing": {
+    "default_tier": "standar",
+    "tiers": {
+      "hemat": {
+        "enabled": false,
+        "provisional": true,
+        "note": "PROVISIONAL (D-005): Wan 2.6 flash pending one scored spot-check; app defaults to standar until enabled.",
+        "keyframe": "fal-ai/nano-banana/edit",
+        "i2v": "wan/v2.6/image-to-video",
+        "i2v_params": { "variant": "flash" }
+      },
+      "standar": {
+        "enabled": true,
+        "note": "LOCKED default tier (D-005). Kling audio default is ON upstream - generate_audio MUST stay false (+50% cost otherwise).",
+        "keyframe": "fal-ai/nano-banana/edit",
+        "i2v": "fal-ai/kling-video/v3/standard/image-to-video",
+        "i2v_params": { "generate_audio": false }
+      },
+      "premium": {
+        "enabled": true,
+        "note": "LOCKED (D-005): Kling 3.0 Pro + Nano Banana Pro.",
+        "keyframe": "fal-ai/nano-banana-pro/edit",
+        "i2v": "fal-ai/kling-video/v3/pro/image-to-video",
+        "i2v_params": { "generate_audio": false }
+      }
+    },
+    "ab_test": {
+      "i2v": "bytedance/seedance-2.0/mini/reference-to-video",
+      "resolution": "480p",
+      "enabled": false
+    }
+  },
+  "price_hints": [
+    { "model_slug": "openrouter/router/vision", "unit": "per_image", "usd": 0.002 },
+    { "model_slug": "fal-ai/nano-banana/edit", "unit": "per_image", "usd": 0.039 },
+    { "model_slug": "fal-ai/nano-banana-pro/edit", "unit": "per_image", "usd": 0.15 },
+    { "model_slug": "wan/v2.6/image-to-video", "unit": "per_second", "usd": 0.05 },
+    { "model_slug": "fal-ai/kling-video/v3/standard/image-to-video", "unit": "per_second", "usd": 0.084 },
+    { "model_slug": "fal-ai/kling-video/v3/pro/image-to-video", "unit": "per_second", "usd": 0.112 },
+    { "model_slug": "bytedance/seedance-2.0/mini/reference-to-video", "unit": "per_second", "usd": 0.0721 },
+    { "model_slug": "fal-ai/minimax/speech-02-hd", "unit": "per_1k_chars", "usd": 0.10 }
+  ],
+  "vibes": [
+    { "id": "asli", "label_id": "Suasana asli", "desc_id": "Pertahankan suasana foto aslinya" },
+    { "id": "taman", "label_id": "Taman", "desc_id": "Suasana taman yang hangat dan teduh" },
+    { "id": "pantai", "label_id": "Pantai", "desc_id": "Suasana pantai saat sore" },
+    { "id": "golden_hour", "label_id": "Cahaya senja", "desc_id": "Cahaya keemasan menjelang matahari terbenam" },
+    { "id": "ruang_keluarga", "label_id": "Ruang keluarga", "desc_id": "Suasana rumah yang akrab dan nyaman" }
+  ],
+  "limits": {
+    "max_photos": 10,
+    "max_scenes": 6,
+    "max_total_s": 60,
+    "max_subjects_fusion": 4,
+    "max_narration_chars": 500
+  }
+}
