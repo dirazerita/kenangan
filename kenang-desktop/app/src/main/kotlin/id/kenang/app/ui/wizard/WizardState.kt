@@ -107,6 +107,7 @@ class WizardState(
             val toAdd = files.take(remaining)
             if (files.size > remaining) {
                 rejectionMessage = Strings.WIZARD_PHOTO_LIMIT
+                    .replace("%1", config.limits.maxPhotos.toString())
             }
             for (file in toAdd) {
                 val check = withContext(Dispatchers.IO) { ImageQuality.check(file) }

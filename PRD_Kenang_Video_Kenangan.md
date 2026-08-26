@@ -63,7 +63,7 @@ Satu aplikasi desktop dengan alur 3 langkah: **Upload → Konfirmasi Storyboard 
 ## 4. Ruang Lingkup
 
 ### 4.1 In Scope (MVP)
-1. Input multi-foto (1–10 foto), narasi teks opsional, musik latar, rasio 9:16/16:9, pilihan vibe.
+1. Input multi-foto (1–15 foto), narasi teks opsional, musik latar, rasio 9:16/16:9, pilihan vibe.
 2. Analisis foto otomatis + pembuatan storyboard otomatis (keyframe per adegan + prompt gerakan per adegan).
 3. Edit prompt per adegan, regenerate keyframe per adegan, atur urutan & durasi adegan.
 4. Generate video per adegan via API (dengan 3 tier kualitas), lalu perakitan final lokal (musik + narasi TTS + subtitle + transisi).
@@ -105,7 +105,7 @@ Prinsip penting: **semua biaya besar (generate video) baru terjadi setelah user 
 
 | ID | Requirement | Prioritas |
 |---|---|---|
-| F1.1 | Upload 1–10 foto (JPG/PNG/WebP/HEIC), drag-and-drop, maks 20 MB/foto. | P0 |
+| F1.1 | Upload 1–15 foto (JPG/PNG/WebP/HEIC), drag-and-drop, maks 20 MB/foto. | P0 |
 | F1.2 | Validasi otomatis: resolusi minimal (sisi terpendek ≥ 512 px), deteksi wajah terlalu kecil/blur → tampilkan peringatan kualitas dengan skor per foto. | P0 |
 | F1.3 | Kolom narasi opsional (maks 500 karakter) + pilihan suara TTS (pria/wanita, 2–3 gaya, preview 1 klik). | P0 |
 | F1.4 | Musik latar: (a) pilih dari library bawaan bebas royalti (8–12 track sesuai mood: haru, hangat, ceria, khidmat), atau (b) upload file MP3/WAV sendiri (disertai peringatan hak cipta). | P0 |

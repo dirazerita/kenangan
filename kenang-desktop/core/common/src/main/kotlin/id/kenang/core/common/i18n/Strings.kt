@@ -110,8 +110,9 @@ object Strings {
     const val WIZARD_STEP2 = "Cerita"
     const val WIZARD_STEP3 = "Musik"
     const val WIZARD_STEP4 = "Format & Suasana"
-    const val WIZARD_ADD_PHOTOS = "Pilih foto (1–10)"
-    const val WIZARD_PHOTO_LIMIT = "Maksimal 10 foto per proyek."
+    // %1 = limits.max_photos from config — never hardcode the number here.
+    const val WIZARD_ADD_PHOTOS = "Pilih foto (1–%1)"
+    const val WIZARD_PHOTO_LIMIT = "Maksimal %1 foto per proyek."
     const val WIZARD_BADGE_BAGUS = "Bagus"
     const val WIZARD_BADGE_CUKUP = "Cukup"
     const val WIZARD_BADGE_KURANG = "Kurang"

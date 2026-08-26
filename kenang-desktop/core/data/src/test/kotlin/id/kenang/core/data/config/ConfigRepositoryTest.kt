@@ -68,7 +68,7 @@ class ConfigRepositoryTest {
 
     @Test
     fun `limits match MEMORY section 5`() {
-        assertEquals(10, config.limits.maxPhotos)
+        assertEquals(15, config.limits.maxPhotos)
         assertEquals(6, config.limits.maxScenes)
         assertEquals(60, config.limits.maxTotalSeconds)
         assertEquals(4, config.limits.maxSubjectsFusion)

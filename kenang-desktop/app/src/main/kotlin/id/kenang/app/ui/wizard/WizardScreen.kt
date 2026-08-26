@@ -175,7 +175,7 @@ private fun StepPhotos(state: WizardState) {
         }) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(Strings.WIZARD_ADD_PHOTOS)
+            Text(Strings.WIZARD_ADD_PHOTOS.replace("%1", state.config.limits.maxPhotos.toString()))
         }
         state.rejectionMessage?.let {
             Spacer(Modifier.height(8.dp))
