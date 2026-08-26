@@ -1,0 +1,74 @@
+task,provider,model,input_ref,ratio,duration_s,latency_s,cost_usd,status,error_code,notes,key_label
+T1,elevenlabs,api-metadata,voices+shared-voices,,,,0.0000,ok,,free metadata; key scoped tts+voices only,key1
+T2,fal,fal-ai/nano-banana/edit,foto01_bw_tua.jpg|taman,9:16,,10.6,0.0390,ok,,saved foto01_bw_tua__taman.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto01_bw_tua.jpg|pantai,16:9,,8.9,0.0390,ok,,saved foto01_bw_tua__pantai.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto01_bw_tua.jpg|ruang_tamu,9:16,,9.2,0.0390,ok,,saved foto01_bw_tua__ruang_tamu.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto03_warna_pudar.jpg|taman,9:16,,9.8,0.0390,ok,,saved foto03_warna_pudar__taman.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto03_warna_pudar.jpg|pantai,16:9,,16.3,0.0390,ok,,saved foto03_warna_pudar__pantai.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto03_warna_pudar.jpg|ruang_tamu,9:16,,11.3,0.0390,ok,,saved foto03_warna_pudar__ruang_tamu.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto05_keluarga_grup.jpg|taman,9:16,,9.6,0.0390,ok,,saved foto05_keluarga_grup__taman.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto05_keluarga_grup.jpg|pantai,16:9,,10.9,0.0390,ok,,saved foto05_keluarga_grup__pantai.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto05_keluarga_grup.jpg|ruang_tamu,9:16,,11.3,0.0390,ok,,saved foto05_keluarga_grup__ruang_tamu.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto07_lansia_solo.jpg|taman,9:16,,10.4,0.0390,ok,,saved foto07_lansia_solo__taman.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto07_lansia_solo.jpg|pantai,16:9,,10.0,0.0390,ok,,saved foto07_lansia_solo__pantai.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto07_lansia_solo.jpg|ruang_tamu,9:16,,9.9,0.0390,ok,,saved foto07_lansia_solo__ruang_tamu.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto10_anak.jpg|taman,9:16,,9.9,0.0390,ok,,saved foto10_anak__taman.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto10_anak.jpg|pantai,16:9,,9.6,0.0390,ok,,saved foto10_anak__pantai.jpg,key1
+T2,fal,fal-ai/nano-banana/edit,foto10_anak.jpg|ruang_tamu,9:16,,10.6,0.0390,ok,,saved foto10_anak__ruang_tamu.jpg,key1
+T3,fal,fal-ai/nano-banana/edit,foto08_lansia_solo2.jpg+foto09_dewasa_fusion.jpg,9:16,,54.9,0.0390,ok,,saved A_lansia+dewasa__std.jpg,key1
+T3,fal,fal-ai/nano-banana/edit,foto07_lansia_solo.jpg+foto14_fusion_b.jpg,16:9,,36.3,0.0390,ok,,saved B_lansia+fusi__std.jpg,key1
+T3,fal,fal-ai/nano-banana/edit,foto10_anak.jpg+foto14_fusion_b.jpg,9:16,,24.9,0.0390,ok,,saved C_anak+fusi__std.jpg,key1
+T3,fal,fal-ai/nano-banana-pro/edit,foto08_lansia_solo2.jpg+foto09_dewasa_fusion.jpg,9:16,,27.4,0.1500,ok,,saved A_lansia+dewasa__pro.jpg,key1
+T3,fal,fal-ai/nano-banana/edit,foto08+foto09|retry,9:16,,15.9,0.0390,ok,,std retry: explicit exactly-two-people constraint,key1
+T4,fal,fal-ai/kling-video/v3/standard/image-to-video,foto01_bw_tua__taman,9:16,5,78.8,0.4200,ok,,kling3-std saved foto01_bw_tua__taman__9x16.mp4,key1
+T5,elevenlabs,eleven_multilingual_v2,n1_rumah|meraki_F,,,13.4,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n1_rumah|mizan_M,,,2.0,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n1_rumah|maya_F,,,10.9,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n1_rumah|bian_M,,,1.6,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n1_rumah|bram_M,,,0.5,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n2_taman|meraki_F,,,0.5,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n2_taman|mizan_M,,,0.5,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n2_taman|maya_F,,,0.5,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n2_taman|bian_M,,,0.5,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,elevenlabs,eleven_multilingual_v2,n2_taman|bram_M,,,0.5,0.0000,error,402,"{""detail"":{""type"":""payment_required"",""code"":""paid_plan_required"",""message"":""Free users cannot use library voices via the",key1
+T5,fal,fal-ai/minimax/speech-02-hd,n1_rumah|calm_woman,,17.532,5.8,0.0241,ok,,241 chars @ $0.10/1k,key1
+T5,fal,fal-ai/minimax/speech-02-hd,n1_rumah|wise_woman,,18.792,4.8,0.0241,ok,,241 chars @ $0.10/1k,key1
+T5,fal,fal-ai/minimax/speech-02-hd,n2_taman|calm_woman,,18.0,4.0,0.0230,ok,,230 chars @ $0.10/1k,key1
+T5,fal,fal-ai/minimax/speech-02-hd,n2_taman|wise_woman,,18.612,4.5,0.0230,ok,,230 chars @ $0.10/1k,key1
+T5,fal,openrouter/router/vision:gemini-2.5-flash,foto01_bw_tua.jpg,,,5.7,0.0007,ok,,"json_valid=yes, actual billed cost from usage",key1
+T5,google,gemini-2.5-flash,foto01_bw_tua.jpg,,,0.0,0.0000,error,"400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'AP",,key1
+T5,fal,openrouter/router/vision:gemini-2.5-flash,foto05_keluarga_grup.jpg,,,5.7,0.0017,ok,,"json_valid=yes, actual billed cost from usage",key1
+T5,google,gemini-2.5-flash,foto05_keluarga_grup.jpg,,,0.0,0.0000,error,"400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'AP",,key1
+T5,fal,openrouter/router/vision:gemini-2.5-flash,foto13_buram.jpg,,,5.2,0.0013,ok,,"json_valid=yes, actual billed cost from usage",key1
+T4,fal,fal-ai/kling-video/v3/standard/image-to-video,foto05_keluarga_grup__pantai,16:9,5,192.3,0.4200,ok,,kling3-std saved foto05_keluarga_grup__pantai__16x9.mp4,key1
+T5,google,gemini-2.5-flash,foto13_buram.jpg,,,0.0,0.0000,error,"400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'AP",,key1
+T4,fal,fal-ai/kling-video/v3/standard/image-to-video,foto07_lansia_solo__ruang_tamu,9:16,5,107.6,0.4200,ok,,kling3-std saved foto07_lansia_solo__ruang_tamu__9x16.mp4,key1
+T5,elevenlabs,eleven_multilingual_v2,n1_short|sarah_premade,,,2.8,0.0150,ok,,"premade EN voice on free tier, Indonesian text",key1
+T4,fal,fal-ai/kling-video/v3/standard/image-to-video,A_lansia+dewasa__pro,9:16,5,113.3,0.4200,ok,,kling3-std saved A_lansia+dewasa__pro__9x16.mp4,key1
+T4,fal,fal-ai/kling-video/v3/standard/image-to-video,foto05_keluarga_grup,16:9,5,117.5,0.4200,ok,,kling3-std saved foto05_keluarga_grup__16x9.mp4,key1
+T4,fal,fal-ai/kling-video/v3/standard/image-to-video,foto07_lansia_solo,9:16,5,80.0,0.4200,ok,,kling3-std saved foto07_lansia_solo__9x16.mp4,key1
+T4,fal,wan/v2.6/image-to-video,foto01_bw_tua__taman,9:16,5.007007,48.1,0.5000,ok,,wan26 saved foto01_bw_tua__taman__9x16.mp4,key1
+T4,fal,wan/v2.6/image-to-video,foto05_keluarga_grup__pantai,16:9,5.007007,55.8,0.5000,ok,,wan26 saved foto05_keluarga_grup__pantai__16x9.mp4,key1
+T4,fal,wan/v2.6/image-to-video,foto07_lansia_solo__ruang_tamu,9:16,5.007007,46.2,0.5000,ok,,wan26 saved foto07_lansia_solo__ruang_tamu__9x16.mp4,key1
+T4,fal,wan/v2.6/image-to-video,A_lansia+dewasa__pro,9:16,5.007007,51.9,0.5000,ok,,wan26 saved A_lansia+dewasa__pro__9x16.mp4,key1
+T4,fal,wan/v2.6/image-to-video,foto05_keluarga_grup,16:9,5.007007,54.3,0.5000,ok,,wan26 saved foto05_keluarga_grup__16x9.mp4,key1
+T4,fal,wan/v2.6/image-to-video,foto07_lansia_solo,9:16,5,1.4,0.0000,error,balance_locked,fal account balance exhausted - call not billed,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto01_bw_tua__taman,9:16,5,0.2,0.0000,error,balance_locked,fal account balance exhausted - call not billed,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto05_keluarga_grup__pantai,16:9,5,131.5,0.7735,ok,,seedance2-mini saved foto05_keluarga_grup__pantai__16x9.mp4,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto07_lansia_solo__ruang_tamu,9:16,5,3.7,0.0000,error,balance_locked,fal account balance exhausted - call not billed,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,A_lansia+dewasa__pro,9:16,5,0.7,0.0000,error,balance_locked,fal account balance exhausted - call not billed,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto05_keluarga_grup,16:9,5,0.8,0.0000,error,balance_locked,fal account balance exhausted - call not billed,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto07_lansia_solo,9:16,5,1.1,0.0000,error,balance_locked,fal account balance exhausted - call not billed,key1
+T4,fal,wan/v2.6/image-to-video,foto07_lansia_solo,9:16,5.007007,81.3,0.5000,ok,,wan26 saved foto07_lansia_solo__9x16.mp4,key1
+T2+,fal,fal-ai/nano-banana/edit,kakek1.jpg|taman,9:16,,29.0,0.0390,ok,,own_family keyframe kakek1__taman.jpg,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto01_bw_tua__taman,9:16,5,180.7,0.7735,ok,,seedance2-mini saved foto01_bw_tua__taman__9x16.mp4,key1
+T4+,fal,fal-ai/kling-video/v3/standard/image-to-video,kakek1__taman,9:16,5,95.8,0.4200,ok,,own_family clip kakek1__taman__9x16.mp4,key1
+T2+,fal,fal-ai/nano-banana/edit,kakek2.jpg|taman,16:9,,71.9,0.0390,ok,,own_family keyframe kakek2__taman.jpg,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto07_lansia_solo__ruang_tamu,9:16,5,201.5,0.7735,ok,,seedance2-mini saved foto07_lansia_solo__ruang_tamu__9x16.mp4,key1
+T4+,fal,fal-ai/kling-video/v3/standard/image-to-video,kakek2__taman,16:9,5,161.3,0.4200,ok,,own_family clip kakek2__taman__16x9.mp4,key1
+T2+,fal,fal-ai/nano-banana/edit,keluarga.jpg|taman,9:16,,20.3,0.0390,ok,,own_family keyframe keluarga__taman.jpg,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,A_lansia+dewasa__pro,9:16,5,146.0,0.7735,ok,,seedance2-mini saved A_lansia+dewasa__pro__9x16.mp4,key1
+T4+,fal,fal-ai/kling-video/v3/standard/image-to-video,keluarga__taman,9:16,5,82.4,0.4200,ok,,own_family clip keluarga__taman__9x16.mp4,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto05_keluarga_grup,16:9,5,193.8,0.7735,ok,,seedance2-mini saved foto05_keluarga_grup__16x9.mp4,key1
+T4,fal,bytedance/seedance-2.0/mini/reference-to-video,foto07_lansia_solo,9:16,5,115.6,0.7735,ok,,seedance2-mini saved foto07_lansia_solo__9x16.mp4,key1
+T4-flash,fal,wan/v2.6/image-to-video/flash,foto07_lansia_solo__ruang_tamu,9:16,5,52.0,0.2500,ok,,Hemat spot-check saved foto07_lansia_solo__ruang_tamu__9x16.mp4,key1

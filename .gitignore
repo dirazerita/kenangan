@@ -1,11 +1,47 @@
+# ---------------------------------------------------------------------------
+# SECRETS — never commit (AD-11: user API keys never logged, synced, or shared)
+# ---------------------------------------------------------------------------
+.env
+.env.local
+*.env
+!.env.example
+local.properties
+**/local.properties
+
+# ---------------------------------------------------------------------------
+# Local toolchain & downloads (~1 GB, re-fetched by Gradle / documented in
+# docs/BUILD.md) — never belongs in the repo
+# ---------------------------------------------------------------------------
+.tools/
+
+# ---------------------------------------------------------------------------
+# Build outputs
+# ---------------------------------------------------------------------------
 .gradle/
 build/
 **/build/
+.kotlin/
 .idea/
 *.iml
-local.properties
-.kotlin/
-# Downloaded/staged binaries (re-fetched by Gradle tasks)
-app/ffmpeg-dist/
 *.hprof
 demo-run.log
+# Pinned FFmpeg binary (138 MB) — staged by the downloadFfmpeg Gradle task
+kenang-desktop/app/ffmpeg-dist/
+
+# ---------------------------------------------------------------------------
+# PoC heavy artifacts (venv + 200 MB of generated clips/audio)
+# ---------------------------------------------------------------------------
+POC/.venv/
+**/__pycache__/
+POC/out/
+
+# ---------------------------------------------------------------------------
+# PERSONAL MEDIA — real family photos and generated frames of identifiable
+# people. Kept local on purpose (AD-09: user media never leaves the machine).
+# ---------------------------------------------------------------------------
+POC/ASSETS/
+OUTPUT/
+kenang-desktop/docs/img/skeuo_home.png
+kenang-desktop/docs/img/storyboard.png
+kenang-desktop/docs/img/demo04_9x16_thumb.jpg
+kenang-desktop/docs/img/demo04_16x9_thumb.jpg

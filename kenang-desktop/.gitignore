@@ -1,0 +1,11 @@
+.gradle/
+build/
+**/build/
+.idea/
+*.iml
+local.properties
+.kotlin/
+# Downloaded/staged binaries (re-fetched by Gradle tasks)
+app/ffmpeg-dist/
+*.hprof
+demo-run.log
