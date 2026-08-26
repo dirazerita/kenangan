@@ -170,7 +170,7 @@ private fun StepPhotos(state: WizardState) {
         )
         Spacer(Modifier.height(16.dp))
         SkeuoButton(onClick = {
-            val files = pickFiles("Pilih foto", "*.jpg;*.jpeg;*.png;*.webp")
+            val files = pickFiles("Pilih foto", "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp")
             if (files.isNotEmpty()) state.addPhotos(files)
         }) {
             Icon(Icons.Default.Add, contentDescription = null)
@@ -305,7 +305,7 @@ private fun StepMusic(state: WizardState) {
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SkeuoOutlinedButton(onClick = {
-                val files = pickFiles("Pilih musik", "*.mp3;*.wav")
+                val files = pickFiles("Pilih musik", "Musik (MP3, WAV)", "mp3", "wav")
                 if (files.isNotEmpty()) {
                     pendingFile = files.first()
                     acked = false
@@ -426,11 +426,28 @@ private fun RatioFrame(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** AWT file picker (multi-select). [filter] is informational on Windows. */
-private fun pickFiles(title: String, filter: String): List<File> {
-    val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD)
-    dialog.isMultipleMode = true
-    dialog.file = filter
-    dialog.isVisible = true
-    return dialog.files?.toList() ?: emptyList()
+/** Remembers the last-browsed folder across picks within a session. */
+private var lastPickDir: File? = null
+
+/**
+ * Swing file picker (multi-select) with a REAL extension filter. The previous
+ * AWT FileDialog set "*.jpg;*.jpeg;…" as the filename pattern, which on some
+ * Windows setups filtered out every file ("No items match your search" —
+ * dogfood bug 2026-08-26). FileNameExtensionFilter matches case-insensitively
+ * and the user can still switch to "All Files".
+ */
+private fun pickFiles(title: String, description: String, vararg extensions: String): List<File> {
+    val chooser = javax.swing.JFileChooser().apply {
+        dialogTitle = title
+        isMultiSelectionEnabled = true
+        fileSelectionMode = javax.swing.JFileChooser.FILES_ONLY
+        fileFilter = javax.swing.filechooser.FileNameExtensionFilter(description, *extensions)
+        lastPickDir?.let { currentDirectory = it }
+    }
+    return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+        lastPickDir = chooser.currentDirectory
+        chooser.selectedFiles.toList()
+    } else {
+        emptyList()
+    }
 }

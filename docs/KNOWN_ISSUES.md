@@ -17,3 +17,4 @@
 | KI-010 | P1 | Verification | Generation/Result screens exercised only via demoDriver04 services; in-app walkthrough (confirm → generation screen → result screen) pending owner eyes | OPEN (owner check) |
 | KI-011 | P2 | Analysis | "Analysis ≤30s / 5 photos" target never re-measured on a normal uplink (demo-03 leftover; slow-uplink runs exceeded it) | OPEN (measure during dogfood) |
 | KI-012 | P2 | Home | Deleting a project is possible while its generation may still be polling in a session; fal-side jobs are not cancelled (user still billed for in-flight scenes) — needs a guard or honest confirm copy | OPEN |
+| KI-013 | P1 | Wizard | Photo picker showed no files on owner's machine ("No items match your search") — AWT FileDialog filename-pattern filtering broke on Windows. Replaced with JFileChooser + FileNameExtensionFilter (photos & music), remembers last folder | FIXED (dogfood 2026-08-26) |
