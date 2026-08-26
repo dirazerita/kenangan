@@ -58,15 +58,21 @@ fun SkeuoCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier
             .shadow(10.dp, shape, spotColor = Color.Black.copy(alpha = 0.55f))
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF203C60), Color(0xFF14283F))))
-            .border(1.dp, bevelBrush(0.20f), shape),
-        content = content,
-    )
+            .background(Brush.verticalGradient(listOf(Color(0xFF224162), Color(0xFF14283F))))
+            .glossOverlay(visible = true, cornerRadiusDp = 24, strength = 0.16f)
+            .border(1.dp, bevelBrush(0.22f), shape),
+    ) {
+        // Panels sit on the gradient backdrop; force bright content so no
+        // default black Text/Icon can slip through (owner report 2026-08-26).
+        CompositionLocalProvider(LocalContentColor provides KenangPalette.textBright) {
+            content()
+        }
+    }
 }
 
 /** Primary glossy blue button — raised; sinks + darkens when pressed. */
@@ -144,7 +150,7 @@ private fun SkeuoControl(
     inset: Boolean = false,
     content: @Composable RowScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(19.dp)
     Row(
         modifier
             .shadow(
@@ -154,7 +160,7 @@ private fun SkeuoControl(
             )
             .clip(shape)
             .background(Brush.verticalGradient(fill))
-            .glossOverlay(visible = gloss && !pressed)
+            .glossOverlay(visible = gloss && !pressed, cornerRadiusDp = 19, strength = 0.45f)
             .border(
                 1.dp,
                 if (inset) insetBrush(edgeAlpha) else bevelBrush(edgeAlpha),
@@ -187,12 +193,16 @@ private fun insetBrush(alpha: Float) = Brush.verticalGradient(
     listOf(Color.Black.copy(alpha = 0.45f), Color.White.copy(alpha = alpha)),
 )
 
-/** Glass highlight across the upper half of a control. */
-private fun Modifier.glossOverlay(visible: Boolean): Modifier =
+/** Glass highlight across the upper half of a control/panel. */
+private fun Modifier.glossOverlay(
+    visible: Boolean,
+    cornerRadiusDp: Int = 19,
+    strength: Float = 0.45f,
+): Modifier =
     if (!visible) this else drawWithCache {
         val brush = Brush.verticalGradient(
-            0f to Color.White.copy(alpha = 0.28f),
-            1f to Color.White.copy(alpha = 0.02f),
+            0f to Color.White.copy(alpha = strength),
+            1f to Color.White.copy(alpha = 0.04f),
             endY = size.height * 0.55f,
         )
         onDrawWithContent {
@@ -200,7 +210,7 @@ private fun Modifier.glossOverlay(visible: Boolean): Modifier =
             drawRoundRect(
                 brush = brush,
                 size = Size(size.width, size.height * 0.55f),
-                cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                cornerRadius = CornerRadius(cornerRadiusDp.dp.toPx(), cornerRadiusDp.dp.toPx()),
             )
         }
     }

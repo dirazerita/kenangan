@@ -95,6 +95,9 @@ fun App() {
         id.kenang.app.ui.theme.SkeuoBackground {
         Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            // Transparent container has no contentColorFor mapping — without an
+            // explicit contentColor every default Text/Icon falls back to black.
+            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
             snackbarHost = { SnackbarHost(snackbar) },
         ) { padding ->
             Column(Modifier.fillMaxSize()) {
