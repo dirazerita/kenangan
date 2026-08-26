@@ -7,18 +7,48 @@ Users bring their own provider API keys (fal required; Gemini/ElevenLabs optiona
 
 **Owner decision (D-002): licensing comes LAST.** The desktop app is built to full, stable, feature-complete quality first — no activation UI, no watermark, no limits during development. A `LicenseGate` stub (DevFull) marks the single seam where Phase 05 later plugs in real licensing. The license backend + store will live on the owner's **dedicated license website** (already prepared).
 
-## Files
+## Repository layout
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `MEMORY.md` | Persistent project brain: architecture decisions (incl. AD-13 deferral), model routing, contracts, license SKUs. Agents READ first, APPEND decisions. |
-| `PROGRESS.md` | Live status: per-phase checklists incl. the **Stabilization** gate, blockers, open questions. Agents UPDATE after every task. |
-| `MASTER_PROMPT_00_POC.md` | Phase 0 — Model, policy & **single-key** validation (GATE). |
-| `MASTER_PROMPT_02_DESKTOP_SHELL.md` | Desktop skeleton + BYOK foundation: KeyVault, API Key Manager, `core/providers`, ConfigRepository, **LicenseGate stub**. |
-| `MASTER_PROMPT_03_STORYBOARD.md` | Input wizard + client-side analysis/moderation + storyboard editor + cost estimator. |
-| `MASTER_PROMPT_04_VIDEO_PIPELINE.md` | Direct-to-fal generation, TTS, FFmpeg assembly, cost tracker, export. |
-| `MASTER_PROMPT_01_BACKEND.md` | **(Deferred)** License & Config mini-backend on the dedicated license website. Starts only after Stabilization. |
-| `MASTER_PROMPT_05_LICENSING_LAUNCH.md` | **(Last)** Turn licensing on (swap the stub), store wiring, ProGuard, packaging, beta. |
+| `kenang-desktop/` | The desktop app (Kotlin + Compose Multiplatform, Gradle). Phases 02–04 are implemented here; see `kenang-desktop/docs/`. |
+| `AGENTS/` | The agent pipeline: `MEMORY.md`, `PROGRESS.md` and every `MASTER_PROMPT_XX`. |
+| `POC/` | Phase-00 proof-of-concept scripts, `REPORT.md` and `results.csv` (real provider costs per call). |
+| `PRD_Kenang_Video_Kenangan.md` | Product requirements, v1.1 (source of truth). |
+| `Jalankan Kenang.bat` | One-click launcher for the local dev build (Windows). |
+
+| Agent file | Purpose |
+|---|---|
+| `AGENTS/MEMORY.md` | Persistent project brain: architecture decisions (incl. AD-13 deferral), model routing, contracts, license SKUs. Agents READ first, APPEND decisions. |
+| `AGENTS/PROGRESS.md` | Live status: per-phase checklists incl. the **Stabilization** gate, blockers, open questions. Agents UPDATE after every task. |
+| `AGENTS/MASTER_PROMPT_00_POC.md` | Phase 0 — Model, policy & **single-key** validation (GATE). |
+| `AGENTS/MASTER_PROMPT_02_DESKTOP_SHELL.md` | Desktop skeleton + BYOK foundation: KeyVault, API Key Manager, `core/providers`, ConfigRepository, **LicenseGate stub**. |
+| `AGENTS/MASTER_PROMPT_03_STORYBOARD.md` | Input wizard + client-side analysis/moderation + storyboard editor + cost estimator. |
+| `AGENTS/MASTER_PROMPT_04_VIDEO_PIPELINE.md` | Direct-to-fal generation, TTS, FFmpeg assembly, cost tracker, export. |
+| `AGENTS/MASTER_PROMPT_01_BACKEND.md` | **(Deferred)** License & Config mini-backend on the dedicated license website. Starts only after Stabilization. |
+| `AGENTS/MASTER_PROMPT_05_LICENSING_LAUNCH.md` | **(Last)** Turn licensing on (swap the stub), store wiring, ProGuard, packaging, beta. |
+
+## Build & run
+
+Prerequisites and pinned toolchain versions: `kenang-desktop/docs/BUILD.md`.
+
+```bash
+cd kenang-desktop
+./gradlew :app:run                 # run the app
+./gradlew :app:createDistributable # build Kenang.exe (app image)
+./gradlew :app:packageMsi          # build the Windows installer (needs WiX 3.x)
+./gradlew test                     # offline unit + FFmpeg integration tests
+```
+
+The app needs the user's own fal.ai API key (BYOK), entered in Pengaturan → API Key.
+
+## Not in this repository (on purpose)
+
+`.env` (real provider keys), the ~1 GB local toolchain (`.tools/`), build outputs,
+the 138 MB pinned FFmpeg binary, the PoC virtualenv and its ~200 MB of generated
+clips, and **all personal family media** — the owner's own photos and the video
+frames made from them (AD-09: user media stays on the machine). Some docs
+therefore link to screenshots that are not part of the public tree.
 
 ## Execution order & gates
 
@@ -40,10 +70,9 @@ Users bring their own provider API keys (fal required; Gemini/ElevenLabs optiona
 3. Small verifiable steps; conventional commits (`feat(scope): ...`).
 4. Before ending: update PROGRESS checkboxes, append decisions to MEMORY §9, list next actions.
 
-## Repo layout (recommended)
-- Desktop: new repo `kenang-desktop` (Kotlin + Compose Multiplatform) — the center of gravity until Stabilization.
+## Repo strategy
+- Desktop app + agent pipeline + PoC share this single repo (D-011); a standalone `kenang-desktop` split stays possible via `git subtree split`.
 - License backend: lives with the owner's dedicated license website (stack per that site; MP01 keeps the contract fixed). Reuses the owner's Midtrans account + mailer.
-- This folder lives at `/agents` in each repo.
 
 ## Global rules for all agents
 1. English for code/comments/commits/docs; Indonesian only for user-facing UI strings.
