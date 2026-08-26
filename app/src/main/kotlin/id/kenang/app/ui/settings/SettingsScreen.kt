@@ -238,6 +238,7 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
             AddFalKeyRow(state)
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = { openInBrowser(FAL_KEYS_URL) }) { Text(Strings.KEYS_OPEN_FAL) }
+            id.kenang.app.ui.components.CopyableUrl(FAL_KEYS_URL)
             Text(
                 Strings.KEYS_TEST_COST_NOTE,
                 style = MaterialTheme.typography.labelSmall,
@@ -307,6 +308,7 @@ fun OptionalKeySection(
                 }
             }
             TextButton(onClick = { openInBrowser(openUrl) }) { Text(openUrlLabel) }
+            id.kenang.app.ui.components.CopyableUrl(openUrl)
         }
     }
 }

@@ -141,6 +141,7 @@ private fun Step1() {
         Text(Strings.ONBOARD_STEP1_BODY, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(12.dp))
         SkeuoButton(onClick = { openInBrowser(FAL_KEYS_URL) }) { Text(Strings.KEYS_OPEN_FAL) }
+        id.kenang.app.ui.components.CopyableUrl(FAL_KEYS_URL)
         Spacer(Modifier.height(16.dp))
         Text(
             Strings.ONBOARD_BYOK_NOTICE,

@@ -11,6 +11,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -70,6 +72,42 @@ fun ConfirmDialog(
             TextButton(onClick = onDismiss) { Text(Strings.CANCEL) }
         },
     )
+}
+
+/**
+ * Plain URL shown under a "Buka …" button so users can also just copy it:
+ * selectable text + a one-click "Salin" that flips to "Disalin ✓" briefly.
+ */
+@Composable
+fun CopyableUrl(url: String) {
+    var copied by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(copied) {
+        if (copied) {
+            kotlinx.coroutines.delay(2500)
+            copied = false
+        }
+    }
+    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.foundation.text.selection.SelectionContainer {
+            Text(
+                url,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+        TextButton(onClick = {
+            runCatching {
+                java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                    .setContents(java.awt.datatransfer.StringSelection(url), null)
+            }
+            copied = true
+        }) {
+            Text(
+                if (copied) Strings.KEYS_LINK_COPIED else Strings.KEYS_COPY_LINK,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+    }
 }
 
 /** Opens a URL in the system browser (onboarding "buka halaman key" buttons). */
