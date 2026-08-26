@@ -75,6 +75,15 @@ data class TtsConfig(
     val voice: String,
     @SerialName("language_boost") val languageBoost: String,
     @SerialName("max_chars") val maxChars: Int = 500,
+    /** Selectable MiniMax system voices; [voice] stays the locked default. */
+    val voices: List<TtsVoice> = emptyList(),
+)
+
+@Serializable
+data class TtsVoice(
+    val id: String,
+    @SerialName("label_id") val labelId: String,
+    val gender: String = "",
 )
 
 @Serializable

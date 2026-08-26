@@ -40,12 +40,16 @@ fun AboutScreen(onBack: () -> Unit) {
         HorizontalDivider()
         Spacer(Modifier.height(16.dp))
         Text(Strings.ABOUT_FFMPEG, style = MaterialTheme.typography.bodySmall)
-        // CC-BY attribution for every bundled track (config-driven, Phase 04).
+        // CC-BY attribution for the bundled music collection (config-driven).
         val bundledMusic = org.koin.compose.koinInject<id.kenang.core.data.config.ConfigRepository>()
             .current().bundledMusic
-        bundledMusic.forEach { track ->
+        bundledMusic.map { it.credit }.distinct().forEach { credit ->
             Spacer(Modifier.height(4.dp))
-            Text(Strings.ABOUT_MUSIC_PREFIX + track.credit, style = MaterialTheme.typography.bodySmall)
+            Text(
+                Strings.ABOUT_MUSIC_PREFIX + credit +
+                    " (${bundledMusic.size} lagu: ${bundledMusic.joinToString(", ") { it.labelId.substringBefore(" —") }})",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         Spacer(Modifier.height(24.dp))

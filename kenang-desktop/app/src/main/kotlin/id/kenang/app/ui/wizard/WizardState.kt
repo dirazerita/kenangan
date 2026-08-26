@@ -66,9 +66,18 @@ class WizardState(
     var showConsent by mutableStateOf(false)
     var finished by mutableStateOf(false)
 
-    /** MiniMax voices proven in Phase 00; default first (locked Calm_Woman). */
-    val voiceOptions: List<String> =
-        listOf(configRepository.current().tts.voice, "Wise_Woman").distinct()
+    /**
+     * Selectable MiniMax voices from config (AD-10). Only Calm_Woman and
+     * Wise_Woman were blind-tested in Phase 00; the rest are MiniMax system
+     * voices offered as-is with language_boost Indonesian.
+     */
+    val voiceOptions: List<id.kenang.core.data.config.TtsVoice> =
+        configRepository.current().tts.voices.ifEmpty {
+            listOf(
+                id.kenang.core.data.config.TtsVoice(configRepository.current().tts.voice, "Wanita Tenang", "F"),
+                id.kenang.core.data.config.TtsVoice("Wise_Woman", "Wanita Bijak", "F"),
+            )
+        }
 
     fun chooseNoNarration(enabled: Boolean) {
         noNarration = enabled
@@ -83,6 +92,9 @@ class WizardState(
             val id = projectId
             if (id == null) {
                 projectId = projects.create(name, ratio, vibeId, config.tierRouting.defaultTier)
+                // Prefill the narration so users edit instead of starting from
+                // a blank box (owner request); clearing it = no narration.
+                narration = Strings.WIZARD_NARRATION_TEMPLATE
             } else {
                 // Resume: restore all wizard fields from DB.
                 projects.get(id)?.let { p ->
