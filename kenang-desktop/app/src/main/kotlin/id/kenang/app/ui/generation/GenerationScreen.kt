@@ -470,13 +470,15 @@ private fun DurationDialog(
 @Composable
 private fun TrimDialog(initial: String, onSave: (String) -> Unit, onCancel: () -> Unit) {
     var text by remember { mutableStateOf(initial) }
+    val maxChars = koinInject<id.kenang.core.data.config.ConfigRepository>()
+        .current().limits.maxNarrationChars
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(Strings.DUR_OPT_TRIM) },
         text = {
             androidx.compose.material3.OutlinedTextField(
                 value = text,
-                onValueChange = { text = it.take(500) },
+                onValueChange = { text = it.take(maxChars) },
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth(),
             )

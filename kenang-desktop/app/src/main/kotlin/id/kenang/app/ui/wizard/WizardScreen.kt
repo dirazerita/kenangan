@@ -276,6 +276,14 @@ private fun QualityBadgeChip(badge: QualityBadge) {
 
 @Composable
 private fun StepStory(state: WizardState) {
+    // Arriving at this step with an empty box always prefills the template —
+    // covers projects created before the prefill existed and any race on
+    // project creation. Users edit instead of writing from scratch.
+    LaunchedEffect(state.noNarration) {
+        if (state.narration.isBlank() && !state.noNarration) {
+            state.narration = Strings.WIZARD_NARRATION_TEMPLATE
+        }
+    }
     Column {
         // Explicit "Tanpa narasi" choice (owner request): narration is
         // optional, and this makes that obvious instead of implied.

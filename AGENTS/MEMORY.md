@@ -58,7 +58,7 @@ User-paid API cost per 15s video (indicative, no markup): Hemat ≈ $0.94 (Rp15,
 
 - Backend mini: stateless HTTPS only; no user media, no queue, no key transit. Hostinger-friendly.
 - Desktop never freezes (all IO/AI on coroutines); resumable after force-kill (SQLite state).
-- Max MVP: **15 photos in** (D-012), **12 scenes, 120s total video** (D-013), 4 subjects per fusion scene, 500-char narration.
+- Max MVP: **15 photos in** (D-012), **12 scenes, 120s total video** (D-013), 4 subjects per fusion scene, **1000-char narration** (D-014 follow-up; box always prefilled with an editable template on step-2 entry).
 - Installer < 300 MB incl. FFmpeg. No GPU requirement.
 - All AI features require network + valid user key; license valid offline within 30-day grace.
 - Every cost figure shown is an estimate; the app never promises exact billing.

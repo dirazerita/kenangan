@@ -45,7 +45,7 @@ class ConfigRepositoryTest {
         assertEquals("fal-ai/minimax/speech-02-hd", config.tts.slug)
         assertEquals("Calm_Woman", config.tts.voice)
         assertEquals("Indonesian", config.tts.languageBoost)
-        assertEquals(500, config.tts.maxChars)
+        assertEquals(1000, config.tts.maxChars)
     }
 
     @Test
@@ -72,6 +72,6 @@ class ConfigRepositoryTest {
         assertEquals(12, config.limits.maxScenes)
         assertEquals(120, config.limits.maxTotalSeconds)
         assertEquals(4, config.limits.maxSubjectsFusion)
-        assertEquals(500, config.limits.maxNarrationChars)
+        assertEquals(1000, config.limits.maxNarrationChars)
     }
 }

@@ -128,7 +128,7 @@ object Strings {
     const val WIZARD_SINGLE_PHOTO_SCENES_SUFFIX = " adegan"
 
     const val WIZARD_NARRATION_LABEL = "Narasi (opsional)"
-    const val WIZARD_NARRATION_TEMPLATE = "Waktu boleh berlalu, namun senyum dan kasih sayangmu tetap tinggal di hati kami. Terima kasih untuk setiap doa, tawa, dan kenangan indah yang pernah kita bagi bersama. Kenangan ini akan selalu kami jaga, selamanya."
+    const val WIZARD_NARRATION_TEMPLATE = "Waktu boleh berlalu, namun senyum dan kasih sayangmu tetap tinggal di hati kami. Di setiap sudut rumah ini, kami masih merasakan kehangatanmu — tawa yang menenangkan, nasihat yang menguatkan, dan doa-doa yang tak pernah putus untuk kami. Terima kasih untuk setiap pengorbanan yang tak sempat kami balas, untuk cinta yang kau berikan tanpa pamrih, dan untuk setiap kenangan indah yang pernah kita bagi bersama. Meski kini kita tak lagi bersama, engkau tetap hidup dalam setiap cerita yang kami kisahkan dan dalam setiap doa yang kami panjatkan. Kenangan ini akan selalu kami jaga dan kami rawat, selamanya, sampai tiba waktunya kita berkumpul kembali."
     const val WIZARD_NO_NARRATION = "Tanpa narasi"
     const val WIZARD_NO_NARRATION_HINT = "Video akan dibuat tanpa suara narasi dan tanpa subtitle — hanya musik (jika dipilih di langkah berikutnya)."
     const val WIZARD_NARRATION_HINT = "Tulis pesan atau kenangan singkat — akan dibacakan sebagai narasi."

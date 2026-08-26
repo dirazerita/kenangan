@@ -25,7 +25,7 @@
     "slug": "fal-ai/minimax/speech-02-hd",
     "voice": "Calm_Woman",
     "language_boost": "Indonesian",
-    "max_chars": 500,
+    "max_chars": 1000,
     "voices": [
       { "id": "Calm_Woman", "label_id": "Wanita Tenang", "gender": "F" },
       { "id": "Wise_Woman", "label_id": "Wanita Bijak", "gender": "F" },
@@ -182,6 +182,6 @@
     "max_scenes": 12,
     "max_total_s": 120,
     "max_subjects_fusion": 4,
-    "max_narration_chars": 500
+    "max_narration_chars": 1000
   }
 }
