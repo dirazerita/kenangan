@@ -75,7 +75,8 @@ fun SettingsScreen(
     val costTracker = koinInject<CostTracker>()
     val scope = rememberCoroutineScope()
 
-    val keyState = remember { KeyManagerState(vault, pool, tester, scope) }
+    val billing = koinInject<id.kenang.core.providers.fal.FalBilling>()
+    val keyState = remember { KeyManagerState(vault, pool, tester, billing, scope) }
     var perKeySpend by remember { mutableStateOf<List<KeySpend>>(emptyList()) }
     var outputFolder by remember { mutableStateOf(settings.outputFolder ?: "") }
 
@@ -242,6 +243,7 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
                         Text(key.label, style = MaterialTheme.typography.bodyMedium)
                         Text(key.masked, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        BalanceLine(state.balances[key.label])
                     }
                     val status = state.falStatuses[key.label] ?: FalKeyStatus.CADANGAN
                     StatusChip(
@@ -276,12 +278,35 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
             TextButton(onClick = { openInBrowser(FAL_KEYS_URL) }) { Text(Strings.KEYS_OPEN_FAL) }
             id.kenang.app.ui.components.CopyableUrl(FAL_KEYS_URL)
             Text(
+                Strings.KEYS_BALANCE_ADMIN_HINT,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
+            Text(
                 Strings.KEYS_TEST_COST_NOTE,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             )
         }
     }
+}
+
+/** Remaining fal credit under a key's masked id, after "Tes koneksi". */
+@Composable
+private fun BalanceLine(balance: BalanceState?) {
+    if (balance == null) return
+    val (text, color) = when (balance) {
+        BalanceState.Loading -> Strings.KEYS_BALANCE_CHECKING to
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        is BalanceState.Value -> (
+            Strings.KEYS_BALANCE_PREFIX + "%.2f %s".format(java.util.Locale.US, balance.amount, balance.currency)
+            ) to if (balance.amount <= 1.0) MaterialTheme.colorScheme.error else Color(0xFF4CD97B)
+        BalanceState.NeedsAdminKey -> Strings.KEYS_BALANCE_NEEDS_ADMIN to
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+        BalanceState.Unavailable -> Strings.KEYS_BALANCE_UNAVAILABLE to
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+    }
+    Text(text, style = MaterialTheme.typography.labelSmall, color = color)
 }
 
 @Composable

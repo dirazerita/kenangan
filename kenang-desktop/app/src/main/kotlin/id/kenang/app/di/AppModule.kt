@@ -28,6 +28,7 @@ import id.kenang.core.providers.CostTracker
 import id.kenang.core.providers.KeyTester
 import id.kenang.core.providers.PriceBook
 import id.kenang.core.providers.TtsProvider
+import id.kenang.core.providers.fal.FalBilling
 import id.kenang.core.providers.fal.FalKeyPool
 import id.kenang.core.providers.fal.FalQueueClient
 import id.kenang.core.providers.fal.FalStorage
@@ -72,6 +73,7 @@ val appModule = module {
     single { KeyVault.createDefault(File(AppDirs.config, "vault")) }
     single { FalKeyPool(get()) }
     single { FalQueueClient(get(), get()) }
+    single { FalBilling(get()) }
     single { GeminiClient(get()) }
     single { ElevenLabsClient(get()) }
     single { KeyTester(get(), get(), get(), get(), get()) }

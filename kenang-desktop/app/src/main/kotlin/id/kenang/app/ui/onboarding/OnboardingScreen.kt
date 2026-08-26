@@ -62,7 +62,8 @@ fun OnboardingScreen(
     val pool = koinInject<FalKeyPool>()
     val tester = koinInject<KeyTester>()
     val scope = rememberCoroutineScope()
-    val keyState = remember { KeyManagerState(vault, pool, tester, scope) }
+    val billing = koinInject<id.kenang.core.providers.fal.FalBilling>()
+    val keyState = remember { KeyManagerState(vault, pool, tester, billing, scope) }
 
     var step by remember { mutableStateOf(1) }
 

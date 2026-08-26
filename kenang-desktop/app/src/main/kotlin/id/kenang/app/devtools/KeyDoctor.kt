@@ -5,6 +5,7 @@ import id.kenang.core.common.AppResult
 import id.kenang.core.common.Logging
 import id.kenang.core.data.AppDirs
 import id.kenang.core.providers.KeyTester
+import id.kenang.core.providers.fal.FalBilling
 import id.kenang.core.providers.vault.KeyVault
 import kotlinx.coroutines.runBlocking
 import org.koin.core.context.GlobalContext
@@ -23,6 +24,7 @@ fun main(): Unit = runBlocking {
     val vault = koin.get<KeyVault>()
     val tester = koin.get<KeyTester>()
 
+    val billing = koin.get<FalBilling>()
     val keys = vault.falKeys()
     println("== keyDoctor: ${keys.size} fal key(s) in priority order ==")
     var firstOk: String? = null
@@ -31,7 +33,12 @@ fun main(): Unit = runBlocking {
             is AppResult.Ok -> { if (firstOk == null) firstOk = key.label; "OK" }
             is AppResult.Err -> "FAIL ${r.error}"
         }
-        println("  #${i + 1} ${key.label.padEnd(12)} (${key.masked}) -> $verdict")
+        val credit = when (val b = billing.balance(key.key)) {
+            is AppResult.Ok -> b.value.currentBalance?.let { "%.2f %s".format(it, b.value.currency) }
+                ?: "no credits field"
+            is AppResult.Err -> "unavailable (${b.error::class.simpleName})"
+        }
+        println("  #${i + 1} ${key.label.padEnd(12)} (${key.masked}) -> $verdict | saldo: $credit")
     }
     println(
         when {

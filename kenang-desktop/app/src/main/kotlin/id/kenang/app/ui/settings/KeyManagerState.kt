@@ -22,6 +22,15 @@ sealed class TestState {
     data class Fail(val message: String) : TestState()
 }
 
+/** Remaining credit of one fal key (best effort — see [KeyManagerState.testFalKey]). */
+sealed class BalanceState {
+    data object Loading : BalanceState()
+    data class Value(val amount: Double, val currency: String) : BalanceState()
+    /** fal answered 401/403: the key works, but reading credit needs an admin key. */
+    data object NeedsAdminKey : BalanceState()
+    data object Unavailable : BalanceState()
+}
+
 /**
  * Shared state holder for the BYOK key manager — used by both Settings and
  * the onboarding wizard. All mutations go straight to the vault (ordered fal
@@ -31,6 +40,7 @@ class KeyManagerState(
     private val vault: KeyVault,
     private val pool: FalKeyPool,
     private val tester: KeyTester,
+    private val billing: id.kenang.core.providers.fal.FalBilling,
     private val scope: CoroutineScope,
 ) {
     var falKeys by mutableStateOf(vault.falKeys())
@@ -42,6 +52,9 @@ class KeyManagerState(
 
     /** label -> test result; "gemini"/"elevenlabs" pseudo-labels for the single keys. */
     val testResults = mutableStateMapOf<String, TestState>()
+
+    /** label -> remaining fal credit, filled after a connection test. */
+    val balances = mutableStateMapOf<String, BalanceState>()
 
     var geminiKey by mutableStateOf(vault.geminiKey() ?: "")
     var elevenLabsKey by mutableStateOf(vault.elevenLabsKey() ?: "")
@@ -81,12 +94,24 @@ class KeyManagerState(
 
     fun testFalKey(key: FalKey) {
         testResults[key.label] = TestState.Testing
+        balances[key.label] = BalanceState.Loading
         scope.launch {
             testResults[key.label] = when (val result = tester.testFalKey(key)) {
                 is AppResult.Ok -> TestState.Ok
                 is AppResult.Err -> TestState.Fail(ErrorTranslator.translate(result.error).message)
             }
             falStatuses = pool.statuses()
+            // Remaining credit is a best-effort extra: fal serves it only to
+            // ADMIN-scoped keys (403 for plain generation keys), so it must
+            // never turn a working key into a failed test.
+            balances[key.label] = when (val b = billing.balance(key.key)) {
+                is AppResult.Ok -> b.value.currentBalance
+                    ?.let { BalanceState.Value(it, b.value.currency) }
+                    ?: BalanceState.Unavailable
+                is AppResult.Err ->
+                    if (b.error is id.kenang.core.common.AppError.InvalidKey) BalanceState.NeedsAdminKey
+                    else BalanceState.Unavailable
+            }
         }
     }
 
