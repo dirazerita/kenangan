@@ -49,8 +49,17 @@ data class BundledMusic(
 data class AnalysisConfig(
     val slug: String,
     val model: String,
+    /**
+     * Model id for the DIRECT Gemini path (user's own Google key). Kept
+     * separate from [model] (the fal-router id) because Google retires model
+     * ids for new accounts independently (seen live: 2.5-flash 404s for new
+     * users while the fal route still serves it).
+     */
+    @SerialName("gemini_model") val geminiModel: String = "",
     val note: String = "",
-)
+) {
+    fun resolvedGeminiModel(): String = geminiModel.ifBlank { model.substringAfter("/") }
+}
 
 /** Cheapest possible "Tes koneksi" ping for a fal key (~1 token). */
 @Serializable

@@ -126,6 +126,24 @@ tasks.register<JavaExec>("demoDriver04") {
     providers.gradleProperty("demoStage").orNull?.let { systemProperty("demo.stage", it) }
 }
 
+// Diagnostic: re-run analysis on the newest stuck project with verbose logging.
+tasks.register<JavaExec>("analysisDoctor") {
+    group = "verification"
+    description = "Re-runs analysis on a stuck project (~USD 0.01)"
+    mainClass.set("id.kenang.app.devtools.AnalysisDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
+    providers.gradleProperty("doctorStatusFix").orNull?.let { systemProperty("doctor.statusfix", it) }
+}
+
+// Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
+tasks.register<JavaExec>("keyDoctor") {
+    group = "verification"
+    description = "Tests every stored fal key via the app's Tes koneksi"
+    mainClass.set("id.kenang.app.devtools.KeyDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
+
 compose.desktop {
     application {
         mainClass = "id.kenang.app.MainKt"

@@ -81,7 +81,9 @@ class FalStorage(
                 lastError = FalQueueClient.mapTransportError(t)
                 cached = null
             }
-            io.github.aakira.napier.Napier.w("upload attempt ${attempt + 1} for $fileName failed — retrying")
+            io.github.aakira.napier.Napier.w(
+                "upload attempt ${attempt + 1} for $fileName failed ($lastError) — retrying",
+            )
         }
         return lastError.err()
     }
@@ -97,6 +99,9 @@ class FalStorage(
         }
         val text = response.bodyAsText()
         if (response.status.value !in 200..299) {
+            io.github.aakira.napier.Napier.w(
+                "fal cdn token via '${key.label}' -> HTTP ${response.status.value}: ${text.take(200)}",
+            )
             return FalQueueClient.mapHttpError(response.status, text, key.label).err()
         }
         val obj = json.parseToJsonElement(text).jsonObject

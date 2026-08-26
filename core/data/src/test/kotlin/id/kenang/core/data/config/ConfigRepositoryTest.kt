@@ -52,6 +52,8 @@ class ConfigRepositoryTest {
     fun `analysis is locked to openrouter router vision`() {
         assertEquals("openrouter/router/vision", config.analysis.slug)
         assertEquals("google/gemini-2.5-flash", config.analysis.model)
+        // Direct-Gemini path id (Google retired 2.5-flash for new accounts).
+        assertEquals("gemini-3.6-flash", config.analysis.resolvedGeminiModel())
     }
 
     @Test

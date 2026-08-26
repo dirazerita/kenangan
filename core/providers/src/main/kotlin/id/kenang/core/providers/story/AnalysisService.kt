@@ -248,13 +248,22 @@ Order scenes as a calm narrative arc. No markdown, no extra text."""
 
         repeat(3) { attempt ->
             val rawResult: AppResult<String> = if (geminiKey != null && (imageFile != null || textOnly)) {
-                val bareModel = config.analysis.model.substringAfter("/")
-                geminiClient.generateVisionJson(
+                val bareModel = config.analysis.resolvedGeminiModel()
+                val gemini = geminiClient.generateVisionJson(
                     geminiKey, bareModel, prompt,
                     imageFile?.readBytes(),
-                ).also {
-                    if (it is AppResult.Ok) {
+                )
+                when (gemini) {
+                    is AppResult.Ok -> {
                         costTracker.record(projectId, null, "gemini/$bareModel", "gemini", 1.0, "per_image", 0.002)
+                        gemini
+                    }
+                    is AppResult.Err -> {
+                        // Gemini is the OPTIONAL quality path (AD-03) — its
+                        // failure must never sink analysis while fal works
+                        // (dogfood 2026-08-26: Google 404'd the model id).
+                        Napier.w("gemini analysis failed (${gemini.error}) — falling back to fal VLM")
+                        falVision(projectId, prompt, imageUrls, maxTokens)
                     }
                 }
             } else {

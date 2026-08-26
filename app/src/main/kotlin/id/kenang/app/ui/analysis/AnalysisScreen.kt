@@ -128,14 +128,31 @@ fun AnalysisScreen(
             )
 
             is AnalysisOutcome.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Make the cause visible (dogfood: repeated generic failures
+                // were undiagnosable) — log it and show the technical detail.
+                LaunchedEffect(o) {
+                    io.github.aakira.napier.Napier.e("analysis failed for $projectId: ${o.error}")
+                }
                 val ui = ErrorTranslator.translate(o.error)
                 Text(ui.title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(8.dp))
                 Text(ui.message, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    Strings.ERROR_DETAIL_PREFIX + o.error.toString().take(220),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    modifier = Modifier.width(560.dp),
+                )
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SkeuoOutlinedButton(onClick = onBackToWizard) { Text(Strings.BACK) }
                     SkeuoButton(onClick = { runKey++ }) { Text(Strings.RETRY) }
+                    androidx.compose.material3.TextButton(onClick = {
+                        runCatching {
+                            java.awt.Desktop.getDesktop().open(id.kenang.core.data.AppDirs.logs)
+                        }
+                    }) { Text(Strings.ERROR_OPEN_LOGS) }
                 }
             }
 

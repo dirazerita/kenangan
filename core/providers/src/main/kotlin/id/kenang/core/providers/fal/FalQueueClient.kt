@@ -63,6 +63,7 @@ class FalQueueClient(
                     setBody(body.toString())
                 }
             } catch (t: Throwable) {
+                Napier.w("fal submit $modelSlug via '${key.label}' transport error: ${t::class.simpleName}: ${t.message}")
                 return mapTransportError(t).err()
             }
 
@@ -71,6 +72,7 @@ class FalQueueClient(
                 response.status.isSuccess() -> {
                     val parsed = runCatching { json.decodeFromString<FalSubmitResponse>(text) }.getOrNull()
                         ?: return AppError.ProviderFailed(Provider.FAL, "Malformed submit response").err()
+                    Napier.i("fal submit $modelSlug via '${key.label}' -> ${parsed.requestId}")
                     return SubmittedFalJob(
                         parsed.requestId, modelSlug, key.label,
                         statusUrl = parsed.statusUrl, responseUrl = parsed.responseUrl,
@@ -82,7 +84,12 @@ class FalQueueClient(
                     previousLabel = key.label
                     // loop: try the next available key
                 }
-                else -> return mapHttpError(response.status, text, key.label).err()
+                else -> {
+                    Napier.w(
+                        "fal submit $modelSlug via '${key.label}' -> HTTP ${response.status.value}: ${text.take(300)}",
+                    )
+                    return mapHttpError(response.status, text, key.label).err()
+                }
             }
         }
     }
@@ -149,7 +156,10 @@ class FalQueueClient(
             return mapTransportError(t).err()
         }
         val text = response.bodyAsText()
-        if (!response.status.isSuccess()) return mapHttpError(response.status, text, null).err()
+        if (!response.status.isSuccess()) {
+            Napier.w("fal request $url -> HTTP ${response.status.value}: ${text.take(200)}")
+            return mapHttpError(response.status, text, null).err()
+        }
         return runCatching { parse(text) }.fold(
             onSuccess = { it.ok() },
             onFailure = { AppError.ProviderFailed(Provider.FAL, "Malformed response", it).err() },

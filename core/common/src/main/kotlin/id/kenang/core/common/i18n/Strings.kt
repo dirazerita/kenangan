@@ -38,6 +38,10 @@ object Strings {
     // Offline
     const val OFFLINE_BANNER = "Anda sedang offline — fitur AI tidak tersedia. Proyek tetap bisa dilihat."
 
+    // Error diagnostics (Stabilization: make failures visible)
+    const val ERROR_DETAIL_PREFIX = "Detail teknis: "
+    const val ERROR_OPEN_LOGS = "Buka folder log"
+
     // Settings
     const val SETTINGS_TITLE = "Pengaturan"
     const val SETTINGS_API_KEYS = "API Key"
@@ -180,6 +184,8 @@ object Strings {
     // ------------------- Phase 04: generation -------------------
     const val GEN_TITLE = "Membuat video kenanganmu…"
     const val GEN_SUBTITLE = "Setiap adegan dibuat oleh AI lewat akun Anda. Ini bisa memakan beberapa menit."
+    const val GEN_PROGRESS = "%1 dari %2 adegan selesai"
+    const val GEN_SCENE_PREFIX = "Adegan "
     const val GEN_STATUS_QUEUED = "Antre"
     const val GEN_STATUS_RUNNING = "Diproses"
     const val GEN_STATUS_DONE = "Selesai"

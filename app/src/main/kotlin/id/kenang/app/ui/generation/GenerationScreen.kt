@@ -155,10 +155,28 @@ fun GenerationScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        scenes.sortedBy { it.order_index }.forEach { scene ->
+        // Overall progress: at a glance, how many scenes are truly finished.
+        if (scenes.isNotEmpty()) {
+            val doneCount = scenes.count { it.status == SceneStatus.DONE }
+            Text(
+                Strings.GEN_PROGRESS
+                    .replace("%1", doneCount.toString())
+                    .replace("%2", scenes.size.toString()),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { if (scenes.isEmpty()) 0f else doneCount / scenes.size.toFloat() },
+                modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+
+        scenes.sortedBy { it.order_index }.forEachIndexed { sceneIndex, scene ->
             SceneRow(
+                index = sceneIndex,
                 scene = scene,
                 errorCode = errorCodes[scene.scene_id],
                 onRetry = {
@@ -289,12 +307,14 @@ fun GenerationScreen(
 
 @Composable
 private fun SceneRow(
+    index: Int,
     scene: Scene,
     errorCode: String?,
     onRetry: () -> Unit,
     onEditStoryboard: () -> Unit,
     onOpenKeySettings: () -> Unit,
 ) {
+    val doneGreen = androidx.compose.ui.graphics.Color(0xFF4CD97B)
     SkeuoCard(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             val bmp by rememberFileBitmap(scene.local_keyframe_path)
@@ -305,26 +325,43 @@ private fun SceneRow(
                 contentAlignment = Alignment.Center,
             ) {
                 bmp?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+                // Big unmistakable check on finished scenes.
+                if (scene.status == SceneStatus.DONE) {
+                    Box(
+                        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0x66103322)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("✓", style = MaterialTheme.typography.headlineMedium, color = doneGreen)
+                    }
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    scene.motion_summary_id ?: scene.scene_id,
+                    Strings.GEN_SCENE_PREFIX + (index + 1) + " · " + (scene.motion_summary_id ?: scene.scene_id),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                 )
                 Spacer(Modifier.height(4.dp))
                 when (scene.status) {
-                    SceneStatus.CONFIRMED -> Text(Strings.GEN_STATUS_QUEUED, style = MaterialTheme.typography.labelMedium)
+                    SceneStatus.CONFIRMED -> Text(
+                        "⏳ " + Strings.GEN_STATUS_QUEUED,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    )
                     SceneStatus.GENERATING -> Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(14.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(Strings.GEN_STATUS_RUNNING, style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            Strings.GEN_STATUS_RUNNING + "…",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
                     }
                     SceneStatus.DONE -> Text(
                         "✓ " + Strings.GEN_STATUS_DONE,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = doneGreen,
                     )
                     SceneStatus.FAILED -> Column {
                         val reason = when (errorCode) {

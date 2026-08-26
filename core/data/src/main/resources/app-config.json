@@ -13,7 +13,8 @@
   "analysis": {
     "slug": "openrouter/router/vision",
     "model": "google/gemini-2.5-flash",
-    "note": "LOCKED (D-005). No native JSON mode via router - app must validate PhotoAnalysis JSON and retry."
+    "gemini_model": "gemini-3.6-flash",
+    "note": "LOCKED (D-005). No native JSON mode via router - app must validate PhotoAnalysis JSON and retry. gemini_model is the DIRECT-path id: Google 404s gemini-2.5-flash for new accounts (2026-08-26) while the fal route still serves it."
   },
   "key_test": {
     "fal_slug": "openrouter/router",
