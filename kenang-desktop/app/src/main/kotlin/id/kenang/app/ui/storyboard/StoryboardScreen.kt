@@ -129,7 +129,29 @@ fun StoryboardScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
+
+        // ---------- Keyframe progress (owner request: show how far along) ----------
+        run {
+            val total = state.scenes.size
+            val ready = state.scenes.count {
+                it.status !in setOf(SceneStatus.DRAFT, SceneStatus.KEYFRAME_PENDING)
+            }
+            if (total > 0 && ready < total) {
+                Text(
+                    Strings.SB_PHOTOS_READY
+                        .replace("%1", ready.toString())
+                        .replace("%2", total.toString()),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(Modifier.height(4.dp))
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { ready / total.toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+        }
 
         // ---------- Scene grid ----------
         val ordered = state.scenes.sortedBy { it.order_index }
@@ -189,7 +211,7 @@ private fun SceneCard(
                 contentAlignment = Alignment.Center,
             ) {
                 when (scene.status) {
-                    SceneStatus.KEYFRAME_PENDING, SceneStatus.DRAFT -> ShimmerBox()
+                    SceneStatus.KEYFRAME_PENDING, SceneStatus.DRAFT -> KeyframeProgress(scene.scene_id)
                     SceneStatus.KEYFRAME_FAILED -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(Strings.SB_KEYFRAME_FAILED, color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(8.dp))
@@ -257,6 +279,49 @@ private fun ShimmerBox() {
         Modifier.fillMaxSize()
             .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha * 0.3f)),
     )
+}
+
+/**
+ * Per-image progress while a keyframe generates (owner request): fal image
+ * jobs report no percent, so the bar tracks elapsed time against the typical
+ * ~30s Nano Banana turnaround (capped at 92% until the real result lands).
+ */
+@Composable
+private fun KeyframeProgress(sceneId: String) {
+    var elapsed by remember(sceneId) { mutableStateOf(0) }
+    LaunchedEffect(sceneId) {
+        while (true) {
+            kotlinx.coroutines.delay(1000)
+            elapsed++
+        }
+    }
+    val estimateS = 30
+    Box(Modifier.fillMaxSize()) {
+        ShimmerBox()
+        Column(
+            Modifier.align(Alignment.Center).padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { (elapsed / estimateS.toFloat()).coerceAtMost(0.92f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (elapsed < estimateS) {
+                    Strings.SB_KEYFRAME_ETA.replace("%1", (estimateS - elapsed).toString())
+                } else {
+                    Strings.SB_KEYFRAME_ALMOST
+                },
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Text(
+                "${elapsed}s",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
+        }
+    }
 }
 
 // ------------------------------------------------------------------ motion editor

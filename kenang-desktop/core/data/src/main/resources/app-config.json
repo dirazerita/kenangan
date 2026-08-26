@@ -8,7 +8,7 @@
   "flags": {
     "hemat_enabled": false,
     "seedance_ab_enabled": false,
-    "restore_enabled": false
+    "restore_enabled": true
   },
   "analysis": {
     "slug": "openrouter/router/vision",

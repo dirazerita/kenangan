@@ -73,6 +73,8 @@ class AnalysisService(
         narration: String?,
         /** Single-photo picker: exact scene count the user asked for (null = planner decides). */
         targetScenes: Long? = null,
+        /** "Restorasi foto lama": adds damage/fade repair to every keyframe prompt. */
+        restorePhotos: Boolean = false,
         onStage: suspend (AnalysisStage) -> Unit,
     ): AnalysisOutcome {
         val config = configRepository.current()
@@ -154,7 +156,10 @@ class AnalysisService(
                 ),
                 type = if (isFusion) "fusion" else "single",
                 vibe = vibe.id,
-                keyframe_prompt_en = KeyframePrompts.build(vibe, ratio, isFusion, subjectCount, item.keyframeHint),
+                keyframe_prompt_en = KeyframePrompts.build(
+                    vibe, ratio, isFusion, subjectCount, item.keyframeHint,
+                    restore = restorePhotos,
+                ),
                 keyframe_url = null,
                 motion_prompt_en = MotionTemplates.buildPromptEn(spec),
                 motion_summary_id = MotionTemplates.buildSummaryId(spec),

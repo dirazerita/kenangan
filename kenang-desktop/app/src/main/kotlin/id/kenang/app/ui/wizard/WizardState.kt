@@ -58,6 +58,8 @@ class WizardState(
     var musicPath by mutableStateOf<String?>(null)
     /** Single-photo storyboard picker: chosen scene count (null = automatic). */
     var targetScenes by mutableStateOf<Long?>(null)
+    /** Restorasi foto lama toggle (flag-gated in the UI). */
+    var restorePhotos by mutableStateOf(false)
     var ratio by mutableStateOf("9:16")
     var vibeId by mutableStateOf(configRepository.current().vibes.firstOrNull()?.id ?: "asli")
     var durationS by mutableStateOf(5L)
@@ -88,6 +90,7 @@ class WizardState(
                     narration = p.narration ?: ""; musicPath = p.music_path
                     durationS = p.scene_duration_s
                     targetScenes = p.target_scenes
+                    restorePhotos = p.restore_photos == 1L
                 }
                 reloadPhotos()
             }
@@ -176,6 +179,7 @@ class WizardState(
             // The picker only applies to single-photo projects; adding more
             // photos silently returns the planner to automatic mode.
             projects.updateTargetScenes(id, if (photos.size == 1) targetScenes else null)
+            projects.updateRestorePhotos(id, restorePhotos)
         }
     }
 

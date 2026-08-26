@@ -82,6 +82,11 @@ class ProjectRepository(
         db.kenangQueries.updateProjectTargetScenes(targetScenes, System.currentTimeMillis(), projectId)
     }
 
+    /** Restorasi foto lama toggle. */
+    suspend fun updateRestorePhotos(projectId: String, enabled: Boolean) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectRestore(if (enabled) 1L else 0L, System.currentTimeMillis(), projectId)
+    }
+
     /** Deletes DB rows (cascade) AND wipes the project folder. */
     suspend fun delete(projectId: String) = withContext(dispatchers.io) {
         db.kenangQueries.transaction {

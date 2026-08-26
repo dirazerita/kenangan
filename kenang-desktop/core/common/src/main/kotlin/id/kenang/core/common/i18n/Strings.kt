@@ -144,7 +144,7 @@ object Strings {
     const val WIZARD_RATIO_LABEL = "Rasio video"
     const val WIZARD_VIBE_LABEL = "Suasana (vibe)"
     const val WIZARD_DURATION_LABEL = "Durasi per adegan"
-    const val WIZARD_RESTORE_LABEL = "Restorasi foto lama (segera hadir)"
+    const val WIZARD_RESTORE_LABEL = "Restorasi foto lama — perbaiki goresan, warna pudar & ketajaman"
     const val WIZARD_NAME_LABEL = "Nama proyek"
     const val WIZARD_FINISH = "Mulai Analisis"
 
@@ -178,6 +178,9 @@ object Strings {
     const val SB_RETRY = "Coba lagi"
     const val SB_ESTIMATE_LABEL = "Estimasi — tagihan riil ada di akun provider Anda"
     const val SB_ESTIMATE_UNKNOWN = "biaya tidak diketahui"
+    const val SB_PHOTOS_READY = "Foto storyboard: %1/%2 siap"
+    const val SB_KEYFRAME_ETA = "±%1 dtk lagi"
+    const val SB_KEYFRAME_ALMOST = "hampir selesai…"
     const val SB_MOTION_CATEGORY = "Gerakan"
     const val SB_MOTION_CAMERA = "Kamera"
     const val SB_MOTION_ADJECTIVES = "Kata sifat tambahan (maks 8 kata, opsional)"

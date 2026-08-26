@@ -45,9 +45,41 @@ object DatabaseFactory {
         val dataSource = org.sqlite.SQLiteDataSource(config).apply {
             url = "jdbc:sqlite:${dbFile.absolutePath}"
         }
-        val driver = dataSource.asJdbcDriver()
+        val driver = NotifyingDriver(dataSource.asJdbcDriver())
         migrate(driver)
         return driver
+    }
+
+    /**
+     * The JDBC drivers ship listener hooks that never deliver, so every
+     * SQLDelight asFlow() screen freezes on its first snapshot while
+     * background work completes invisibly (dogfood 2026-08-26: keyframes
+     * finished in 70s, UI showed empty cards for an hour). This wrapper
+     * implements the listener registry for real; mutations still notify via
+     * the generated code's notifyListeners calls, deferred by the Transacter
+     * until commit. Locked by DbFlowNotificationTest.
+     */
+    private class NotifyingDriver(
+        private val delegate: SqlDriver,
+    ) : SqlDriver by delegate {
+        private val listeners =
+            java.util.concurrent.ConcurrentHashMap<String, MutableSet<app.cash.sqldelight.Query.Listener>>()
+
+        override fun addListener(vararg queryKeys: String, listener: app.cash.sqldelight.Query.Listener) {
+            queryKeys.forEach { key ->
+                listeners.computeIfAbsent(key) { java.util.concurrent.ConcurrentHashMap.newKeySet() }
+                    .add(listener)
+            }
+        }
+
+        override fun removeListener(vararg queryKeys: String, listener: app.cash.sqldelight.Query.Listener) {
+            queryKeys.forEach { key -> listeners[key]?.remove(listener) }
+        }
+
+        override fun notifyListeners(vararg queryKeys: String) {
+            queryKeys.flatMap { listeners[it].orEmpty() }.toSet()
+                .forEach { it.queryResultsChanged() }
+        }
     }
 
     private fun migrate(driver: SqlDriver) {

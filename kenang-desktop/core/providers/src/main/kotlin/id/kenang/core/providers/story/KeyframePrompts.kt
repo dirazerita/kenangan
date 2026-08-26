@@ -17,9 +17,16 @@ object KeyframePrompts {
         subjectCount: Int,
         keyframeHint: String = "",
         isPet: Boolean = false,
+        /** "Restorasi foto lama": explicit damage/fade repair before styling. */
+        restore: Boolean = false,
     ): String {
         val ratioPhrase = if (ratio == "16:9") "16:9 landscape" else "9:16 portrait"
         val who = if (isPet) "pet" else "people"
+        val restoration = if (restore) {
+            "First fully restore the old photograph: repair scratches, tears, stains and creases, " +
+                "remove noise and grain, correct color fading and color cast, recover natural skin " +
+                "tones, and sharpen softly. "
+        } else ""
         val base = if (vibe.promptEn.isBlank()) {
             "Restore and enhance this photo subtly while keeping the original setting and composition."
         } else {
@@ -31,7 +38,7 @@ object KeyframePrompts {
                 "Exactly $subjectCount $who, no additional people."
         } else ""
         val hint = keyframeHint.trim().let { if (it.isNotEmpty()) " $it." else "" }
-        return base + fusion +
+        return restoration + base + fusion +
             " Preserve faces, age, body, and clothing exactly." +
             " Photorealistic, warm natural light, $ratioPhrase." + hint
     }

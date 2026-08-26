@@ -12,6 +12,7 @@ CREATE TABLE project (
   status TEXT NOT NULL,           -- "draft" | "analyzing" | "storyboard" | "generating" | "done" | "failed"
   scene_duration_s INTEGER NOT NULL DEFAULT 5,
   target_scenes INTEGER,          -- single-photo projects: user-chosen scene count (NULL = auto)
+  restore_photos INTEGER NOT NULL DEFAULT 0, -- restorasi foto lama toggle
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -110,6 +111,9 @@ UPDATE project SET tier = ?, updated_at = ? WHERE id = ?;
 
 updateProjectTargetScenes:
 UPDATE project SET target_scenes = ?, updated_at = ? WHERE id = ?;
+
+updateProjectRestore:
+UPDATE project SET restore_photos = ?, updated_at = ? WHERE id = ?;
 
 deleteProject:
 DELETE FROM project WHERE id = ?;

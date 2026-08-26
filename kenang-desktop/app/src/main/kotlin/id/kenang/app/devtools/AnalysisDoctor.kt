@@ -54,6 +54,7 @@ fun main(): Unit = runBlocking {
     val outcome = analysis.run(
         project.id, project.vibe, project.ratio, project.scene_duration_s, project.narration,
         targetScenes = project.target_scenes,
+        restorePhotos = project.restore_photos == 1L,
     ) { stage -> println("  [${(System.currentTimeMillis() - t0) / 1000}s] stage: $stage") }
     println("OUTCOME after ${(System.currentTimeMillis() - t0) / 1000}s: $outcome")
     if (outcome is id.kenang.core.providers.story.AnalysisOutcome.Ok) {

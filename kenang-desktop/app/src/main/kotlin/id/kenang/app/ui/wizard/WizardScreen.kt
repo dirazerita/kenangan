@@ -451,10 +451,18 @@ private fun StepFormat(state: WizardState) {
         Spacer(Modifier.height(20.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             val restoreEnabled = state.config.flags["restore_enabled"] == true
-            Switch(checked = false, onCheckedChange = null, enabled = restoreEnabled)
+            Switch(
+                checked = state.restorePhotos,
+                onCheckedChange = { state.restorePhotos = it; state.persistMeta() },
+                enabled = restoreEnabled,
+            )
             Spacer(Modifier.width(8.dp))
-            Text(Strings.WIZARD_RESTORE_LABEL,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+            Text(
+                Strings.WIZARD_RESTORE_LABEL,
+                color = MaterialTheme.colorScheme.onSurface.copy(
+                    alpha = if (restoreEnabled) 0.9f else 0.5f,
+                ),
+            )
         }
     }
 }
