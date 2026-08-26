@@ -49,6 +49,9 @@ class WizardState(
     val photos = mutableStateListOf<PhotoUi>()
     var rejectionMessage by mutableStateOf<String?>(null)
     var narration by mutableStateOf("")
+    /** Explicit "Tanpa narasi" choice: clears the text and hides voice options. */
+    var noNarration by mutableStateOf(false)
+        private set
     var voiceId by mutableStateOf(configRepository.current().tts.voice)
     var previewPlaying by mutableStateOf(false)
     var previewError by mutableStateOf<String?>(null)
@@ -62,6 +65,14 @@ class WizardState(
     /** MiniMax voices proven in Phase 00; default first (locked Calm_Woman). */
     val voiceOptions: List<String> =
         listOf(configRepository.current().tts.voice, "Wise_Woman").distinct()
+
+    fun chooseNoNarration(enabled: Boolean) {
+        noNarration = enabled
+        if (enabled) {
+            narration = ""
+            persistMeta()
+        }
+    }
 
     fun start() {
         scope.launch {

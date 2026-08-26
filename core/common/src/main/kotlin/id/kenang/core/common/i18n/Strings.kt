@@ -112,6 +112,8 @@ object Strings {
     const val WIZARD_BADGE_CUKUP = "Cukup"
     const val WIZARD_BADGE_KURANG = "Kurang"
     const val WIZARD_NARRATION_LABEL = "Narasi (opsional)"
+    const val WIZARD_NO_NARRATION = "Tanpa narasi"
+    const val WIZARD_NO_NARRATION_HINT = "Video akan dibuat tanpa suara narasi dan tanpa subtitle — hanya musik (jika dipilih di langkah berikutnya)."
     const val WIZARD_NARRATION_HINT = "Tulis pesan atau kenangan singkat — akan dibacakan sebagai narasi."
     const val WIZARD_VOICE_LABEL = "Suara narasi"
     const val WIZARD_VOICE_PREVIEW = "Dengar contoh"

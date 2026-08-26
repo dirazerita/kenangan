@@ -235,7 +235,21 @@ private fun QualityBadgeChip(badge: QualityBadge) {
 @Composable
 private fun StepStory(state: WizardState) {
     Column {
-        // Name moved to Step 1 (asked right after "Proyek Baru").
+        // Explicit "Tanpa narasi" choice (owner request): narration is
+        // optional, and this makes that obvious instead of implied.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Switch(checked = state.noNarration, onCheckedChange = { state.chooseNoNarration(it) })
+            Text(Strings.WIZARD_NO_NARRATION, style = MaterialTheme.typography.titleSmall)
+        }
+        Spacer(Modifier.height(12.dp))
+        if (state.noNarration) {
+            Text(
+                Strings.WIZARD_NO_NARRATION_HINT,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            )
+            return@Column
+        }
         val max = state.config.limits.maxNarrationChars
         OutlinedTextField(
             value = state.narration,
