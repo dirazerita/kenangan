@@ -158,6 +158,17 @@ private fun StepHeader(current: Int) {
 @Composable
 private fun StepPhotos(state: WizardState) {
     Column {
+        // Project name up front (owner request): first thing after "Proyek
+        // Baru", so projects are easy to group on Home. Prefilled with a
+        // dated default; autosaved with every step like the rest.
+        OutlinedTextField(
+            value = state.name,
+            onValueChange = { state.name = it },
+            label = { Text(Strings.WIZARD_NAME_LABEL) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(16.dp))
         SkeuoButton(onClick = {
             val files = pickFiles("Pilih foto", "*.jpg;*.jpeg;*.png;*.webp")
             if (files.isNotEmpty()) state.addPhotos(files)
@@ -224,14 +235,7 @@ private fun QualityBadgeChip(badge: QualityBadge) {
 @Composable
 private fun StepStory(state: WizardState) {
     Column {
-        OutlinedTextField(
-            value = state.name,
-            onValueChange = { state.name = it },
-            label = { Text(Strings.WIZARD_NAME_LABEL) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(16.dp))
+        // Name moved to Step 1 (asked right after "Proyek Baru").
         val max = state.config.limits.maxNarrationChars
         OutlinedTextField(
             value = state.narration,
