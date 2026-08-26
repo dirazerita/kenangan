@@ -96,8 +96,8 @@
   ],
   "limits": {
     "max_photos": 15,
-    "max_scenes": 6,
-    "max_total_s": 60,
+    "max_scenes": 12,
+    "max_total_s": 120,
     "max_subjects_fusion": 4,
     "max_narration_chars": 500
   }

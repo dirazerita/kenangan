@@ -119,7 +119,7 @@ Prinsip penting: **semua biaya besar (generate video) baru terjadi setelah user 
 | ID | Requirement | Prioritas |
 |---|---|---|
 | F2.1 | Setiap foto dianalisis oleh vision LLM: jumlah & deskripsi subjek (usia perkiraan, pakaian), relasi antar-subjek jika terlihat, latar, era/estetika foto (BW, 90-an, dsb.), mood, orientasi, dan skor kualitas. Output JSON terstruktur. | P0 |
-| F2.2 | Dari hasil analisis + vibe + narasi, LLM menyusun **rencana cerita**: jumlah adegan (default = jumlah foto, maks 6 adegan MVP), urutan naratif (kronologis/emosional), dan apakah perlu adegan gabungan multi-foto. | P0 |
+| F2.2 | Dari hasil analisis + vibe + narasi, LLM menyusun **rencana cerita**: jumlah adegan (default = jumlah foto, maks 12 adegan MVP), urutan naratif (kronologis/emosional), dan apakah perlu adegan gabungan multi-foto. | P0 |
 | F2.3 | Deteksi konten terlarang di input (NSFW, kekerasan) → tolak dengan pesan sopan sebelum ada biaya API besar. | P0 |
 | F2.4 | Analisis berjalan paralel per foto; total waktu tahap ini < 30 detik untuk 5 foto. | P1 |
 

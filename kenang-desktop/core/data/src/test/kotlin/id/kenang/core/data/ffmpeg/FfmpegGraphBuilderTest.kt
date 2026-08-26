@@ -61,6 +61,23 @@ class FfmpegGraphBuilderTest {
     }
 
     @Test
+    fun `twelve scenes - the config maximum - chain correctly`() {
+        val s = spec(12, ratio = Ratio.H16X9)
+        val args = FfmpegGraphBuilder.build(s)
+        val g = graph(args)
+        assertEquals(11, Regex("xfade").findAll(g).count())
+        // 12 x 5s minus 11 crossfades of 0.6s = 53.4s
+        assertEquals(53.4, FfmpegGraphBuilder.totalDurationS(s), 1e-9)
+        assertEquals("53.4", args[args.indexOf("-t") + 1])
+        // Offsets accumulate by (5 - 0.6): the k-th join sits at k * 4.4,
+        // so the last one (joining clip 12) lands at 11 * 4.4 = 48.4.
+        assertContains(g, "xfade=transition=fade:duration=0.6:offset=44[x10]")
+        assertContains(g, "xfade=transition=fade:duration=0.6:offset=48.4[x11]")
+        // Fade-out starts one fade before the end: 53.4 - 0.5.
+        assertContains(g, "fade=t=out:st=52.9:d=0.5")
+    }
+
+    @Test
     fun `global fade in and out bracket the video`() {
         val g = graph(FfmpegGraphBuilder.build(spec(3)))
         assertContains(g, "fade=t=in:st=0:d=0.5")
