@@ -90,18 +90,30 @@ class FalStorage(
 
     private suspend fun getToken(): AppResult<CdnToken> {
         cached?.let { if (Instant.now().epochSecond < it.expiresAtEpochS - 30) return it.ok() }
-        val key = keyPool.currentKey()
-            ?: return AppError.ProviderBalance(Provider.FAL).err()
-        val response = http.post("$restUrl/storage/auth/token?storage_type=fal-cdn-v3") {
-            header("Authorization", "Key ${key.key}")
-            contentType(ContentType.Application.Json)
-            setBody("{}")
-        }
-        val text = response.bodyAsText()
-        if (response.status.value !in 200..299) {
+        // Invalid/exhausted keys fail over here too (owner requirement,
+        // dogfood 2026-08-27): try each available key in priority order.
+        var lastError: AppError = AppError.ProviderBalance(Provider.FAL)
+        var text = ""
+        while (true) {
+            val key = keyPool.currentKey() ?: return lastError.err()
+            val response = http.post("$restUrl/storage/auth/token?storage_type=fal-cdn-v3") {
+                header("Authorization", "Key ${key.key}")
+                contentType(ContentType.Application.Json)
+                setBody("{}")
+            }
+            text = response.bodyAsText()
+            if (response.status.value in 200..299) break
             io.github.aakira.napier.Napier.w(
                 "fal cdn token via '${key.label}' -> HTTP ${response.status.value}: ${text.take(200)}",
             )
+            if (FalQueueClient.isKeyRejected(response.status) ||
+                FalQueueClient.isBalanceExhausted(response.status, text)
+            ) {
+                lastError = FalQueueClient.mapHttpError(response.status, text, key.label)
+                keyPool.markExhausted(key.label)
+                keyPool.currentKey()?.let { next -> keyPool.emitSwitch(key.label, next.label) }
+                continue
+            }
             return FalQueueClient.mapHttpError(response.status, text, key.label).err()
         }
         val obj = json.parseToJsonElement(text).jsonObject

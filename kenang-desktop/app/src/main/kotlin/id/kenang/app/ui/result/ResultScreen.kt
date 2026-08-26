@@ -108,7 +108,11 @@ fun ResultScreen(
         )
         Spacer(Modifier.height(16.dp))
 
-        val thumbPath = file?.let { File(it.parentFile, "thumbnail.jpg") }?.takeIf { it.isFile }?.absolutePath
+        val thumbPath = file?.let { f ->
+            val perOutput = File(f.parentFile, f.nameWithoutExtension + "_thumb.jpg")
+            (if (perOutput.isFile) perOutput else File(f.parentFile, "thumbnail.jpg"))
+                .takeIf { it.isFile }?.absolutePath
+        }
         val bmp by rememberFileBitmap(thumbPath)
         Box(
             Modifier.widthIn(max = 420.dp).fillMaxWidth().heightIn(min = 240.dp, max = 420.dp)
@@ -176,9 +180,66 @@ fun ResultScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        // P2 stub: disabled with a "coming soon" hint (§4.4).
-        SkeuoOutlinedButton(onClick = {}, enabled = false) {
-            Text(Strings.RESULT_OTHER_RATIO + " — " + Strings.RESULT_OTHER_RATIO_SOON)
+        // PRD F6.5 activated: re-assemble the SAME clips in the other ratio —
+        // pure local FFmpeg, no API spend.
+        run {
+            val assembly = koinInject<id.kenang.core.providers.gen.AssemblyService>()
+            var exporting by remember { mutableStateOf(false) }
+            var exportProgress by remember { mutableStateOf(0) }
+            val otherRatio = if ((out?.ratio ?: "9:16") == "9:16") "16:9" else "9:16"
+            SkeuoOutlinedButton(
+                onClick = {
+                    scope.launch {
+                        exporting = true
+                        exportProgress = 0
+                        val prep = assembly.prepareAudio(projectId)
+                        val (narr, tempo) = when (prep) {
+                            is id.kenang.core.providers.gen.AssemblyService.AudioPrep.Ready ->
+                                prep.narration to null
+                            is id.kenang.core.providers.gen.AssemblyService.AudioPrep.DurationMismatch ->
+                                prep.narration to 1.1
+                            is id.kenang.core.providers.gen.AssemblyService.AudioPrep.Failed -> null to null
+                        }
+                        val r = assembly.assemble(
+                            projectId, narr, includeSubtitles = true,
+                            narrationTempo = tempo, ratioOverride = otherRatio,
+                        ) { p -> exportProgress = p }
+                        exporting = false
+                        when (r) {
+                            is id.kenang.core.common.AppResult.Ok -> {
+                                output = outputs.latest(projectId)
+                                output?.path?.let(::File)?.takeIf { it.isFile }?.let { f ->
+                                    assembler.runner()?.probeDurationMs(f)?.let { ms ->
+                                        durationText = "%d:%02d".format(ms / 60000, (ms / 1000) % 60)
+                                    }
+                                }
+                                snackbar.showSnackbar(
+                                    Strings.RESULT_OTHER_RATIO_DONE.replace("%1", otherRatio),
+                                )
+                            }
+                            is id.kenang.core.common.AppResult.Err -> snackbar.showSnackbar(
+                                id.kenang.core.common.ErrorTranslator.translate(r.error).message,
+                            )
+                        }
+                    }
+                },
+                enabled = file?.isFile == true && !exporting,
+            ) {
+                Text(
+                    if (exporting) {
+                        Strings.RESULT_OTHER_RATIO_RUNNING
+                            .replace("%1", otherRatio).replace("%2", exportProgress.toString())
+                    } else {
+                        Strings.RESULT_OTHER_RATIO.replace("%1", otherRatio)
+                    },
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                Strings.RESULT_OTHER_RATIO_NOTE,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
         }
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onBack) { Text(Strings.BACK) }

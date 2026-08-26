@@ -8,7 +8,7 @@
 | KI-001 | P2 | Storyboard | Scene reorder is ↑/↓ buttons only; true drag-and-drop deferred (demo-03 leftover) | OPEN |
 | KI-002 | P2 | Wizard | ElevenLabs premium voice preview not wired (MiniMax preview works); EL path itself optional (paid plan required for id voices) | OPEN |
 | KI-003 | P2 | Generation | Restart mid-**assembly** re-runs assembly from 0% (clips/narration cached — no API cost, just wall time) | OPEN |
-| KI-004 | P2 | Result | "Buat versi rasio lain" is a disabled stub (specced P2, MASTER_PROMPT_04 §4.4) | BY-DESIGN |
+| KI-004 | P2 | Result | "Buat versi rasio lain" activated (PRD F6.5): re-assembles the same clips in the other ratio locally, no API cost; per-output thumbnails; center-crop applies | FIXED (2026-08-27) |
 | KI-005 | P2 | Audio | F5.3 "perpanjang durasi adegan" disabled after clips exist (extension must happen in storyboard before generating) | BY-DESIGN |
 | KI-006 | P2 | Providers | `TtsPreviewService` hardcodes the $0.10/1k rate instead of using PriceBook (full-narration `TtsService` does it right) | OPEN |
 | KI-007 | P2 | Providers | Variant slugs (e.g. Wan `/flash`) have no own price hint — auto-retry after a resumed poll estimates $0 for them; only reachable if Hemat is re-enabled (disabled at launch, D-009) | OPEN |

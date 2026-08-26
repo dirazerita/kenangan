@@ -100,10 +100,13 @@ class AssemblyService(
         narration: Narration?,
         includeSubtitles: Boolean = true,
         narrationTempo: Double? = null,
+        /** PRD F6.5: re-export in another ratio from the SAME clips (no API cost). */
+        ratioOverride: String? = null,
         onProgress: (Int) -> Unit = {},
     ): AppResult<File> {
         val project = projects.get(projectId)
             ?: return AppError.Unknown("project missing").err()
+        val ratioLabel = ratioOverride ?: project.ratio
         val done = doneScenes(projectId)
         if (done.isEmpty()) return AppError.AssemblyFailed("no finished scenes").err()
 
@@ -122,7 +125,7 @@ class AssemblyService(
         val subtitleFile = if (includeSubtitles && narration != null && narration.durationMs > 0) {
             val effectiveMs = (narration.durationMs / (narrationTempo ?: 1.0)).toLong()
             File(File(AppDirs.projectDir(projectId), "audio").apply { mkdirs() }, "subtitles.ass").apply {
-                writeText(AssBuilder.build(narration.text, effectiveMs, project.ratio))
+                writeText(AssBuilder.build(narration.text, effectiveMs, ratioLabel))
             }
         } else null
 
@@ -135,7 +138,7 @@ class AssemblyService(
             VideoAssembler.stageWatermark(File(AppDirs.tools, "watermark"))
         } else null
 
-        val ratio = FfmpegGraphBuilder.Ratio.fromLabel(project.ratio)
+        val ratio = FfmpegGraphBuilder.Ratio.fromLabel(ratioLabel)
         val safeName = project.name.replace(Regex("[^A-Za-z0-9_\\- ]"), "").trim()
             .replace(' ', '_').ifBlank { "kenang" }
         val outFile = File(AppDirs.projectOutput(projectId), "${safeName}_${ratio.label.replace(':', 'x')}.mp4")
@@ -153,12 +156,17 @@ class AssemblyService(
         return when (val result = assembler.assemble(spec, onProgress)) {
             is AppResult.Ok -> {
                 outputs.record(
-                    projectId, result.value.absolutePath, project.ratio, project.tier,
+                    projectId, result.value.absolutePath, ratioLabel, project.tier,
                     costTracker.projectTotalUsd(projectId),
                 )
                 projects.updateStatus(projectId, "done")
                 runCatching {
-                    runner.extractThumbnail(result.value, File(result.value.parentFile, "thumbnail.jpg"))
+                    // Per-output thumbnail so a re-export never clobbers the
+                    // other ratio's preview (legacy name kept as fallback).
+                    runner.extractThumbnail(
+                        result.value,
+                        File(result.value.parentFile, result.value.nameWithoutExtension + "_thumb.jpg"),
+                    )
                 }.onFailure { Napier.w("thumbnail extract failed: ${it.message}") }
                 result
             }

@@ -47,9 +47,10 @@ class FalQueueClient(
 
     suspend fun submit(modelSlug: String, body: JsonObject): AppResult<SubmittedFalJob> {
         var previousLabel: String? = null
+        var lastKeyError: AppError? = null
         while (true) {
             val key = keyPool.currentKey()
-                ?: return AppError.ProviderBalance(Provider.FAL).err()
+                ?: return (lastKeyError ?: AppError.ProviderBalance(Provider.FAL)).err()
 
             if (previousLabel != null && previousLabel != key.label) {
                 keyPool.emitSwitch(previousLabel, key.label)
@@ -80,6 +81,17 @@ class FalQueueClient(
                 }
                 isBalanceExhausted(response.status, text) -> {
                     Napier.w("fal key '${key.label}' balance exhausted — cooling down 10 min")
+                    lastKeyError = AppError.ProviderBalance(Provider.FAL)
+                    keyPool.markExhausted(key.label)
+                    previousLabel = key.label
+                    // loop: try the next available key
+                }
+                isKeyRejected(response.status) -> {
+                    // Owner requirement (dogfood 2026-08-27): an INVALID/disabled
+                    // key must fail over exactly like an exhausted one — mark it,
+                    // toast the switch, and keep going with the next key.
+                    Napier.w("fal key '${key.label}' rejected (HTTP ${response.status.value}) — failing over")
+                    lastKeyError = AppError.InvalidKey(Provider.FAL, key.label)
                     keyPool.markExhausted(key.label)
                     previousLabel = key.label
                     // loop: try the next available key
@@ -176,6 +188,10 @@ class FalQueueClient(
         fun isBalanceExhausted(status: HttpStatusCode, body: String): Boolean =
             BALANCE_SIGNATURES.any { body.contains(it, ignoreCase = true) } ||
                 status == HttpStatusCode.PaymentRequired
+
+        /** 401/403 = wrong or deactivated key — also a failover trigger. */
+        fun isKeyRejected(status: HttpStatusCode): Boolean =
+            status == HttpStatusCode.Unauthorized || status == HttpStatusCode.Forbidden
 
         fun mapHttpError(status: HttpStatusCode, body: String, keyLabel: String?): AppError = when {
             status == HttpStatusCode.Unauthorized || status == HttpStatusCode.Forbidden ->

@@ -10,6 +10,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -219,8 +220,42 @@ private fun SceneCard(
                     }
                     else -> {
                         val bmp by rememberFileBitmap(scene.local_keyframe_path)
-                        bmp?.let {
-                            Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        var showPreview by remember(scene.scene_id) { mutableStateOf(false) }
+                        bmp?.let { image ->
+                            // Click (or the magnifier chip) → full-size preview
+                            // before spending on video (owner request).
+                            Image(
+                                image, null, contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                                    .clickable { showPreview = true },
+                            )
+                            Box(Modifier.align(Alignment.TopEnd).padding(6.dp)) {
+                                StatusChip(Strings.SB_PREVIEW, MaterialTheme.colorScheme.secondary)
+                            }
+                            if (showPreview) {
+                                androidx.compose.ui.window.Dialog(
+                                    onDismissRequest = { showPreview = false },
+                                    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+                                ) {
+                                    Column(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .background(androidx.compose.ui.graphics.Color(0xE6050B14))
+                                            .clickable { showPreview = false }
+                                            .padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Image(
+                                            image, null, contentScale = ContentScale.Fit,
+                                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                                        )
+                                        Spacer(Modifier.height(12.dp))
+                                        SkeuoOutlinedButton(onClick = { showPreview = false }) {
+                                            Text(Strings.CLOSE)
+                                        }
+                                    }
+                                }
+                            }
                         } ?: ShimmerBox()
                     }
                 }

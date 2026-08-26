@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package id.kenang.app.ui.wizard
 import id.kenang.app.ui.theme.SkeuoButton
 import id.kenang.app.ui.theme.SkeuoCard
@@ -313,9 +315,12 @@ private fun StepStory(state: WizardState) {
         Spacer(Modifier.height(16.dp))
         Text(Strings.WIZARD_VOICE_LABEL, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(8.dp))
-        // 15 config-driven voices: scrollable chip row, then preview controls.
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.voiceOptions) { voice ->
+        // 15 config-driven voices: chips WRAP to the window width (owner
+        // report: horizontal rows clipped at the right edge).
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            state.voiceOptions.forEach { voice ->
                 FilterChip(
                     selected = state.voiceId == voice.id,
                     onClick = { state.voiceId = voice.id },
@@ -359,17 +364,16 @@ private fun StepMusic(state: WizardState) {
             Text(Strings.WIZARD_MUSIC_BUNDLED_EMPTY, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         } else {
-            // Large config-driven collection: chips in scrollable rows.
-            bundled.chunked((bundled.size + 2) / 3).forEachIndexed { rowIndex, rowTracks ->
-                if (rowIndex > 0) Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(rowTracks, key = { it.meta.id }) { track ->
-                        FilterChip(
-                            selected = state.musicPath?.endsWith(track.meta.file) == true,
-                            onClick = { state.setMusic(track.file) },
-                            label = { Text(track.meta.labelId) },
-                        )
-                    }
+            // Large config-driven collection: chips wrap to the window width.
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                bundled.forEach { track ->
+                    FilterChip(
+                        selected = state.musicPath?.endsWith(track.meta.file) == true,
+                        onClick = { state.setMusic(track.file) },
+                        label = { Text(track.meta.labelId) },
+                    )
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -439,25 +443,25 @@ private fun StepFormat(state: WizardState) {
         Spacer(Modifier.height(20.dp))
         Text(Strings.WIZARD_VIBE_LABEL, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(8.dp))
-        // 50 config-driven vibes: two scrollable rows so the list stays browsable.
-        val vibeRows = state.config.vibes.chunked((state.config.vibes.size + 1) / 2)
-        vibeRows.forEachIndexed { rowIndex, rowVibes ->
-            if (rowIndex > 0) Spacer(Modifier.height(8.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(rowVibes, key = { it.id }) { vibe ->
-                    SkeuoCard(
-                        modifier = Modifier.width(150.dp).clickable { state.vibeId = vibe.id }
-                            .then(
-                                if (state.vibeId == vibe.id)
-                                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp))
-                                else Modifier
-                            ),
-                    ) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(vibe.labelId, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                            Text(vibe.descId, style = MaterialTheme.typography.labelSmall, maxLines = 2,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                        }
+        // 50 config-driven vibes: cards WRAP to the window width (the wizard
+        // column scrolls vertically), so nothing clips off-screen.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            state.config.vibes.forEach { vibe ->
+                SkeuoCard(
+                    modifier = Modifier.width(150.dp).clickable { state.vibeId = vibe.id }
+                        .then(
+                            if (state.vibeId == vibe.id)
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp))
+                            else Modifier
+                        ),
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(vibe.labelId, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text(vibe.descId, style = MaterialTheme.typography.labelSmall, maxLines = 2,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                 }
             }
