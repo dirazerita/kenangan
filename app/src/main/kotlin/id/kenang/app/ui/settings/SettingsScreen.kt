@@ -143,16 +143,31 @@ fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
 
         // ------------------- General -------------------
-        OutlinedTextField(
-            value = outputFolder,
-            onValueChange = {
-                outputFolder = it
-                settings.outputFolder = it
-            },
-            label = { Text(Strings.SETTINGS_OUTPUT_FOLDER) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = outputFolder,
+                onValueChange = {
+                    outputFolder = it
+                    settings.outputFolder = it
+                },
+                label = { Text(Strings.SETTINGS_OUTPUT_FOLDER) },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+            )
+            SkeuoOutlinedButton(onClick = {
+                val chooser = javax.swing.JFileChooser().apply {
+                    fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+                    dialogTitle = Strings.SETTINGS_OUTPUT_FOLDER
+                    currentDirectory = java.io.File(
+                        outputFolder.ifBlank { System.getProperty("user.home") },
+                    ).let { if (it.isDirectory) it else java.io.File(System.getProperty("user.home")) }
+                }
+                if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                    outputFolder = chooser.selectedFile.absolutePath
+                    settings.outputFolder = outputFolder
+                }
+            }) { Text(Strings.SETTINGS_BROWSE_FOLDER) }
+        }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(Strings.SETTINGS_LANGUAGE, Modifier.width(200.dp))
@@ -202,6 +217,27 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // Direct priority picker: "#1" = used first; failover walks down (AD-14).
+                    var priorityMenu by remember(key.label) { mutableStateOf(false) }
+                    androidx.compose.foundation.layout.Box {
+                        TextButton(onClick = { priorityMenu = true }) {
+                            Text("#${index + 1} ▾", style = MaterialTheme.typography.labelLarge)
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = priorityMenu,
+                            onDismissRequest = { priorityMenu = false },
+                        ) {
+                            state.falKeys.indices.forEach { pos ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("${Strings.KEYS_PRIORITY} ${pos + 1}") },
+                                    onClick = {
+                                        priorityMenu = false
+                                        state.moveFalKeyTo(key.label, pos)
+                                    },
+                                )
+                            }
+                        }
+                    }
                     Column(Modifier.width(220.dp)) {
                         Text(key.label, style = MaterialTheme.typography.bodyMedium)
                         Text(key.masked, style = MaterialTheme.typography.bodySmall,

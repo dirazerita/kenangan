@@ -66,11 +66,16 @@ class KeyManagerState(
 
     fun moveFalKey(label: String, delta: Int) {
         val idx = falKeys.indexOfFirst { it.label == label }
-        val newIdx = idx + delta
-        if (idx < 0 || newIdx < 0 || newIdx >= falKeys.size) return
+        moveFalKeyTo(label, idx + delta)
+    }
+
+    /** Sets a key's priority position directly (0-based) and persists the order (AD-14). */
+    fun moveFalKeyTo(label: String, targetIndex: Int) {
+        val idx = falKeys.indexOfFirst { it.label == label }
+        if (idx < 0 || targetIndex !in falKeys.indices || targetIndex == idx) return
         val list = falKeys.toMutableList()
         val item = list.removeAt(idx)
-        list.add(newIdx, item)
+        list.add(targetIndex, item)
         persist(list)
     }
 

@@ -72,6 +72,8 @@ object Strings {
     const val KEYS_OPEN_FAL = "Buka halaman pembuatan key fal.ai"
     const val KEYS_OPEN_GEMINI = "Buka Google AI Studio"
     const val KEYS_OPEN_EL = "Buka dashboard ElevenLabs"
+    const val KEYS_PRIORITY = "Prioritas"
+    const val SETTINGS_BROWSE_FOLDER = "Pilih folder…"
     const val KEYS_COPY_LINK = "Salin"
     const val KEYS_LINK_COPIED = "Disalin ✓"
     const val KEYS_SWITCHED_TOAST = "Saldo key '%1' habis — beralih ke '%2'"
