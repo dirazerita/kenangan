@@ -121,6 +121,12 @@ object Strings {
     const val WIZARD_BADGE_BAGUS = "Bagus"
     const val WIZARD_BADGE_CUKUP = "Cukup"
     const val WIZARD_BADGE_KURANG = "Kurang"
+    // Single-photo storyboard picker (step 1, shown only with exactly 1 photo)
+    const val WIZARD_SINGLE_PHOTO_TITLE = "Storyboard dari 1 foto"
+    const val WIZARD_SINGLE_PHOTO_DESC = "Berapa adegan yang ingin dibuat dari foto ini? Setiap adegan menghasilkan satu foto baru berdasarkan foto pertama, dengan wajah dan penampilan yang sama (±%1/foto). Setelah foto-fotonya jadi di storyboard, proses lanjut seperti biasa."
+    const val WIZARD_SINGLE_PHOTO_AUTO = "Otomatis"
+    const val WIZARD_SINGLE_PHOTO_SCENES_SUFFIX = " adegan"
+
     const val WIZARD_NARRATION_LABEL = "Narasi (opsional)"
     const val WIZARD_NO_NARRATION = "Tanpa narasi"
     const val WIZARD_NO_NARRATION_HINT = "Video akan dibuat tanpa suara narasi dan tanpa subtitle — hanya musik (jika dipilih di langkah berikutnya)."

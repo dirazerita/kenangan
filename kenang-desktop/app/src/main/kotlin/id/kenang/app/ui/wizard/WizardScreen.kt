@@ -218,6 +218,48 @@ private fun StepPhotos(state: WizardState) {
                 }
             }
         }
+
+        // Single-photo storyboard picker (owner feature 2026-08-26): with
+        // exactly ONE photo, let the user choose how many scenes the story
+        // planner derives from it. Every keyframe is edited FROM that photo
+        // (Nano Banana), so the character stays consistent; the generated
+        // photos appear in the storyboard before anything else proceeds.
+        if (state.photos.size == 1) {
+            Spacer(Modifier.height(20.dp))
+            SkeuoCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(Strings.WIZARD_SINGLE_PHOTO_TITLE, style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(4.dp))
+                    val priceBook = koinInject<id.kenang.core.providers.PriceBook>()
+                    val keyframeSlug = state.config.tierRouting
+                        .resolve(state.config.tierRouting.defaultTier).keyframe
+                    val perPhoto = priceBook.estimate(keyframeSlug, 1.0)
+                        ?.let { "$%.3f".format(java.util.Locale.US, it.usd) } ?: "?"
+                    Text(
+                        Strings.WIZARD_SINGLE_PHOTO_DESC.replace("%1", perPhoto),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = state.targetScenes == null,
+                            onClick = { state.targetScenes = null; state.persistMeta() },
+                            label = { Text(Strings.WIZARD_SINGLE_PHOTO_AUTO) },
+                        )
+                        listOf(2L, 3L, 4L, 5L, 6L, 8L, 10L, 12L)
+                            .filter { it <= state.config.limits.maxScenes }
+                            .forEach { n ->
+                                FilterChip(
+                                    selected = state.targetScenes == n,
+                                    onClick = { state.targetScenes = n; state.persistMeta() },
+                                    label = { Text("$n" + Strings.WIZARD_SINGLE_PHOTO_SCENES_SUFFIX) },
+                                )
+                            }
+                    }
+                }
+            }
+        }
     }
 }
 

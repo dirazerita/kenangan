@@ -77,6 +77,11 @@ class ProjectRepository(
         db.kenangQueries.updateProjectTier(tier, System.currentTimeMillis(), projectId)
     }
 
+    /** Single-photo storyboard picker: chosen scene count (null = automatic). */
+    suspend fun updateTargetScenes(projectId: String, targetScenes: Long?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectTargetScenes(targetScenes, System.currentTimeMillis(), projectId)
+    }
+
     /** Deletes DB rows (cascade) AND wipes the project folder. */
     suspend fun delete(projectId: String) = withContext(dispatchers.io) {
         db.kenangQueries.transaction {

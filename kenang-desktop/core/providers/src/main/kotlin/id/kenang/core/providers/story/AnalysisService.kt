@@ -71,6 +71,8 @@ class AnalysisService(
         ratio: String,
         sceneDurationS: Long,
         narration: String?,
+        /** Single-photo picker: exact scene count the user asked for (null = planner decides). */
+        targetScenes: Long? = null,
         onStage: suspend (AnalysisStage) -> Unit,
     ): AnalysisOutcome {
         val config = configRepository.current()
@@ -122,7 +124,7 @@ class AnalysisService(
 
         // 4. Story plan (template-constrained; validated/repaired in app code).
         onStage(AnalysisStage.Planning)
-        val plan = when (val res = storyPlan(projectId, analyses, vibeId, narration, config.limits.maxScenes)) {
+        val plan = when (val res = storyPlan(projectId, analyses, vibeId, narration, config.limits.maxScenes, targetScenes)) {
             is AppResult.Ok -> res.value
             is AppResult.Err -> return AnalysisOutcome.Failed(res.error)
         }
@@ -201,16 +203,27 @@ face_quality and quality_score are 0-1 floats. No markdown, no extra text."""
         vibeId: String,
         narration: String?,
         maxScenes: Int,
+        targetScenes: Long? = null,
     ): AppResult<List<ScenePlanItem>> {
         val categories = id.kenang.core.common.story.MotionCategory.entries.joinToString("|") { it.key }
         val cameras = id.kenang.core.common.story.CameraMove.entries.joinToString("|") { it.key }
         val analysesJson = analyses.joinToString(",\n") { json.encodeToString(PhotoAnalysis.serializer(), it) }
-        val sceneTarget = minOf(maxScenes, maxOf(2, analyses.size))
+        val sceneTarget = targetScenes?.toInt()?.coerceIn(1, maxScenes)
+            ?: minOf(maxScenes, maxOf(2, analyses.size))
+        // Single-photo storyboard: every scene derives from the one photo, and
+        // the plan must vary the MOMENT, not the person — Nano Banana keeps the
+        // character consistent because each keyframe is edited from that photo.
+        val singlePhotoRules = if (analyses.size == 1 && sceneTarget > 1) """
+All $sceneTarget scenes MUST use the single available photo as their only source_photos entry.
+Each scene must show a DIFFERENT moment of the SAME person(s): vary the pose, expression,
+camera framing and small details of the setting through keyframe_hint, but keep the person's
+identity, age and clothing exactly consistent across all scenes. Never invent additional people.""" else ""
         val prompt = """You plan scenes for a gentle memorial video from old family photos.
 PHOTO ANALYSES:
 [$analysesJson]
 ${if (!narration.isNullOrBlank()) "NARRATION (Indonesian): $narration" else ""}
 Ambience preset: $vibeId.
+$singlePhotoRules
 
 Create $sceneTarget scenes. Return ONLY a valid JSON array, each element exactly:
 {"scene_id":"sc1","source_photos":["<photo_id>"],"type":"single|fusion",

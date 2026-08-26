@@ -77,6 +77,7 @@ fun AnalysisScreen(
                 ratio = project.ratio,
                 sceneDurationS = project.scene_duration_s,
                 narration = project.narration,
+                targetScenes = project.target_scenes,
             ) { stage ->
                 stageText = when (stage) {
                     is AnalysisStage.Uploading -> Strings.ANALYSIS_UPLOADING + " (${stage.done + 1}/${stage.total})"

@@ -56,6 +56,8 @@ class WizardState(
     var previewPlaying by mutableStateOf(false)
     var previewError by mutableStateOf<String?>(null)
     var musicPath by mutableStateOf<String?>(null)
+    /** Single-photo storyboard picker: chosen scene count (null = automatic). */
+    var targetScenes by mutableStateOf<Long?>(null)
     var ratio by mutableStateOf("9:16")
     var vibeId by mutableStateOf(configRepository.current().vibes.firstOrNull()?.id ?: "asli")
     var durationS by mutableStateOf(5L)
@@ -85,6 +87,7 @@ class WizardState(
                     name = p.name; ratio = p.ratio; vibeId = p.vibe
                     narration = p.narration ?: ""; musicPath = p.music_path
                     durationS = p.scene_duration_s
+                    targetScenes = p.target_scenes
                 }
                 reloadPhotos()
             }
@@ -170,6 +173,9 @@ class WizardState(
         scope.launch {
             projects.updateMeta(id, name, ratio, vibeId, config.tierRouting.defaultTier,
                 narration.ifBlank { null }, musicPath, durationS)
+            // The picker only applies to single-photo projects; adding more
+            // photos silently returns the planner to automatic mode.
+            projects.updateTargetScenes(id, if (photos.size == 1) targetScenes else null)
         }
     }
 

@@ -11,6 +11,7 @@ CREATE TABLE project (
   music_path TEXT,
   status TEXT NOT NULL,           -- "draft" | "analyzing" | "storyboard" | "generating" | "done" | "failed"
   scene_duration_s INTEGER NOT NULL DEFAULT 5,
+  target_scenes INTEGER,          -- single-photo projects: user-chosen scene count (NULL = auto)
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -106,6 +107,9 @@ WHERE id = ?;
 
 updateProjectTier:
 UPDATE project SET tier = ?, updated_at = ? WHERE id = ?;
+
+updateProjectTargetScenes:
+UPDATE project SET target_scenes = ?, updated_at = ? WHERE id = ?;
 
 deleteProject:
 DELETE FROM project WHERE id = ?;
