@@ -215,14 +215,24 @@ face_quality and quality_score are 0-1 floats. No markdown, no extra text."""
         val analysesJson = analyses.joinToString(",\n") { json.encodeToString(PhotoAnalysis.serializer(), it) }
         val sceneTarget = targetScenes?.toInt()?.coerceIn(1, maxScenes)
             ?: minOf(maxScenes, maxOf(2, analyses.size))
-        // Single-photo storyboard: every scene derives from the one photo, and
-        // the plan must vary the MOMENT, not the person — Nano Banana keeps the
-        // character consistent because each keyframe is edited from that photo.
+        // Single-photo storyboard: every scene derives from the one photo.
+        // Dogfood 2026-08-27: "vary small details" produced 12 near-identical
+        // images — the plan must now assign a DISTINCT ACTIVITY per scene.
         val singlePhotoRules = if (analyses.size == 1 && sceneTarget > 1) """
 All $sceneTarget scenes MUST use the single available photo as their only source_photos entry.
-Each scene must show a DIFFERENT moment of the SAME person(s): vary the pose, expression,
-camera framing and small details of the setting through keyframe_hint, but keep the person's
-identity, age and clothing exactly consistent across all scenes. Never invent additional people.""" else ""
+CRITICAL — every scene must be a COMPLETELY DIFFERENT moment and ACTIVITY of the SAME person(s),
+like different pages of one photo album. For each scene, keyframe_hint must describe one concrete,
+distinct activity in a distinct spot of the ambience. Example for a garden ambience: strolling along
+a flower path; sitting on a wooden bench laughing together; playing on a swing; smelling a blooming
+flower up close; waving cheerfully from under a big shady tree; enjoying tea at a small garden table;
+feeding birds by a pond; walking hand in hand at sunset. Invent activities that fit the given ambience.
+Variety rules:
+- No two scenes may share the same activity, pose, or camera framing.
+- Mix the framing across scenes: some wide full-body shots, some medium shots, some closer portraits.
+- Choose each scene's motion_category to MATCH its activity (walk_slowly for strolling, laugh_softly
+  for a laughing scene, wave for waving, smile for a portrait), and avoid repeating the same
+  motion_category when another fits.
+- Identity lock: the same person(s), same age, same clothing in every scene; never invent additional people.""" else ""
         val prompt = """You plan scenes for a gentle memorial video from old family photos.
 PHOTO ANALYSES:
 [$analysesJson]
@@ -240,7 +250,8 @@ Create $sceneTarget scenes. Return ONLY a valid JSON array, each element exactly
  "subject_id":"<Indonesian subject phrase e.g. 'Beliau' or 'Mereka'>"}
 Rules: motion_category and camera MUST be from the given lists. Use "fusion" with 2+ source_photos
 for at most one scene, only when subjects from different photos belong together.
-Order scenes as a calm narrative arc. No markdown, no extra text."""
+Order scenes as a calm narrative arc. Give every scene a keyframe_hint with a concrete activity and
+framing so no two scenes look alike. No markdown, no extra text."""
         return visionJson(projectId, prompt, emptyList(), maxTokens = 1600, textOnly = true) { raw ->
             json.decodeFromString<List<ScenePlanItem>>(raw)
         }

@@ -60,6 +60,14 @@ fun main(): Unit = runBlocking {
     if (outcome is id.kenang.core.providers.story.AnalysisOutcome.Ok) {
         projects.updateStatus(project.id, "storyboard")
         println("status -> storyboard")
+        // Variety inspection (dogfood 2026-08-27): every scene should carry a
+        // DISTINCT activity in its keyframe prompt.
+        koin.get<id.kenang.core.data.SceneRepository>().scenes(project.id)
+            .sortedBy { it.order_index }
+            .forEach { s ->
+                println("  [${s.order_index}] motion='${s.motion_summary_id}'")
+                println("      kf: ${s.keyframe_prompt_en?.take(180)}")
+            }
     }
     exitProcess(0)
 }

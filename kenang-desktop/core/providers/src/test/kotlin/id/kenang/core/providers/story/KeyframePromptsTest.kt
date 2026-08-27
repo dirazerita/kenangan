@@ -24,6 +24,29 @@ class KeyframePromptsTest {
     }
 
     @Test
+    fun `activity hint LEADS the prompt and frees the composition`() {
+        val prompt = KeyframePrompts.build(
+            taman, "9:16", isFusion = false, subjectCount = 1,
+            keyframeHint = "They play on a wooden swing together, laughing.",
+        )
+        // Activity-first: the scene description comes before the preservation
+        // clause, and composition copying is explicitly forbidden (dogfood
+        // 2026-08-27: trailing hints produced 12 near-identical keyframes).
+        assertTrue(prompt.indexOf("wooden swing") < prompt.indexOf("Preserve each person"), prompt)
+        assertTrue("do NOT copy the original photo's composition" in prompt, prompt)
+        assertTrue("face, age, and clothing exactly" in prompt, prompt)
+    }
+
+    @Test
+    fun `fusion with activity hint keeps the exactly-N clause`() {
+        val prompt = KeyframePrompts.build(
+            taman, "9:16", isFusion = true, subjectCount = 3,
+            keyframeHint = "They stroll along a flower path.",
+        )
+        assertTrue("Exactly 3 people, no additional people" in prompt, prompt)
+    }
+
+    @Test
     fun `asli vibe keeps the original setting (restoration-lite)`() {
         val prompt = KeyframePrompts.build(asli, "9:16", isFusion = false, subjectCount = 1)
         assertTrue("keeping the original setting" in prompt)
