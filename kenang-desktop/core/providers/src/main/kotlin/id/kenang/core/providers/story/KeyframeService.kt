@@ -65,7 +65,14 @@ class KeyframeService(
         }
         sceneRepository.transition(sceneId, SceneStatus.KEYFRAME_PENDING)
 
-        val result = runJob(scene, tier)
+        var result = runJob(scene, tier)
+        // Troubled provider call → rotate to the next key and retry once
+        // (owner requirement: the process must not stop on one bad call).
+        val err = result.errorOrNull()
+        if (err is AppError.ProviderFailed || err is AppError.Timeout || err is AppError.RateLimited) {
+            falClient.rotateKey()
+            result = runJob(scene, tier)
+        }
         return when (result) {
             is AppResult.Ok -> {
                 sceneRepository.setKeyframeResult(sceneId, result.value.first, result.value.second, isRegen)

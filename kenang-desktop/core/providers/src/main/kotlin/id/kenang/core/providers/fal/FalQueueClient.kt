@@ -45,6 +45,19 @@ class FalQueueClient(
     /** Same client against a different key pool (used by KeyTester for single-key probes). */
     fun withPool(pool: FalKeyPool): FalQueueClient = FalQueueClient(http, pool, baseUrl)
 
+    /**
+     * Puts the CURRENT key on cooldown and toasts the switch, so the caller's
+     * next attempt runs on the next key (owner requirement: any troubled call
+     * moves to another key instead of stopping the whole process).
+     */
+    suspend fun rotateKey() {
+        val current = keyPool.currentKey() ?: return
+        keyPool.markExhausted(current.label)
+        val next = keyPool.currentKey() ?: return
+        Napier.w("rotating fal key after provider trouble: '${current.label}' -> '${next.label}'")
+        keyPool.emitSwitch(current.label, next.label)
+    }
+
     suspend fun submit(modelSlug: String, body: JsonObject): AppResult<SubmittedFalJob> {
         var previousLabel: String? = null
         var lastKeyError: AppError? = null

@@ -252,7 +252,11 @@ Rules: motion_category and camera MUST be from the given lists. Use "fusion" wit
 for at most one scene, only when subjects from different photos belong together.
 Order scenes as a calm narrative arc. Give every scene a keyframe_hint with a concrete activity and
 framing so no two scenes look alike. No markdown, no extra text."""
-        return visionJson(projectId, prompt, emptyList(), maxTokens = 1600, textOnly = true) { raw ->
+        // Response budget scales with the scene count: each plan item costs
+        // ~200 tokens, and a fixed 1600 silently truncated 10-12-scene plans
+        // into invalid JSON (dogfood 2026-08-27).
+        val planTokens = 500 + sceneTarget * 220
+        return visionJson(projectId, prompt, emptyList(), maxTokens = planTokens, textOnly = true) { raw ->
             json.decodeFromString<List<ScenePlanItem>>(raw)
         }
     }
@@ -300,7 +304,17 @@ framing so no two scenes look alike. No markdown, no extra text."""
             }
 
             when (rawResult) {
-                is AppResult.Err -> lastError = rawResult.error
+                is AppResult.Err -> {
+                    lastError = rawResult.error
+                    // Troubled call → move to the next key before retrying
+                    // (owner requirement); key-independent failures like
+                    // ContentBlocked are surfaced, never rotated around.
+                    when (rawResult.error) {
+                        is AppError.ProviderFailed, is AppError.Timeout, is AppError.RateLimited ->
+                            falClient.rotateKey()
+                        else -> Unit
+                    }
+                }
                 is AppResult.Ok -> {
                     val cleaned = rawResult.value.trim()
                         .removePrefix("```json").removePrefix("```")

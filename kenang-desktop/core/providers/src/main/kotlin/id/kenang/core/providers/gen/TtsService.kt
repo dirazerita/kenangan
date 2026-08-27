@@ -51,11 +51,23 @@ class TtsService(
             put("output_format", "url")
             put("language_boost", tts.languageBoost)
         }
-        val submitted = when (val s = falClient.submit(tts.slug, body)) {
+        var submitted = when (val s = falClient.submit(tts.slug, body)) {
             is AppResult.Ok -> s.value
             is AppResult.Err -> return s
         }
-        val payload = when (val r = falClient.awaitResult(submitted, timeoutMillis = 3 * 60_000)) {
+        var awaited = falClient.awaitResult(submitted, timeoutMillis = 3 * 60_000)
+        if (awaited is AppResult.Err &&
+            (awaited.error is AppError.ProviderFailed || awaited.error is AppError.Timeout)
+        ) {
+            // Troubled call → next key, one retry (owner requirement).
+            falClient.rotateKey()
+            submitted = when (val s = falClient.submit(tts.slug, body)) {
+                is AppResult.Ok -> s.value
+                is AppResult.Err -> return s
+            }
+            awaited = falClient.awaitResult(submitted, timeoutMillis = 3 * 60_000)
+        }
+        val payload = when (val r = awaited) {
             is AppResult.Ok -> r.value.payload
             is AppResult.Err -> return r
         }

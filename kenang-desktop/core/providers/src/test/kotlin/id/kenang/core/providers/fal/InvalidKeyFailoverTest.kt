@@ -57,6 +57,22 @@ class InvalidKeyFailoverTest {
     }
 
     @Test
+    fun `rotateKey moves the next submit onto the next key`() = runBlocking {
+        val engine = MockEngine {
+            respond(submitOk, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val p = pool("first" to "k1", "second" to "k2")
+        val client = FalQueueClient(HttpClient(engine), p)
+
+        client.rotateKey()
+
+        assertEquals("second", p.currentKey()?.label)
+        val result = client.submit("fal-ai/test/model", kotlinx.serialization.json.buildJsonObject {})
+        assertTrue(result is AppResult.Ok)
+        assertEquals("second", result.value.keyLabel)
+    }
+
+    @Test
     fun `all keys invalid returns InvalidKey, not ProviderBalance`() = runBlocking {
         val engine = MockEngine {
             respond("""{"detail":"Forbidden"}""", HttpStatusCode.Forbidden)

@@ -267,6 +267,8 @@ class GenerationOrchestrator(
         val autoRetry = code in setOf(ErrorCodes.PROVIDER_FAILED, ErrorCodes.TIMEOUT) && attemptLeft > 1
         if (autoRetry) {
             jobRepository.setStatus(jobId, status, code)
+            // Owner requirement: a troubled call retries on the NEXT key.
+            falClient.rotateKey()
             delay(2_000)
             return submitAndFinish(projectId, ratio, scene, i2vSlug, i2vParams, attemptLeft - 1)
         }
