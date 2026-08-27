@@ -172,6 +172,9 @@ fun StoryboardScreen(
                     onRetry = { state.retryKeyframe(scene) },
                     onDelete = { state.delete(scene) },
                     onMove = { delta -> state.move(scene, delta) },
+                    onReplace = {
+                        pickImage()?.let { file -> state.replaceKeyframe(scene, file) }
+                    },
                 )
             }
         }
@@ -190,6 +193,23 @@ fun StoryboardScreen(
     }
 }
 
+/** Single-image chooser for keyframe replacement (same filter as the wizard). */
+private fun pickImage(): java.io.File? {
+    val chooser = javax.swing.JFileChooser().apply {
+        dialogTitle = Strings.SB_REPLACE_IMAGE
+        isMultiSelectionEnabled = false
+        fileSelectionMode = javax.swing.JFileChooser.FILES_ONLY
+        fileFilter = javax.swing.filechooser.FileNameExtensionFilter(
+            "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp",
+        )
+    }
+    return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile
+    } else {
+        null
+    }
+}
+
 // ------------------------------------------------------------------ card
 
 @Composable
@@ -203,6 +223,7 @@ private fun SceneCard(
     onRetry: () -> Unit,
     onDelete: () -> Unit,
     onMove: (Int) -> Unit,
+    onReplace: () -> Unit,
 ) {
     Card {
         Column {
@@ -297,6 +318,16 @@ private fun SceneCard(
                         Spacer(Modifier.width(4.dp))
                         Text(Strings.SB_REGEN_KEYFRAME + " ±$" + "%.3f".format(regenCost))
                     }
+                }
+                // Owner feature 2026-08-27: swap the generated image for the
+                // user's own photo — free, uploaded at video-submit time.
+                TextButton(
+                    onClick = onReplace,
+                    enabled = scene.status in setOf(SceneStatus.KEYFRAME_READY, SceneStatus.KEYFRAME_FAILED),
+                ) {
+                    Icon(Icons.Default.Edit, null, Modifier.width(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(Strings.SB_REPLACE_IMAGE)
                 }
             }
         }

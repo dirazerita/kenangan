@@ -174,6 +174,7 @@ object Strings {
     const val SB_CREATE_VIDEO = "Buat Video"
     const val SB_EDIT_PROMPT = "Ubah gerakan"
     const val SB_REGEN_KEYFRAME = "Buat ulang gambar"
+    const val SB_REPLACE_IMAGE = "Ganti dengan foto sendiri (gratis)"
     const val SB_DELETE_SCENE = "Hapus"
     const val SB_DELETE_LAST_SCENE = "Minimal satu adegan harus tersisa."
     const val SB_FUSION_BADGE = "Gabungan"

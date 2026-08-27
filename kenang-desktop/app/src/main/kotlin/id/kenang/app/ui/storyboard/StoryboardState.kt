@@ -122,6 +122,27 @@ class StoryboardState(
         scope.launch { sceneRepository.reorder(ordered.map { it.scene_id }) }
     }
 
+    /** Replaces a scene's keyframe with the user's own image (free, no API). */
+    fun replaceKeyframe(scene: Scene, file: java.io.File) {
+        scope.launch {
+            val check = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.core.data.story.ImageQuality.check(file)
+            }
+            if (!check.ok) {
+                snackMessage = "${file.name}: ${check.rejectReasonId}"
+                return@launch
+            }
+            val target = java.io.File(
+                id.kenang.core.data.AppDirs.projectKeyframes(projectId),
+                "${scene.scene_id}_custom_${System.currentTimeMillis()}.${file.extension.ifBlank { "jpg" }}",
+            )
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                file.copyTo(target, overwrite = true)
+            }
+            sceneRepository.setCustomKeyframe(scene.scene_id, target.absolutePath)
+        }
+    }
+
     fun delete(scene: Scene) {
         scope.launch {
             val ok = sceneRepository.delete(scene.scene_id, projectId)

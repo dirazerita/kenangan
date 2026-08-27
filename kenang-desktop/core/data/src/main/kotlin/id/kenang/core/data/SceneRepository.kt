@@ -90,6 +90,20 @@ class SceneRepository(
         db.kenangQueries.updateSceneClipPath(path, sceneId)
     }
 
+    /**
+     * User-supplied keyframe (owner feature 2026-08-27: replace a generated
+     * image with your own photo). keyframe_url is cleared so the orchestrator
+     * uploads the local file at submit time; scene becomes ready, no regen
+     * counted (replacement is free).
+     */
+    suspend fun setCustomKeyframe(sceneId: String, localPath: String) = withContext(dispatchers.io) {
+        db.kenangQueries.transaction {
+            db.kenangQueries.updateSceneKeyframe(
+                SceneStatus.KEYFRAME_READY, null, localPath, 0L, sceneId,
+            )
+        }
+    }
+
     suspend fun updateMotion(sceneId: String, promptEn: String, summaryId: String) =
         withContext(dispatchers.io) {
             db.kenangQueries.updateSceneMotion(promptEn, summaryId, sceneId)
