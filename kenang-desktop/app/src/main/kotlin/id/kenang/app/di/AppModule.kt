@@ -98,5 +98,5 @@ val appModule = module {
     single { ClipDownloader(get()) }
     single { TtsService(get(), get(), get(), get(), get()) }
     single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { AssemblyService(get(), get(), get(), get(), get(), get(), get()) }
+    single { AssemblyService(get(), get(), get(), get(), get(), get(), get(), get()) }
 }

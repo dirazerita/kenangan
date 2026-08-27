@@ -29,6 +29,7 @@ class AssemblyService(
     private val projects: ProjectRepository,
     private val outputs: OutputRepository,
     private val costTracker: CostTracker,
+    private val settings: id.kenang.core.data.SettingsRepository,
 ) {
     data class Narration(val file: File, val durationMs: Long, val text: String)
 
@@ -141,7 +142,18 @@ class AssemblyService(
         val ratio = FfmpegGraphBuilder.Ratio.fromLabel(ratioLabel)
         val safeName = project.name.replace(Regex("[^A-Za-z0-9_\\- ]"), "").trim()
             .replace(' ', '_').ifBlank { "kenang" }
-        val outFile = File(AppDirs.projectOutput(projectId), "${safeName}_${ratio.label.replace(':', 'x')}.mp4")
+        // Owner requirement: results land in the user's configured output
+        // folder, inside a subfolder named after the project. Fallback to the
+        // internal project dir when the setting is blank or the drive is gone.
+        val folderName = project.name.replace(Regex("[\\\\/:*?\"<>|]"), "").trim().ifBlank { "Kenang" }
+        val customDir = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { File(it, folderName) }
+            ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
+        if (settings.outputFolder?.isNotBlank() == true && customDir == null) {
+            Napier.w("configured output folder unusable (${settings.outputFolder}) — falling back to app dir")
+        }
+        val outDir = customDir ?: AppDirs.projectOutput(projectId)
+        val outFile = File(outDir, "${safeName}_${ratio.label.replace(':', 'x')}.mp4")
 
         val spec = FfmpegGraphBuilder.AssemblySpec(
             clips = clips,
