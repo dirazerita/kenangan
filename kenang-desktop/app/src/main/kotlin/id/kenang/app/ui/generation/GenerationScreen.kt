@@ -101,9 +101,11 @@ fun GenerationScreen(
         }
     }
 
-    fun proceedToAudio() {
+    fun proceedToAudio(force: Boolean = false) {
+        // Guard against double entry (outcome path + status watcher).
+        if (!force && phase != "scenes") return
+        phase = "audio"
         scope.launch {
-            phase = "audio"
             genError = null
             when (val prep = assembly.prepareAudio(projectId)) {
                 is AssemblyService.AudioPrep.Ready -> assembleNow(prep.narration, null)
@@ -116,10 +118,16 @@ fun GenerationScreen(
     LaunchedEffect(Unit) {
         launch { sceneRepo.observeScenes(projectId).collect { scenes = it } }
     }
-    // Refresh failed scenes' error codes whenever statuses shift.
+    // Refresh failed scenes' error codes whenever statuses shift, and continue
+    // to audio/assembly automatically once per-scene retries finish the set.
     LaunchedEffect(scenes.map { it.status }) {
         errorCodes = scenes.filter { it.status == SceneStatus.FAILED }
             .associate { it.scene_id to jobRepo.latestForScene(it.scene_id)?.error_code }
+        if (scenes.isNotEmpty() && scenes.all { it.status == SceneStatus.DONE } &&
+            !showPartialDialog && fatal == null
+        ) {
+            proceedToAudio()
+        }
     }
     LaunchedEffect(runKey) {
         fatal = null
@@ -230,7 +238,7 @@ fun GenerationScreen(
         }
         genError?.let { ui ->
             Spacer(Modifier.height(16.dp))
-            ErrorCard(ui.title, ui.message, null, {}, onRetry = { proceedToAudio() }, retryLabel = Strings.RETRY)
+            ErrorCard(ui.title, ui.message, null, {}, onRetry = { proceedToAudio(force = true) }, retryLabel = Strings.RETRY)
         }
         if (allFailed) {
             Spacer(Modifier.height(16.dp))
@@ -379,12 +387,15 @@ private fun SceneRow(
                             color = MaterialTheme.colorScheme.error,
                         )
                         Row {
+                            // Every failure is retryable (owner 2026-08-27) —
+                            // retries pick the next working key via failover.
+                            TextButton(onClick = onRetry) { Text(Strings.GEN_RETRY_SCENE) }
                             when (errorCode) {
                                 GenerationOrchestrator.ErrorCodes.CONTENT_BLOCKED ->
                                     TextButton(onClick = onEditStoryboard) { Text(Strings.GEN_EDIT_MOTION_CTA) }
                                 GenerationOrchestrator.ErrorCodes.INVALID_KEY ->
                                     TextButton(onClick = onOpenKeySettings) { Text(Strings.GEN_OPEN_KEYS_CTA) }
-                                else -> TextButton(onClick = onRetry) { Text(Strings.GEN_RETRY_SCENE) }
+                                else -> Unit
                             }
                         }
                     }
