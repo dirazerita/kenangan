@@ -121,9 +121,11 @@ object Strings {
     const val WIZARD_BADGE_BAGUS = "Bagus"
     const val WIZARD_BADGE_CUKUP = "Cukup"
     const val WIZARD_BADGE_KURANG = "Kurang"
-    // Single-photo storyboard picker (step 1, shown only with exactly 1 photo)
+    // Storyboard scene-count picker (step 1, any photo count)
     const val WIZARD_SINGLE_PHOTO_TITLE = "Storyboard dari 1 foto"
     const val WIZARD_SINGLE_PHOTO_DESC = "Berapa adegan yang ingin dibuat dari foto ini? Setiap adegan menghasilkan satu foto baru berdasarkan foto pertama, dengan wajah dan penampilan yang sama (±%1/foto). Setelah foto-fotonya jadi di storyboard, proses lanjut seperti biasa."
+    const val WIZARD_SCENES_TITLE = "Jumlah adegan storyboard"
+    const val WIZARD_SCENES_DESC = "Berapa adegan yang ingin dibuat dari %1 foto ini? Jika adegan lebih banyak dari foto, adegan tambahan dibuat dari foto-foto pilihanmu dengan aktivitas berbeda-beda, wajah dan penampilan tetap sama (±%2/foto). Otomatis = mengikuti jumlah foto."
     const val WIZARD_SINGLE_PHOTO_AUTO = "Otomatis"
     const val WIZARD_SINGLE_PHOTO_SCENES_SUFFIX = " adegan"
 

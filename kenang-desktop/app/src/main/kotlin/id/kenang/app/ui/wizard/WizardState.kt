@@ -188,9 +188,8 @@ class WizardState(
         scope.launch {
             projects.updateMeta(id, name, ratio, vibeId, config.tierRouting.defaultTier,
                 narration.ifBlank { null }, musicPath, durationS)
-            // The picker only applies to single-photo projects; adding more
-            // photos silently returns the planner to automatic mode.
-            projects.updateTargetScenes(id, if (photos.size == 1) targetScenes else null)
+            // Scene-count choice applies to ANY photo count (owner 2026-08-27).
+            projects.updateTargetScenes(id, targetScenes)
             projects.updateRestorePhotos(id, restorePhotos)
         }
     }

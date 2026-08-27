@@ -215,24 +215,38 @@ face_quality and quality_score are 0-1 floats. No markdown, no extra text."""
         val analysesJson = analyses.joinToString(",\n") { json.encodeToString(PhotoAnalysis.serializer(), it) }
         val sceneTarget = targetScenes?.toInt()?.coerceIn(1, maxScenes)
             ?: minOf(maxScenes, maxOf(2, analyses.size))
-        // Single-photo storyboard: every scene derives from the one photo.
-        // Dogfood 2026-08-27: "vary small details" produced 12 near-identical
-        // images — the plan must now assign a DISTINCT ACTIVITY per scene.
-        val singlePhotoRules = if (analyses.size == 1 && sceneTarget > 1) """
-All $sceneTarget scenes MUST use the single available photo as their only source_photos entry.
-CRITICAL — every scene must be a COMPLETELY DIFFERENT moment and ACTIVITY of the SAME person(s),
-like different pages of one photo album. For each scene, keyframe_hint must describe one concrete,
-distinct activity in a distinct spot of the ambience. Example for a garden ambience: strolling along
-a flower path; sitting on a wooden bench laughing together; playing on a swing; smelling a blooming
-flower up close; waving cheerfully from under a big shady tree; enjoying tea at a small garden table;
-feeding birds by a pond; walking hand in hand at sunset. Invent activities that fit the given ambience.
+        // Multi-scene variety (dogfood 2026-08-27): when the user asks for
+        // more scenes than photos, several scenes derive from one photo —
+        // each must be a DISTINCT ACTIVITY, or the storyboard comes out as
+        // near-identical clones.
+        val varietyBullets = """
 Variety rules:
 - No two scenes may share the same activity, pose, or camera framing.
 - Mix the framing across scenes: some wide full-body shots, some medium shots, some closer portraits.
 - Choose each scene's motion_category to MATCH its activity (walk_slowly for strolling, laugh_softly
   for a laughing scene, wave for waving, smile for a portrait), and avoid repeating the same
   motion_category when another fits.
-- Identity lock: the same person(s), same age, same clothing in every scene; never invent additional people.""" else ""
+- Identity lock: each person keeps the same face, age and clothing as in their source photo;
+  never invent additional people."""
+        val activityExamples = """For each scene, keyframe_hint must describe one concrete,
+distinct activity in a distinct spot of the ambience. Example for a garden ambience: strolling along
+a flower path; sitting on a wooden bench laughing together; playing on a swing; smelling a blooming
+flower up close; waving cheerfully from under a big shady tree; enjoying tea at a small garden table;
+feeding birds by a pond; walking hand in hand at sunset. Invent activities that fit the given ambience."""
+        val singlePhotoRules = when {
+            analyses.size == 1 && sceneTarget > 1 -> """
+All $sceneTarget scenes MUST use the single available photo as their only source_photos entry.
+CRITICAL — every scene must be a COMPLETELY DIFFERENT moment and ACTIVITY of the SAME person(s),
+like different pages of one photo album. $activityExamples
+$varietyBullets"""
+            sceneTarget > analyses.size -> """
+The user asked for $sceneTarget scenes from only ${analyses.size} photos, so SEVERAL scenes must be
+derived from the same photo. Spread the scenes across ALL photos, and whenever one photo is the
+source of multiple scenes, each of those scenes must show a COMPLETELY DIFFERENT moment and ACTIVITY
+of that photo's person(s) — like different pages of one photo album. $activityExamples
+$varietyBullets"""
+            else -> ""
+        }
         val prompt = """You plan scenes for a gentle memorial video from old family photos.
 PHOTO ANALYSES:
 [$analysesJson]

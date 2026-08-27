@@ -225,16 +225,20 @@ private fun StepPhotos(state: WizardState) {
             }
         }
 
-        // Single-photo storyboard picker (owner feature 2026-08-26): with
-        // exactly ONE photo, let the user choose how many scenes the story
-        // planner derives from it. Every keyframe is edited FROM that photo
-        // (Nano Banana), so the character stays consistent; the generated
-        // photos appear in the storyboard before anything else proceeds.
-        if (state.photos.size == 1) {
+        // Scene-count picker (owner features 2026-08-26/27): works for ANY
+        // photo count. When scenes > photos, the planner derives extra scenes
+        // from the chosen photos with distinct activities; every keyframe is
+        // edited FROM its source photo (Nano Banana), so characters stay
+        // consistent. Generated photos appear in the storyboard first.
+        if (state.photos.isNotEmpty()) {
             Spacer(Modifier.height(20.dp))
             SkeuoCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
-                    Text(Strings.WIZARD_SINGLE_PHOTO_TITLE, style = MaterialTheme.typography.titleSmall)
+                    val single = state.photos.size == 1
+                    Text(
+                        if (single) Strings.WIZARD_SINGLE_PHOTO_TITLE else Strings.WIZARD_SCENES_TITLE,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                     Spacer(Modifier.height(4.dp))
                     val priceBook = koinInject<id.kenang.core.providers.PriceBook>()
                     val keyframeSlug = state.config.tierRouting
@@ -242,7 +246,13 @@ private fun StepPhotos(state: WizardState) {
                     val perPhoto = priceBook.estimate(keyframeSlug, 1.0)
                         ?.let { "$%.3f".format(java.util.Locale.US, it.usd) } ?: "?"
                     Text(
-                        Strings.WIZARD_SINGLE_PHOTO_DESC.replace("%1", perPhoto),
+                        if (single) {
+                            Strings.WIZARD_SINGLE_PHOTO_DESC.replace("%1", perPhoto)
+                        } else {
+                            Strings.WIZARD_SCENES_DESC
+                                .replace("%1", state.photos.size.toString())
+                                .replace("%2", perPhoto)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     )
