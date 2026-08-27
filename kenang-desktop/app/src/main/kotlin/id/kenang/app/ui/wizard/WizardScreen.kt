@@ -184,8 +184,12 @@ private fun StepPhotos(state: WizardState) {
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.height(16.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            itemsIndexed(state.photos, key = { _, p -> p.photo.id }) { index, ui ->
+        // Photo cards wrap to the window width — no clipping at the right edge.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            state.photos.forEachIndexed { index, ui ->
                 Card {
                     Column(Modifier.width(160.dp)) {
                         val bmp by rememberFileBitmap(ui.photo.local_path)
