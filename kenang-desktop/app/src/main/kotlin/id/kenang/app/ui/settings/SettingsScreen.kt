@@ -329,7 +329,31 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
 
             Spacer(Modifier.height(8.dp))
             AddFalKeyRow(state)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
+            // "Cek Saldo": probe fal billing for every key and sum the results.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SkeuoButton(onClick = { state.checkAllBalances() }, enabled = online && !state.checkingBalances) {
+                    Text(
+                        if (state.checkingBalances) {
+                            Strings.KEYS_CHECKING_ALL.replace("%1", state.falKeys.size.toString())
+                        } else {
+                            Strings.KEYS_CHECK_ALL_BALANCES
+                        },
+                    )
+                }
+                state.balanceSummary?.let { s ->
+                    Text(
+                        Strings.KEYS_BALANCE_TOTAL
+                            .replace("%1", "%.2f %s".format(java.util.Locale.US, s.totalUsd, s.currency))
+                            .replace("%2", s.readable.toString())
+                            .replace("%3", s.unreadable.toString()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (s.readable > 0) Color(0xFF4CD97B)
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
             TextButton(onClick = { openInBrowser(FAL_KEYS_URL) }) { Text(Strings.KEYS_OPEN_FAL) }
             id.kenang.app.ui.components.CopyableUrl(FAL_KEYS_URL)
             Text(

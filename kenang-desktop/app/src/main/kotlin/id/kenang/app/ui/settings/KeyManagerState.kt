@@ -56,6 +56,64 @@ class KeyManagerState(
     /** label -> remaining fal credit, filled after a connection test. */
     val balances = mutableStateMapOf<String, BalanceState>()
 
+    /** Result of the "Cek Saldo" sweep across every stored key. */
+    data class BalanceSummary(
+        val totalUsd: Double,
+        val currency: String,
+        val readable: Int,
+        val unreadable: Int,
+    )
+
+    var checkingBalances by mutableStateOf(false)
+        private set
+    var balanceSummary by mutableStateOf<BalanceSummary?>(null)
+        private set
+
+    /**
+     * Probes fal billing for EVERY stored key and sums the readable balances.
+     * fal serves balance only to Admin-scoped keys, so regular keys count as
+     * "unreadable" (shown per-row as needs-admin) — never as failures.
+     */
+    fun checkAllBalances() {
+        if (checkingBalances) return
+        checkingBalances = true
+        balanceSummary = null
+        scope.launch {
+            var total = 0.0
+            var currency = "USD"
+            var readable = 0
+            var unreadable = 0
+            for (key in falKeys) {
+                balances[key.label] = BalanceState.Loading
+                when (val b = billing.balance(key.key)) {
+                    is AppResult.Ok -> {
+                        val amount = b.value.currentBalance
+                        if (amount != null) {
+                            total += amount
+                            currency = b.value.currency
+                            readable++
+                            balances[key.label] = BalanceState.Value(amount, b.value.currency)
+                        } else {
+                            unreadable++
+                            balances[key.label] = BalanceState.Unavailable
+                        }
+                    }
+                    is AppResult.Err -> {
+                        unreadable++
+                        balances[key.label] =
+                            if (b.error is id.kenang.core.common.AppError.InvalidKey) {
+                                BalanceState.NeedsAdminKey
+                            } else {
+                                BalanceState.Unavailable
+                            }
+                    }
+                }
+            }
+            balanceSummary = BalanceSummary(total, currency, readable, unreadable)
+            checkingBalances = false
+        }
+    }
+
     var geminiKey by mutableStateOf(vault.geminiKey() ?: "")
     var elevenLabsKey by mutableStateOf(vault.elevenLabsKey() ?: "")
 
