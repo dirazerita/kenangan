@@ -1,6 +1,8 @@
 package id.kenang.app.ui.components
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +33,55 @@ fun OfflineBanner(visible: Boolean) {
         contentAlignment = Alignment.Center,
     ) {
         Text(Strings.OFFLINE_BANNER, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/**
+ * Owner brand badge: bright cyan→gold gradient text inside a glass pill with a
+ * softly pulsing glow, so it reads as a premium signature rather than a
+ * footnote (owner request 2026-08-28).
+ */
+@Composable
+fun BrandBadge(modifier: Modifier = Modifier) {
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val glow by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1800),
+            androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+    )
+    val cyan = Color(0xFF7DF9FF)
+    val gold = Color(0xFFFFD37A)
+    Box(
+        modifier
+            .background(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    listOf(cyan.copy(alpha = 0.12f * glow), gold.copy(alpha = 0.12f * glow)),
+                ),
+                RoundedCornerShape(50),
+            )
+            .border(
+                1.dp,
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    listOf(cyan.copy(alpha = 0.55f * glow), gold.copy(alpha = 0.55f * glow)),
+                ),
+                RoundedCornerShape(50),
+            )
+            .padding(horizontal = 16.dp, vertical = 7.dp),
+    ) {
+        Text(
+            Strings.BRAND_TEXT,
+            style = MaterialTheme.typography.labelLarge.copy(
+                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(cyan, gold)),
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = cyan.copy(alpha = 0.85f * glow),
+                    blurRadius = 18f * glow,
+                ),
+                letterSpacing = androidx.compose.ui.unit.TextUnit(0.4f, androidx.compose.ui.unit.TextUnitType.Sp),
+            ),
+        )
     }
 }
 

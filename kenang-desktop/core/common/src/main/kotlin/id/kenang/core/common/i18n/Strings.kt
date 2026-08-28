@@ -9,6 +9,9 @@ object Strings {
     // App
     const val APP_NAME = "Kenang (Beta)"
 
+    /** Owner branding — shown prominently on Home and in About. */
+    const val BRAND_TEXT = "Power By Vibetool.Id - By Harindra Darmawan"
+
     // Home
     const val HOME_TITLE = "Proyek Kenangan"
     const val HOME_NEW_PROJECT = "Proyek Baru"

@@ -126,6 +126,15 @@ tasks.register<JavaExec>("demoDriver04") {
     providers.gradleProperty("demoStage").orNull?.let { systemProperty("demo.stage", it) }
 }
 
+// Regenerates the app icon (icons/kenang.ico + resources/icon/kenang_512.png).
+tasks.register<JavaExec>("generateIcon") {
+    group = "build"
+    description = "Draws the Kenang app icon (Java2D) and writes the .ico + PNG"
+    mainClass.set("id.kenang.app.devtools.IconGeneratorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    systemProperty("icon.appDir", layout.projectDirectory.asFile.absolutePath)
+}
+
 // Diagnostic: re-run analysis on the newest stuck project with verbose logging.
 tasks.register<JavaExec>("analysisDoctor") {
     group = "verification"
@@ -162,6 +171,8 @@ compose.desktop {
                 menuGroup = "Kenang"
                 shortcut = true
                 dirChooser = true
+                // Custom icon (regenerate with :app:generateIcon).
+                iconFile.set(project.file("icons/kenang.ico"))
                 // Stable upgrade UUID so MSI updates replace older installs — never change.
                 upgradeUuid = "7c1f4b3a-58d2-4e96-b1aa-c3958d20ef11"
             }

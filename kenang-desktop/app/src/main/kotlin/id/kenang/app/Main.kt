@@ -24,6 +24,8 @@ fun main() {
         Window(
             onCloseRequest = ::exitApplication,
             title = Strings.APP_NAME,
+            // Title bar + taskbar icon (the .ico covers the packaged EXE).
+            icon = androidx.compose.ui.res.painterResource("icon/kenang_512.png"),
             state = rememberWindowState(width = 1200.dp, height = 800.dp),
         ) {
             App()

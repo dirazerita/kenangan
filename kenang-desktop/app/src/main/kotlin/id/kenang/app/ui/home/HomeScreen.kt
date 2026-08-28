@@ -100,6 +100,9 @@ fun HomeScreen(
             IconButton(onClick = onAbout) { Icon(Icons.Default.Info, contentDescription = Strings.ABOUT_TITLE) }
         }
 
+        Spacer(Modifier.height(10.dp))
+        id.kenang.app.ui.components.BrandBadge()
+
         Spacer(Modifier.height(16.dp))
 
         SkeuoButton(onClick = onNewProject) {

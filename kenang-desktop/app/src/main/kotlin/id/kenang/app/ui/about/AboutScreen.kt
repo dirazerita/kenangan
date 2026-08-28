@@ -52,6 +52,9 @@ fun AboutScreen(onBack: () -> Unit) {
             )
         }
 
+        Spacer(Modifier.height(20.dp))
+        id.kenang.app.ui.components.BrandBadge()
+
         Spacer(Modifier.height(24.dp))
         SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
     }
