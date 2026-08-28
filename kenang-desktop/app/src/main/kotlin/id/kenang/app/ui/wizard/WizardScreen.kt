@@ -1,4 +1,8 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@file:OptIn(
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+    androidx.compose.ui.ExperimentalComposeUiApi::class,
+)
 
 package id.kenang.app.ui.wizard
 import id.kenang.app.ui.theme.SkeuoButton
@@ -52,8 +56,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.awtTransferable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -159,7 +167,35 @@ private fun StepHeader(current: Int) {
 
 @Composable
 private fun StepPhotos(state: WizardState) {
-    Column {
+    // Drag-and-drop photo import (owner 2026-08-28): dropping image files
+    // anywhere on step 1 adds them like the picker would (same limit and
+    // quality checks in addPhotos).
+    var dragOver by remember { mutableStateOf(false) }
+    val photoExtensions = setOf("jpg", "jpeg", "png", "webp")
+    val dropTarget = remember(state) {
+        object : DragAndDropTarget {
+            override fun onEntered(event: DragAndDropEvent) { dragOver = true }
+            override fun onExited(event: DragAndDropEvent) { dragOver = false }
+            override fun onEnded(event: DragAndDropEvent) { dragOver = false }
+            override fun onDrop(event: DragAndDropEvent): Boolean {
+                dragOver = false
+                val transferable = event.awtTransferable
+                if (!transferable.isDataFlavorSupported(java.awt.datatransfer.DataFlavor.javaFileListFlavor)) return false
+                val files = runCatching {
+                    (transferable.getTransferData(java.awt.datatransfer.DataFlavor.javaFileListFlavor) as? List<*>)
+                        .orEmpty()
+                        .filterIsInstance<File>()
+                        .filter { it.isFile && it.extension.lowercase() in photoExtensions }
+                }.getOrDefault(emptyList())
+                if (files.isEmpty()) return false
+                state.addPhotos(files)
+                return true
+            }
+        }
+    }
+    Column(
+        Modifier.dragAndDropTarget(shouldStartDragAndDrop = { true }, target = dropTarget),
+    ) {
         // Project name up front (owner request): first thing after "Proyek
         // Baru", so projects are easy to group on Home. Prefilled with a
         // dated default; autosaved with every step like the rest.
@@ -178,6 +214,33 @@ private fun StepPhotos(state: WizardState) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(Strings.WIZARD_ADD_PHOTOS.replace("%1", state.config.limits.maxPhotos.toString()))
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(
+            Modifier.fillMaxWidth().height(96.dp)
+                .background(
+                    if (dragOver) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
+                    RoundedCornerShape(19.dp),
+                )
+                .border(
+                    2.dp,
+                    if (dragOver) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                    RoundedCornerShape(19.dp),
+                )
+                .clickable {
+                    val files = pickFiles("Pilih foto", "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp")
+                    if (files.isNotEmpty()) state.addPhotos(files)
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                if (dragOver) Strings.WIZARD_DROP_ACTIVE else "🖼  " + Strings.WIZARD_DROP_HINT,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (dragOver) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+            )
         }
         state.rejectionMessage?.let {
             Spacer(Modifier.height(8.dp))
