@@ -92,6 +92,11 @@ class ProjectRepository(
         db.kenangQueries.updateProjectGuidance(guidance?.ifBlank { null }, System.currentTimeMillis(), projectId)
     }
 
+    /** Suasana kustom: user-written ambience (used when vibe == "custom"). */
+    suspend fun updateCustomVibe(projectId: String, text: String?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectCustomVibe(text?.ifBlank { null }, System.currentTimeMillis(), projectId)
+    }
+
     /** Deletes DB rows (cascade) AND wipes the project folder. */
     suspend fun delete(projectId: String) = withContext(dispatchers.io) {
         db.kenangQueries.transaction {

@@ -476,6 +476,22 @@ private fun StepFormat(state: WizardState) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // Suasana kustom (owner 2026-08-28): the user writes their own
+            // ambience; the card leads the preset list.
+            SkeuoCard(
+                modifier = Modifier.width(150.dp).clickable { state.vibeId = "custom" }
+                    .then(
+                        if (state.vibeId == "custom")
+                            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp))
+                        else Modifier
+                    ),
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("✏ " + Strings.WIZARD_VIBE_CUSTOM, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    Text(Strings.WIZARD_VIBE_CUSTOM_DESC, style = MaterialTheme.typography.labelSmall, maxLines = 2,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                }
+            }
             state.config.vibes.forEach { vibe ->
                 SkeuoCard(
                     modifier = Modifier.width(150.dp).clickable { state.vibeId = vibe.id }
@@ -492,6 +508,18 @@ private fun StepFormat(state: WizardState) {
                     }
                 }
             }
+        }
+        if (state.vibeId == "custom") {
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = state.customVibe,
+                onValueChange = { state.customVibe = it.take(200) },
+                label = { Text(Strings.WIZARD_VIBE_CUSTOM_LABEL) },
+                placeholder = { Text(Strings.WIZARD_VIBE_CUSTOM_HINT) },
+                supportingText = { Text("${state.customVibe.length}/200") },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         Spacer(Modifier.height(20.dp))
         Text(Strings.WIZARD_DURATION_LABEL, style = MaterialTheme.typography.titleSmall)

@@ -70,6 +70,8 @@ class WizardState(
     var restorePhotos by mutableStateOf(false)
     /** Tuntunan adegan: free-text steering for the story planner. */
     var sceneGuidance by mutableStateOf("")
+    /** Suasana kustom: user-written ambience (active when vibeId == "custom"). */
+    var customVibe by mutableStateOf("")
     var ratio by mutableStateOf("9:16")
     var vibeId by mutableStateOf(configRepository.current().vibes.firstOrNull()?.id ?: "asli")
     var durationS by mutableStateOf(5L)
@@ -114,6 +116,7 @@ class WizardState(
                     targetScenes = p.target_scenes
                     restorePhotos = p.restore_photos == 1L
                     sceneGuidance = p.scene_guidance ?: ""
+                    customVibe = p.custom_vibe ?: ""
                 }
                 reloadPhotos()
             }
@@ -203,6 +206,7 @@ class WizardState(
             projects.updateTargetScenes(id, targetScenes)
             projects.updateRestorePhotos(id, restorePhotos)
             projects.updateSceneGuidance(id, sceneGuidance)
+            projects.updateCustomVibe(id, customVibe)
         }
     }
 

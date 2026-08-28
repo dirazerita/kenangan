@@ -78,6 +78,8 @@ class AnalysisService(
         restorePhotos: Boolean = false,
         /** "Tuntunan adegan": free-text user direction the planner must follow. */
         sceneGuidance: String? = null,
+        /** "Suasana kustom": user-written ambience (used when vibeId == "custom"). */
+        customVibe: String? = null,
         onStage: suspend (AnalysisStage) -> Unit,
     ): AnalysisOutcome {
         val config = configRepository.current()
@@ -129,14 +131,23 @@ class AnalysisService(
 
         // 4. Story plan (template-constrained; validated/repaired in app code).
         onStage(AnalysisStage.Planning)
-        val plan = when (val res = storyPlan(projectId, analyses, vibeId, narration, config.limits.maxScenes, targetScenes, sceneGuidance)) {
+        // "custom" ambience: the user's own Indonesian description drives both
+        // the planner and the keyframe prompts (multilingual models cope, and
+        // the planner translates it into the English keyframe hints).
+        val ambienceForPlan =
+            if (vibeId == "custom" && !customVibe.isNullOrBlank()) customVibe.trim() else vibeId
+        val plan = when (val res = storyPlan(projectId, analyses, ambienceForPlan, narration, config.limits.maxScenes, targetScenes, sceneGuidance)) {
             is AppResult.Ok -> res.value
             is AppResult.Err -> return AnalysisOutcome.Failed(res.error)
         }
 
         // 5. Persist Scene rows (status=draft).
         onStage(AnalysisStage.Saving)
-        val vibe = config.vibes.firstOrNull { it.id == vibeId } ?: config.vibes.first()
+        val vibe = if (vibeId == "custom" && !customVibe.isNullOrBlank()) {
+            id.kenang.core.data.config.Vibe("custom", "Suasana kustom", "", customVibe.trim())
+        } else {
+            config.vibes.firstOrNull { it.id == vibeId } ?: config.vibes.first()
+        }
         val photoIds = photos.map { it.id }.toSet()
         val validItems = plan.filter { item -> item.sourcePhotos.isNotEmpty() && item.sourcePhotos.all { it in photoIds } }
             .take(config.limits.maxScenes)

@@ -1,0 +1,2 @@
+-- Suasana kustom: user-written ambience text (used when project.vibe='custom').
+ALTER TABLE project ADD COLUMN custom_vibe TEXT;

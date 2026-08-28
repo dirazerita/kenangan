@@ -14,6 +14,7 @@ CREATE TABLE project (
   target_scenes INTEGER,          -- single-photo projects: user-chosen scene count (NULL = auto)
   restore_photos INTEGER NOT NULL DEFAULT 0, -- restorasi foto lama toggle
   scene_guidance TEXT,            -- tuntunan adegan (free-text planner steering)
+  custom_vibe TEXT,               -- suasana kustom (used when vibe='custom')
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -118,6 +119,9 @@ UPDATE project SET restore_photos = ?, updated_at = ? WHERE id = ?;
 
 updateProjectGuidance:
 UPDATE project SET scene_guidance = ?, updated_at = ? WHERE id = ?;
+
+updateProjectCustomVibe:
+UPDATE project SET custom_vibe = ?, updated_at = ? WHERE id = ?;
 
 deleteProject:
 DELETE FROM project WHERE id = ?;
