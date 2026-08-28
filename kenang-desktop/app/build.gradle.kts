@@ -145,6 +145,14 @@ tasks.register<JavaExec>("analysisDoctor") {
     providers.gradleProperty("doctorStatusFix").orNull?.let { systemProperty("doctor.statusfix", it) }
 }
 
+// Diagnostic: verify router model ids before offering them in the catalog.
+tasks.register<JavaExec>("modelDoctor") {
+    group = "verification"
+    description = "Pings candidate router model ids (1 token each)"
+    mainClass.set("id.kenang.app.devtools.ModelDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

@@ -354,13 +354,23 @@ framing so no two scenes look alike. No markdown, no extra text."""
         maxTokens: Int,
     ): AppResult<String> {
         val config = configRepository.current()
+        // Settings → Model AI override (falls back to the locked default).
+        // Catalog params carry model quirks — e.g. reasoning-mandatory models
+        // (Fable 5, GPT-5 Mini, Gemini 3.6) need "reasoning": true, verified
+        // live via modelDoctor 2026-08-28.
+        val overrideId = settings.modelAnalysis
+        val option = overrideId?.let { id ->
+            config.modelCatalog.analysis.firstOrNull { it.selectionKey() == id }
+        }
+        val reasoning = option?.params?.containsKey("reasoning") == true
         val body = buildJsonObject {
             put("prompt", prompt)
             if (imageUrls.isNotEmpty()) putJsonArray("image_urls") { imageUrls.forEach { add(it) } }
-            // Settings → Model AI override (falls back to the locked default).
-            put("model", settings.modelAnalysis ?: config.analysis.model)
+            put("model", overrideId ?: config.analysis.model)
             put("temperature", 0.2)
-            put("max_tokens", maxTokens)
+            // Reasoning tokens share the budget — give them headroom.
+            put("max_tokens", if (reasoning) maxTokens + 1200 else maxTokens)
+            option?.params?.forEach { (k, v) -> put(k, v) }
         }
         val slug = config.analysis.slug
         return when (val submitted = falClient.submit(slug, body)) {
