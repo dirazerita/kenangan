@@ -29,8 +29,39 @@ data class AppConfig(
     @SerialName("price_hints") val priceHints: List<PriceHint>,
     val vibes: List<Vibe> = emptyList(),
     @SerialName("bundled_music") val bundledMusic: List<BundledMusic> = emptyList(),
+    @SerialName("model_catalog") val modelCatalog: ModelCatalog = ModelCatalog(),
     val limits: Limits,
 )
+
+/**
+ * User-selectable models per pipeline stage (Settings → Model AI). The first
+ * entry of each list is the app default; the user's choice is stored in the
+ * settings table and overrides the tier/config routing.
+ */
+@Serializable
+data class ModelCatalog(
+    /** I2V models; params merged into the request body like tier i2v_params. */
+    val i2v: List<ModelOption> = emptyList(),
+    /** Vision model ids for the fal openrouter/router/vision route. */
+    val analysis: List<ModelOption> = emptyList(),
+    /** TTS slugs (MiniMax family only — same request shape). */
+    val tts: List<ModelOption> = emptyList(),
+)
+
+@Serializable
+data class ModelOption(
+    /** I2V/TTS: fal slug. Analysis: router model id. */
+    val id: String,
+    @SerialName("label_id") val labelId: String,
+    /** Extra request params (e.g. generate_audio=false for Kling). */
+    val params: JsonObject? = null,
+    /** Honest flag for options not yet blind-tested in Phase 00. */
+    val tested: Boolean = true,
+    /** Unique selection key when two entries share an id (e.g. Wan flash). */
+    val key: String = "",
+) {
+    fun selectionKey(): String = key.ifBlank { id }
+}
 
 /**
  * Royalty-free track shipped in app resources (`/music/<file>`), selectable in

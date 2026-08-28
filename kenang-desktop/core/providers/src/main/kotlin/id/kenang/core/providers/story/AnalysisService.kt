@@ -62,6 +62,7 @@ class AnalysisService(
     private val keyVault: KeyVault,
     private val photoRepository: PhotoRepository,
     private val sceneRepository: SceneRepository,
+    private val settings: id.kenang.core.data.SettingsRepository,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -356,7 +357,8 @@ framing so no two scenes look alike. No markdown, no extra text."""
         val body = buildJsonObject {
             put("prompt", prompt)
             if (imageUrls.isNotEmpty()) putJsonArray("image_urls") { imageUrls.forEach { add(it) } }
-            put("model", config.analysis.model)
+            // Settings → Model AI override (falls back to the locked default).
+            put("model", settings.modelAnalysis ?: config.analysis.model)
             put("temperature", 0.2)
             put("max_tokens", maxTokens)
         }

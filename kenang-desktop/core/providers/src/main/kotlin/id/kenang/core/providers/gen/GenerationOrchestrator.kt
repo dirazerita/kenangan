@@ -58,7 +58,17 @@ class GenerationOrchestrator(
     private val sceneRepository: SceneRepository,
     private val jobRepository: GenJobRepository,
     private val projects: ProjectRepository,
+    private val settings: id.kenang.core.data.SettingsRepository,
 ) {
+    /** Settings → Model AI override; falls back to the tier's routed model. */
+    private fun resolveI2v(tierCfg: id.kenang.core.data.config.TierConfig): Pair<String, JsonObject?> {
+        val key = settings.modelI2v ?: return tierCfg.i2v to tierCfg.i2vParams
+        val option = configRepository.current().modelCatalog.i2v
+            .firstOrNull { it.selectionKey() == key }
+            ?: return tierCfg.i2v to tierCfg.i2vParams
+        Napier.i("i2v model override active: ${option.labelId} (${option.id})")
+        return option.id to option.params
+    }
     /** Error codes persisted on job rows (UI maps them per §4.1). */
     object ErrorCodes {
         const val CONTENT_BLOCKED = "content_blocked"
@@ -88,6 +98,7 @@ class GenerationOrchestrator(
         projects.updateStatus(projectId, "generating")
 
         val tierCfg = configRepository.current().tierRouting.resolve(tier)
+        val (i2vSlug, i2vParams) = resolveI2v(tierCfg)
         val fatal = AtomicReference<AppError?>(null)
         val semaphore = Semaphore(3)
 
@@ -100,7 +111,7 @@ class GenerationOrchestrator(
                 async {
                     semaphore.withPermit {
                         if (fatal.get() != null) return@withPermit false
-                        val ok = generateScene(project.id, project.ratio, scene, tierCfg.i2v, tierCfg.i2vParams)
+                        val ok = generateScene(project.id, project.ratio, scene, i2vSlug, i2vParams)
                         if (!ok) {
                             val latest = jobRepository.latestForScene(scene.scene_id)
                             if (latest?.error_code in setOf(ErrorCodes.INVALID_KEY, ErrorCodes.PROVIDER_BALANCE)) {
@@ -132,7 +143,8 @@ class GenerationOrchestrator(
         val scene = sceneRepository.scene(sceneId) ?: return false
         if (scene.status != SceneStatus.FAILED) return false
         val tierCfg = configRepository.current().tierRouting.resolve(tier)
-        return generateScene(projectId, project.ratio, scene, tierCfg.i2v, tierCfg.i2vParams)
+        val (i2vSlug, i2vParams) = resolveI2v(tierCfg)
+        return generateScene(projectId, project.ratio, scene, i2vSlug, i2vParams)
     }
 
     // ------------------------------------------------------------------ scene

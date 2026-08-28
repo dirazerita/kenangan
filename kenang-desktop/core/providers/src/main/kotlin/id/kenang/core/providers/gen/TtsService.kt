@@ -31,12 +31,16 @@ class TtsService(
     private val configRepository: ConfigRepository,
     private val priceBook: PriceBook,
     private val costTracker: CostTracker,
+    private val settings: id.kenang.core.data.SettingsRepository,
 ) {
     data class Narration(val file: File, val durationMs: Long)
 
     /** Synthesizes [text] (≤ config max chars) and returns the local MP3 + duration. */
     suspend fun synthesize(projectId: String, text: String): AppResult<Narration> {
         val tts = configRepository.current().tts
+        // Settings → Model AI overrides (model slug + default voice).
+        val slug = settings.modelTts ?: tts.slug
+        val voice = settings.defaultVoice ?: tts.voice
         val trimmed = text.trim().take(tts.maxChars)
         if (trimmed.isBlank()) return AppError.Unknown("empty narration").err()
 
@@ -45,13 +49,13 @@ class TtsService(
         val body = buildJsonObject {
             put("text", trimmed)
             putJsonObject("voice_setting") {
-                put("voice_id", tts.voice)
+                put("voice_id", voice)
                 put("speed", 0.95)
             }
             put("output_format", "url")
             put("language_boost", tts.languageBoost)
         }
-        var submitted = when (val s = falClient.submit(tts.slug, body)) {
+        var submitted = when (val s = falClient.submit(slug, body)) {
             is AppResult.Ok -> s.value
             is AppResult.Err -> return s
         }
@@ -61,7 +65,7 @@ class TtsService(
         ) {
             // Troubled call → next key, one retry (owner requirement).
             falClient.rotateKey()
-            submitted = when (val s = falClient.submit(tts.slug, body)) {
+            submitted = when (val s = falClient.submit(slug, body)) {
                 is AppResult.Ok -> s.value
                 is AppResult.Err -> return s
             }
@@ -78,9 +82,9 @@ class TtsService(
 
         return runCatching {
             outFile.writeBytes(http.get(audioUrl).readRawBytes())
-            val est = priceBook.estimate(tts.slug, trimmed.length.toDouble())?.usd ?: 0.0
+            val est = priceBook.estimate(slug, trimmed.length.toDouble())?.usd ?: 0.0
             costTracker.record(
-                projectId, submitted.requestId, tts.slug, submitted.keyLabel,
+                projectId, submitted.requestId, slug, submitted.keyLabel,
                 trimmed.length.toDouble(), "per_1k_chars", est,
             )
             Narration(outFile, durationMs)

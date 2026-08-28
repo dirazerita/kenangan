@@ -52,7 +52,15 @@ class WizardState(
     /** Explicit "Tanpa narasi" choice: clears the text and hides voice options. */
     var noNarration by mutableStateOf(false)
         private set
-    var voiceId by mutableStateOf(configRepository.current().tts.voice)
+    var voiceId by mutableStateOf(
+        settings.defaultVoice ?: configRepository.current().tts.voice,
+    )
+
+    /** Picks a voice and remembers it as the default (also used by final TTS). */
+    fun selectVoice(id: String) {
+        voiceId = id
+        settings.defaultVoice = id
+    }
     var previewPlaying by mutableStateOf(false)
     var previewError by mutableStateOf<String?>(null)
     var musicPath by mutableStateOf<String?>(null)

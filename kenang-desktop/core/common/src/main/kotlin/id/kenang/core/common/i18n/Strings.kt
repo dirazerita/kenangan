@@ -54,6 +54,16 @@ object Strings {
     const val SETTINGS_TELEMETRY = "Kirim data pemakaian anonim (belum aktif)"
     const val SETTINGS_VERSION = "Versi aplikasi"
     const val SETTINGS_SPEND_PER_KEY = "Estimasi biaya bulan ini per key"
+
+    // Settings → Model AI
+    const val SETTINGS_MODELS_TITLE = "Model AI"
+    const val SETTINGS_MODELS_DESC = "Pilih model untuk tiap tahap. \"Bawaan\" mengikuti pengaturan aplikasi; opsi bertanda ◦ belum teruji penuh — hasil dan biaya bisa berbeda."
+    const val SETTINGS_MODEL_VIDEO = "1 · Generate Video"
+    const val SETTINGS_MODEL_VIDEO_NOTE = "Menimpa model dari pilihan Kualitas (Hemat/Standar/Premium) saat membuat video."
+    const val SETTINGS_MODEL_ANALYSIS = "2 · Analisa Foto"
+    const val SETTINGS_MODEL_TTS = "3 · Suara Narasi — model"
+    const val SETTINGS_MODEL_VOICE = "3 · Suara Narasi — jenis suara"
+    const val SETTINGS_MODEL_DEFAULT = "Bawaan"
     const val SETTINGS_REOPEN_ONBOARDING = "Buka panduan awal lagi"
 
     // API Key manager

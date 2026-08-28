@@ -85,10 +85,10 @@ val appModule = module {
 
     // Phase 03 — storyboard engine services
     single { FalStorage(get(), get()) }
-    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { TtsPreviewService(get(), get(), get(), get()) }
-    single { CostEstimator(get(), get()) }
+    single { CostEstimator(get(), get(), get()) }
 
     // Phase 04 — video pipeline (generate → audio → assemble)
     single { GenJobRepository(get(), get()) }
@@ -96,7 +96,7 @@ val appModule = module {
     single { MusicLibrary(get()) }
     single { VideoAssembler(get(), get()) }
     single { ClipDownloader(get()) }
-    single { TtsService(get(), get(), get(), get(), get()) }
-    single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { TtsService(get(), get(), get(), get(), get(), get()) }
+    single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { AssemblyService(get(), get(), get(), get(), get(), get(), get(), get()) }
 }

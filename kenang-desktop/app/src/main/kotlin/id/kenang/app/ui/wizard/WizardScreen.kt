@@ -337,7 +337,7 @@ private fun StepStory(state: WizardState) {
             state.voiceOptions.forEach { voice ->
                 FilterChip(
                     selected = state.voiceId == voice.id,
-                    onClick = { state.voiceId = voice.id },
+                    onClick = { state.selectVoice(voice.id) },
                     label = {
                         Text(voice.labelId + if (voice.gender.isNotBlank()) " (${voice.gender})" else "")
                     },

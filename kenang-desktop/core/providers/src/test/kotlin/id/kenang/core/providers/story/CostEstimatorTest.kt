@@ -11,7 +11,10 @@ import kotlin.test.assertTrue
 class CostEstimatorTest {
 
     private val configRepository = ConfigRepository(userConfigFile = File("does-not-exist.json"))
-    private val estimator = CostEstimator(configRepository, PriceBook(configRepository))
+    private val estimator = CostEstimator(
+        configRepository, PriceBook(configRepository),
+        id.kenang.core.data.SettingsRepository(id.kenang.core.db.DatabaseFactory.createInMemory()),
+    )
 
     private fun scene(id: String, durationS: Long, regens: Long) = Scene(
         scene_id = id, project_id = "p", source_photos_json = "[\"p1\"]", type = "single",

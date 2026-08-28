@@ -25,13 +25,18 @@ data class StoryboardEstimate(
 class CostEstimator(
     private val configRepository: ConfigRepository,
     private val priceBook: PriceBook,
+    private val settings: id.kenang.core.data.SettingsRepository,
 ) {
     fun estimate(scenes: List<Scene>, tier: String): StoryboardEstimate {
         val config = configRepository.current()
         val routed = config.tierRouting.resolve(tier)
+        // Settings → Model AI override changes the real spend — reflect it here.
+        val i2vSlug = settings.modelI2v
+            ?.let { key -> config.modelCatalog.i2v.firstOrNull { it.selectionKey() == key }?.id }
+            ?: routed.i2v
 
         var complete = true
-        val perSecond = priceBook.estimate(routed.i2v, 1.0)?.usd ?: run { complete = false; 0.0 }
+        val perSecond = priceBook.estimate(i2vSlug, 1.0)?.usd ?: run { complete = false; 0.0 }
         val perImage = priceBook.estimate(routed.keyframe, 1.0)?.usd ?: run { complete = false; 0.0 }
 
         // Formula per MASTER_PROMPT_03 §Cost estimator: upcoming I2V spend plus

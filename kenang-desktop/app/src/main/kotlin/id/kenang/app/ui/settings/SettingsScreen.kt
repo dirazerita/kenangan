@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package id.kenang.app.ui.settings
 import id.kenang.app.ui.theme.SkeuoButton
 import id.kenang.app.ui.theme.SkeuoCard
@@ -22,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -120,6 +123,58 @@ fun SettingsScreen(
             openUrl = ELEVENLABS_KEYS_URL,
             online = online,
         )
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
+
+        // ------------------- Model AI (owner feature 2026-08-28) -------------------
+        Text(Strings.SETTINGS_MODELS_TITLE, style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            Strings.SETTINGS_MODELS_DESC,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
+        Spacer(Modifier.height(12.dp))
+        run {
+            val catalog = configRepo.current().modelCatalog
+            var i2vSel by remember { mutableStateOf(settings.modelI2v) }
+            var analysisSel by remember { mutableStateOf(settings.modelAnalysis) }
+            var ttsSel by remember { mutableStateOf(settings.modelTts) }
+            var voiceSel by remember { mutableStateOf(settings.defaultVoice) }
+
+            ModelPicker(
+                title = Strings.SETTINGS_MODEL_VIDEO,
+                note = Strings.SETTINGS_MODEL_VIDEO_NOTE,
+                options = catalog.i2v.map { Triple(it.selectionKey(), it.labelId, it.tested) },
+                selected = i2vSel,
+                onSelect = { i2vSel = it; settings.modelI2v = it },
+            )
+            ModelPicker(
+                title = Strings.SETTINGS_MODEL_ANALYSIS,
+                note = null,
+                options = catalog.analysis.map { Triple(it.selectionKey(), it.labelId, it.tested) },
+                selected = analysisSel,
+                onSelect = { analysisSel = it; settings.modelAnalysis = it },
+            )
+            ModelPicker(
+                title = Strings.SETTINGS_MODEL_TTS,
+                note = null,
+                options = catalog.tts.map { Triple(it.selectionKey(), it.labelId, it.tested) },
+                selected = ttsSel,
+                onSelect = { ttsSel = it; settings.modelTts = it },
+            )
+            ModelPicker(
+                title = Strings.SETTINGS_MODEL_VOICE,
+                note = null,
+                options = configRepo.current().tts.voices.map {
+                    Triple(it.id, it.labelId + if (it.gender.isNotBlank()) " (${it.gender})" else "", true)
+                },
+                selected = voiceSel,
+                onSelect = { voiceSel = it; settings.defaultVoice = it },
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
@@ -289,6 +344,44 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
             )
         }
     }
+}
+
+/**
+ * One Model-AI picker row: a "Bawaan" chip (clears the override) plus one chip
+ * per catalog option, wrapping to the window width. [options] = (key, label,
+ * tested); untested options get a ◦ marker.
+ */
+@Composable
+private fun ModelPicker(
+    title: String,
+    note: String?,
+    options: List<Triple<String, String, Boolean>>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    Text(title, style = MaterialTheme.typography.titleSmall)
+    note?.let {
+        Text(it, style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+    }
+    Spacer(Modifier.height(6.dp))
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilterChip(
+            selected = selected == null,
+            onClick = { onSelect(null) },
+            label = { Text(Strings.SETTINGS_MODEL_DEFAULT) },
+        )
+        options.forEach { (key, label, tested) ->
+            FilterChip(
+                selected = selected == key,
+                onClick = { onSelect(key) },
+                label = { Text(label + if (!tested) " ◦" else "") },
+            )
+        }
+    }
+    Spacer(Modifier.height(12.dp))
 }
 
 /** Remaining fal credit under a key's masked id, after "Tes koneksi". */
