@@ -122,6 +122,61 @@ class StoryboardState(
         scope.launch { sceneRepository.reorder(ordered.map { it.scene_id }) }
     }
 
+    /**
+     * Adds a brand-new scene from the user's own photo + their description
+     * (owner 2026-08-28). Free: the photo IS the keyframe (uploaded only at
+     * video submit), the description rides behind the locked template phrase
+     * like planner motion detail, and there is nothing to regen.
+     */
+    fun addUserScene(
+        file: java.io.File,
+        category: id.kenang.core.common.story.MotionCategory,
+        camera: id.kenang.core.common.story.CameraMove,
+        description: String,
+    ) {
+        scope.launch {
+            val check = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.core.data.story.ImageQuality.check(file)
+            }
+            if (!check.ok) {
+                snackMessage = "${file.name}: ${check.rejectReasonId}"
+                return@launch
+            }
+            val target = java.io.File(
+                id.kenang.core.data.AppDirs.projectKeyframes(projectId),
+                "user_${System.currentTimeMillis()}.${file.extension.ifBlank { "jpg" }}",
+            )
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                file.copyTo(target, overwrite = true)
+            }
+            val spec = MotionSpec(
+                category, camera,
+                detailEn = id.kenang.core.common.story.MotionTemplateValidator.sanitizeDetail(description),
+                detailId = description.trim().take(260),
+            )
+            val order = (scenes.maxOfOrNull { it.order_index } ?: -1L) + 1
+            sceneRepository.upsert(
+                Scene(
+                    scene_id = "sc_user_${System.currentTimeMillis()}",
+                    project_id = projectId,
+                    source_photos_json = "[]",
+                    type = "custom",
+                    vibe = project?.vibe ?: "asli",
+                    keyframe_prompt_en = "",
+                    keyframe_url = null,
+                    motion_prompt_en = MotionTemplates.buildPromptEn(spec),
+                    motion_summary_id = MotionTemplates.buildSummaryId(spec),
+                    duration_s = project?.scene_duration_s ?: 5L,
+                    regen_count = 0,
+                    status = SceneStatus.KEYFRAME_READY,
+                    order_index = order,
+                    local_keyframe_path = target.absolutePath,
+                    local_clip_path = null,
+                ),
+            )
+        }
+    }
+
     /** Replaces a scene's keyframe with the user's own image (free, no API). */
     fun replaceKeyframe(scene: Scene, file: java.io.File) {
         scope.launch {

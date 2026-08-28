@@ -96,6 +96,7 @@ fun StoryboardScreen(
     }
 
     var editing by remember { mutableStateOf<Scene?>(null) }
+    var showAddScene by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         // ---------- Header ----------
@@ -177,7 +178,40 @@ fun StoryboardScreen(
                     },
                 )
             }
+            // Owner feature 2026-08-28: append your own photo as a new scene.
+            item(key = "add-user-scene") {
+                SkeuoCard(
+                    Modifier.height(180.dp).fillMaxWidth().clickable { showAddScene = true },
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("＋", style = MaterialTheme.typography.headlineMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text(Strings.SB_ADD_SCENE, style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            Strings.SB_ADD_SCENE_NOTE,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    if (showAddScene) {
+        AddSceneDialog(
+            onAdd = { file, category, camera, description ->
+                state.addUserScene(file, category, camera, description)
+                showAddScene = false
+            },
+            onDismiss = { showAddScene = false },
+        )
     }
 
     editing?.let { scene ->
@@ -312,7 +346,8 @@ private fun SceneCard(
                     }
                     TextButton(
                         onClick = onRegen,
-                        enabled = scene.status == SceneStatus.KEYFRAME_READY,
+                        // User-added scenes have no source photo/prompt to regen from.
+                        enabled = scene.status == SceneStatus.KEYFRAME_READY && scene.type != "custom",
                     ) {
                         Icon(Icons.Default.Refresh, null, Modifier.width(16.dp))
                         Spacer(Modifier.width(4.dp))
@@ -453,6 +488,75 @@ private fun MotionEditorDialog(
             }
         },
         confirmButton = { SkeuoButton(onClick = { onSave(spec) }) { Text(Strings.SAVE) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.CANCEL) } },
+    )
+}
+
+/**
+ * "Tambah adegan sendiri": the user's photo becomes the keyframe (free), their
+ * Indonesian description rides behind the locked motion-template phrase, and
+ * category/camera stay template-constrained like the motion editor.
+ */
+@Composable
+private fun AddSceneDialog(
+    onAdd: (java.io.File, MotionCategory, CameraMove, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var file by remember { mutableStateOf<java.io.File?>(null) }
+    var description by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(MotionCategory.SMILE) }
+    var camera by remember { mutableStateOf(CameraMove.SLOW_PUSH_IN) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(Strings.SB_ADD_SCENE_TITLE) },
+        text = {
+            Column {
+                val bmp by rememberFileBitmap(file?.absolutePath)
+                Box(
+                    Modifier.fillMaxWidth().height(150.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { pickImage()?.let { file = it } },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    bmp?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+                        ?: Text(Strings.SB_ADD_SCENE_NEED_PHOTO)
+                }
+                Spacer(Modifier.height(8.dp))
+                SkeuoOutlinedButton(onClick = { pickImage()?.let { file = it } }, modifier = Modifier.fillMaxWidth()) {
+                    Text(Strings.SB_ADD_SCENE_PICK)
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it.take(260) },
+                    label = { Text(Strings.SB_ADD_SCENE_DESC) },
+                    placeholder = { Text(Strings.SB_ADD_SCENE_DESC_HINT) },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                EnumDropdown(Strings.SB_MOTION_CATEGORY, MotionCategory.entries.map { it.key }, category.key) {
+                    category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE
+                }
+                Spacer(Modifier.height(8.dp))
+                EnumDropdown(Strings.SB_MOTION_CAMERA, CameraMove.entries.map { it.key }, camera.key) {
+                    camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    Strings.SB_ADD_SCENE_NOTE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        },
+        confirmButton = {
+            SkeuoButton(
+                onClick = { file?.let { onAdd(it, category, camera, description) } },
+                enabled = file != null,
+            ) { Text(Strings.SAVE) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.CANCEL) } },
     )
 }
