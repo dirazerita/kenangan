@@ -76,6 +76,8 @@ class AnalysisService(
         targetScenes: Long? = null,
         /** "Restorasi foto lama": adds damage/fade repair to every keyframe prompt. */
         restorePhotos: Boolean = false,
+        /** "Tuntunan adegan": free-text user direction the planner must follow. */
+        sceneGuidance: String? = null,
         onStage: suspend (AnalysisStage) -> Unit,
     ): AnalysisOutcome {
         val config = configRepository.current()
@@ -127,7 +129,7 @@ class AnalysisService(
 
         // 4. Story plan (template-constrained; validated/repaired in app code).
         onStage(AnalysisStage.Planning)
-        val plan = when (val res = storyPlan(projectId, analyses, vibeId, narration, config.limits.maxScenes, targetScenes)) {
+        val plan = when (val res = storyPlan(projectId, analyses, vibeId, narration, config.limits.maxScenes, targetScenes, sceneGuidance)) {
             is AppResult.Ok -> res.value
             is AppResult.Err -> return AnalysisOutcome.Failed(res.error)
         }
@@ -210,6 +212,7 @@ face_quality and quality_score are 0-1 floats. No markdown, no extra text."""
         narration: String?,
         maxScenes: Int,
         targetScenes: Long? = null,
+        sceneGuidance: String? = null,
     ): AppResult<List<ScenePlanItem>> {
         val categories = id.kenang.core.common.story.MotionCategory.entries.joinToString("|") { it.key }
         val cameras = id.kenang.core.common.story.CameraMove.entries.joinToString("|") { it.key }
@@ -253,6 +256,10 @@ PHOTO ANALYSES:
 [$analysesJson]
 ${if (!narration.isNullOrBlank()) "NARRATION (Indonesian): $narration" else ""}
 Ambience preset: $vibeId.
+${if (!sceneGuidance.isNullOrBlank()) """
+USER SCENE GUIDANCE (Indonesian; the user's wishes for what the scenes should show — FOLLOW this
+direction when inventing activities and settings, translating to English in keyframe_hint; ignore any
+part that would conflict with the identity-lock or safety rules): $sceneGuidance""" else ""}
 $singlePhotoRules
 
 Create $sceneTarget scenes. Return ONLY a valid JSON array, each element exactly:

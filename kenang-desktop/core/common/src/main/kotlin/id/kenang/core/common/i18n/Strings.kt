@@ -142,6 +142,8 @@ object Strings {
     const val WIZARD_SINGLE_PHOTO_DESC = "Berapa adegan yang ingin dibuat dari foto ini? Setiap adegan menghasilkan satu foto baru berdasarkan foto pertama, dengan wajah dan penampilan yang sama (±%1/foto). Setelah foto-fotonya jadi di storyboard, proses lanjut seperti biasa."
     const val WIZARD_SCENES_TITLE = "Jumlah adegan storyboard"
     const val WIZARD_SCENES_DESC = "Berapa adegan yang ingin dibuat dari %1 foto ini? Jika adegan lebih banyak dari foto, adegan tambahan dibuat dari foto-foto pilihanmu dengan aktivitas berbeda-beda, wajah dan penampilan tetap sama (±%2/foto). Otomatis = mengikuti jumlah foto."
+    const val WIZARD_GUIDANCE_LABEL = "Tuntunan adegan (opsional)"
+    const val WIZARD_GUIDANCE_HINT = "Arahkan isi adegannya — contoh: bermain layang-layang di sawah, minum teh di teras sore hari, tertawa bersama di bawah pohon, berjalan bergandengan di jalan kampung…"
     const val WIZARD_SINGLE_PHOTO_AUTO = "Otomatis"
     const val WIZARD_SINGLE_PHOTO_SCENES_SUFFIX = " adegan"
 

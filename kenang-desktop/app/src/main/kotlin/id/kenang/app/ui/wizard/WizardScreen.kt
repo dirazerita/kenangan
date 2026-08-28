@@ -273,6 +273,19 @@ private fun StepPhotos(state: WizardState) {
                                 )
                             }
                     }
+                    Spacer(Modifier.height(12.dp))
+                    // Tuntunan adegan (owner 2026-08-28): free-text direction
+                    // the story planner must follow, so scenes go where the
+                    // user wants instead of generic variations.
+                    OutlinedTextField(
+                        value = state.sceneGuidance,
+                        onValueChange = { state.sceneGuidance = it.take(300) },
+                        label = { Text(Strings.WIZARD_GUIDANCE_LABEL) },
+                        placeholder = { Text(Strings.WIZARD_GUIDANCE_HINT) },
+                        supportingText = { Text("${state.sceneGuidance.length}/300") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }

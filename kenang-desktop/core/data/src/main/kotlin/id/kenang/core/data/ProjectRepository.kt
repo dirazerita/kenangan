@@ -87,6 +87,11 @@ class ProjectRepository(
         db.kenangQueries.updateProjectRestore(if (enabled) 1L else 0L, System.currentTimeMillis(), projectId)
     }
 
+    /** Tuntunan adegan: free-text steering for the story planner. */
+    suspend fun updateSceneGuidance(projectId: String, guidance: String?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectGuidance(guidance?.ifBlank { null }, System.currentTimeMillis(), projectId)
+    }
+
     /** Deletes DB rows (cascade) AND wipes the project folder. */
     suspend fun delete(projectId: String) = withContext(dispatchers.io) {
         db.kenangQueries.transaction {

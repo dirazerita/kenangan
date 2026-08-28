@@ -79,6 +79,7 @@ fun AnalysisScreen(
                 narration = project.narration,
                 targetScenes = project.target_scenes,
                 restorePhotos = project.restore_photos == 1L,
+                sceneGuidance = project.scene_guidance,
             ) { stage ->
                 stageText = when (stage) {
                     is AnalysisStage.Uploading -> Strings.ANALYSIS_UPLOADING + " (${stage.done + 1}/${stage.total})"

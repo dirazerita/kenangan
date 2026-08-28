@@ -68,6 +68,8 @@ class WizardState(
     var targetScenes by mutableStateOf<Long?>(null)
     /** Restorasi foto lama toggle (flag-gated in the UI). */
     var restorePhotos by mutableStateOf(false)
+    /** Tuntunan adegan: free-text steering for the story planner. */
+    var sceneGuidance by mutableStateOf("")
     var ratio by mutableStateOf("9:16")
     var vibeId by mutableStateOf(configRepository.current().vibes.firstOrNull()?.id ?: "asli")
     var durationS by mutableStateOf(5L)
@@ -111,6 +113,7 @@ class WizardState(
                     durationS = p.scene_duration_s
                     targetScenes = p.target_scenes
                     restorePhotos = p.restore_photos == 1L
+                    sceneGuidance = p.scene_guidance ?: ""
                 }
                 reloadPhotos()
             }
@@ -199,6 +202,7 @@ class WizardState(
             // Scene-count choice applies to ANY photo count (owner 2026-08-27).
             projects.updateTargetScenes(id, targetScenes)
             projects.updateRestorePhotos(id, restorePhotos)
+            projects.updateSceneGuidance(id, sceneGuidance)
         }
     }
 
