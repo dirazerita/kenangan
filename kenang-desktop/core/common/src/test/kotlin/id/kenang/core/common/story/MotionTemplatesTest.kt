@@ -22,6 +22,31 @@ class MotionTemplatesTest {
     }
 
     @Test
+    fun `detail sentences extend the prompt and the ID summary`() {
+        val spec = MotionSpec(
+            MotionCategory.LAUGH_SOFTLY, CameraMove.GENTLE_PAN,
+            subjectEn = "the family", subjectId = "Keluarga",
+            detailEn = "They lean toward each other and nod while talking. Leaves sway gently behind them.",
+            detailId = "Mereka saling mendekat sambil mengobrol, dedaunan bergoyang pelan.",
+        )
+        val prompt = MotionTemplates.buildPromptEn(spec)
+        assertTrue(prompt.startsWith("The family laughs softly; gentle pan."))
+        assertTrue(prompt.contains("Leaves sway gently"))
+        assertIs<MotionTemplateValidator.Verdict.Valid>(MotionTemplateValidator.validatePromptEn(prompt))
+        assertTrue(MotionTemplates.buildSummaryId(spec).contains("dedaunan bergoyang"))
+    }
+
+    @Test
+    fun `sanitizeDetail drops whole sentences with forbidden verbs and caps length`() {
+        val raw = "He nods slowly and adjusts his hat. Then he starts running across the field. " +
+            "Sunlight shifts softly over the porch"
+        val clean = MotionTemplateValidator.sanitizeDetail(raw)
+        assertEquals("He nods slowly and adjusts his hat. Sunlight shifts softly over the porch.", clean)
+        val long = (1..60).joinToString(" ") { "The curtain moves gently in the breeze." }
+        assertTrue(MotionTemplateValidator.sanitizeDetail(long).length <= 420)
+    }
+
+    @Test
     fun `valid template prompt passes the validator`() {
         val prompt = MotionTemplates.buildPromptEn(MotionSpec(MotionCategory.SMILE, CameraMove.STATIC))
         assertIs<MotionTemplateValidator.Verdict.Valid>(MotionTemplateValidator.validatePromptEn(prompt))

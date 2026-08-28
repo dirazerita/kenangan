@@ -53,6 +53,14 @@ data class MotionSpec(
     val subjectEn: String = "the person",
     /** Indonesian subject phrase, e.g. "Beliau". */
     val subjectId: String = "Beliau",
+    /**
+     * Planner-written continuation sentences (EN) describing the gentle motion
+     * arc across the whole clip. Sanitized by [MotionTemplateValidator.sanitizeDetail]
+     * before it ever gets here — the template phrase above stays the anchor.
+     */
+    val detailEn: String = "",
+    /** Indonesian version of [detailEn] for the scene card. */
+    val detailId: String = "",
 ) {
     init {
         require(adjectives.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.size <= MotionTemplates.MAX_ADJECTIVE_WORDS) {
@@ -69,13 +77,19 @@ object MotionTemplates {
         val base = spec.category.phraseEn.replace("{s}", spec.subjectEn)
         val adj = spec.adjectives.trim()
         val motion = if (adj.isEmpty()) base else "$base, $adj"
-        return "${motion.replaceFirstChar { it.uppercase() }}; ${spec.camera.phraseEn}."
+        val head = "${motion.replaceFirstChar { it.uppercase() }}; ${spec.camera.phraseEn}."
+        // Detail sentences carry the rest of the clip's motion arc — without
+        // them 10s clips collapse into one short gesture (dogfood 2026-08-28).
+        val detail = spec.detailEn.trim()
+        return if (detail.isEmpty()) head else "$head $detail"
     }
 
     /** Builds the Indonesian summary shown on scene cards — pure local mapping. */
     fun buildSummaryId(spec: MotionSpec): String {
         val base = spec.category.phraseId.replace("{s}", spec.subjectId)
-        return "${base.replaceFirstChar { it.uppercase() }}; ${spec.camera.phraseId}."
+        val head = "${base.replaceFirstChar { it.uppercase() }}; ${spec.camera.phraseId}."
+        val detail = spec.detailId.trim()
+        return if (detail.isEmpty()) head else "$head $detail"
     }
 }
 
@@ -130,6 +144,27 @@ object MotionTemplateValidator {
         val camera = CameraMove.fromKey(cameraKey) ?: CameraMove.SLOW_PUSH_IN
         val cleanAdjectives = sanitizeAdjectives(adjectives)
         return MotionSpec(category, camera, cleanAdjectives)
+    }
+
+    /**
+     * Sanitizes planner-written motion detail: whole sentences containing a
+     * forbidden verb are dropped (never word-patched — a patched sentence can
+     * flip meaning), the rest is capped at [maxChars] on a sentence boundary.
+     */
+    fun sanitizeDetail(raw: String, maxChars: Int = 420): String {
+        val sentences = raw.trim().split(Regex("(?<=[.!?])\\s+"))
+        val kept = StringBuilder()
+        for (s in sentences) {
+            val clean = s.trim()
+            if (clean.isEmpty()) continue
+            val words = clean.lowercase().split(Regex("[^a-z-]+"))
+            if (words.any { it in FORBIDDEN }) continue
+            if (kept.length + clean.length + 1 > maxChars) break
+            if (kept.isNotEmpty()) kept.append(' ')
+            kept.append(clean)
+        }
+        val out = kept.toString()
+        return if (out.isEmpty() || out.endsWith(".") || out.endsWith("!") || out.endsWith("?")) out else "$out."
     }
 
     /** Drops forbidden words from the free adjective field and caps it at 8 words. */

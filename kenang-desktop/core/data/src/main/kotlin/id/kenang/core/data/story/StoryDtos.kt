@@ -41,6 +41,10 @@ data class ScenePlanItem(
     @SerialName("subject_en") val subjectEn: String = "the person",
     /** ID subject phrase for the card summary, e.g. "Beliau". */
     @SerialName("subject_id") val subjectId: String = "Beliau",
+    /** 2-3 EN sentences: the gentle motion arc across the whole clip. */
+    @SerialName("motion_detail_en") val motionDetailEn: String = "",
+    /** 1-2 ID sentences: the same arc, shown to the user on the scene card. */
+    @SerialName("motion_detail_id") val motionDetailId: String = "",
 )
 
 /** Moderation pre-check result per photo (client-side, before paid calls). */

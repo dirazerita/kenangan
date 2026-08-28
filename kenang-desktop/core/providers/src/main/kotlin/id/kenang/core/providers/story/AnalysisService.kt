@@ -160,7 +160,12 @@ class AnalysisService(
                 .coerceIn(1, config.limits.maxSubjectsFusion)
             val isFusion = item.type == "fusion" && item.sourcePhotos.size >= 2
             val spec = MotionTemplateValidator.resolveOrRepair(item.motionCategory, item.camera, item.adjectives)
-                .copy(subjectEn = item.subjectEn.ifBlank { "the person" }, subjectId = item.subjectId.ifBlank { "Beliau" })
+                .copy(
+                    subjectEn = item.subjectEn.ifBlank { "the person" },
+                    subjectId = item.subjectId.ifBlank { "Beliau" },
+                    detailEn = MotionTemplateValidator.sanitizeDetail(item.motionDetailEn),
+                    detailId = item.motionDetailId.trim().take(260),
+                )
             val scene = Scene(
                 scene_id = "sc_${projectId.take(8)}_$index",
                 project_id = projectId,
@@ -280,15 +285,23 @@ Create $sceneTarget scenes. Return ONLY a valid JSON array, each element exactly
  "adjectives":"<max 8 gentle descriptive words, optional>",
  "keyframe_hint":"<one short English sentence describing the scene composition>",
  "subject_en":"<English subject phrase e.g. 'the elderly woman'>",
- "subject_id":"<Indonesian subject phrase e.g. 'Beliau' or 'Mereka'>"}
+ "subject_id":"<Indonesian subject phrase e.g. 'Beliau' or 'Mereka'>",
+ "motion_detail_en":"<2-3 English sentences: the full motion arc of the clip>",
+ "motion_detail_id":"<1-2 Indonesian sentences summarizing that same motion arc>"}
 Rules: motion_category and camera MUST be from the given lists. Use "fusion" with 2+ source_photos
 for at most one scene, only when subjects from different photos belong together.
+motion_detail_en must choreograph the WHOLE 5-10 second clip as a sequence of gentle everyday
+movements that continue after the opening gesture — what each person does next (turning to each
+other, adjusting clothing, nodding, gesturing while talking, leaning closer, shifting weight),
+plus subtle ambient life (leaves swaying, curtains moving, light shifting, steam rising). Only calm
+slow movements — no running, jumping or dancing. Make each scene's motion arc DIFFERENT from every
+other scene's. motion_detail_id says the same thing briefly in warm natural Indonesian.
 Order scenes as a calm narrative arc. Give every scene a keyframe_hint with a concrete activity and
 framing so no two scenes look alike. No markdown, no extra text."""
         // Response budget scales with the scene count: each plan item costs
-        // ~200 tokens, and a fixed 1600 silently truncated 10-12-scene plans
-        // into invalid JSON (dogfood 2026-08-27).
-        val planTokens = 500 + sceneTarget * 220
+        // ~330 tokens with the motion-detail fields (a fixed 1600 once
+        // silently truncated 10-12-scene plans into invalid JSON).
+        val planTokens = 500 + sceneTarget * 360
         return visionJson(projectId, prompt, emptyList(), maxTokens = planTokens, textOnly = true) { raw ->
             json.decodeFromString<List<ScenePlanItem>>(raw)
         }
