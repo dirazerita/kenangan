@@ -181,15 +181,27 @@ fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
 
         // ------------------- Per-key monthly spend (AD-14) -------------------
-        Text(Strings.SETTINGS_SPEND_PER_KEY, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
-        if (perKeySpend.isEmpty()) {
-            Text("—", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-        } else {
-            perKeySpend.forEach { spend ->
-                Row(Modifier.padding(vertical = 2.dp)) {
-                    Text(spend.keyLabel ?: "(tanpa label)", Modifier.width(240.dp))
-                    Text("$" + "%.2f".format(spend.usd) + " (${Strings.ESTIMATE_LABEL})")
+        // Behind a button (owner 2026-08-28): the list got long, so it only
+        // renders on demand.
+        run {
+            var showSpend by remember { mutableStateOf(false) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(Strings.SETTINGS_SPEND_PER_KEY, style = MaterialTheme.typography.titleMedium)
+                SkeuoOutlinedButton(onClick = { showSpend = !showSpend }) {
+                    Text(if (showSpend) Strings.SETTINGS_HIDE_SPEND else Strings.SETTINGS_SHOW_SPEND)
+                }
+            }
+            if (showSpend) {
+                Spacer(Modifier.height(8.dp))
+                if (perKeySpend.isEmpty()) {
+                    Text("—", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                } else {
+                    perKeySpend.forEach { spend ->
+                        Row(Modifier.padding(vertical = 2.dp)) {
+                            Text(spend.keyLabel ?: "(tanpa label)", Modifier.width(240.dp))
+                            Text("$" + "%.2f".format(spend.usd) + " (${Strings.ESTIMATE_LABEL})")
+                        }
+                    }
                 }
             }
         }

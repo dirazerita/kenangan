@@ -54,6 +54,8 @@ object Strings {
     const val SETTINGS_TELEMETRY = "Kirim data pemakaian anonim (belum aktif)"
     const val SETTINGS_VERSION = "Versi aplikasi"
     const val SETTINGS_SPEND_PER_KEY = "Estimasi biaya bulan ini per key"
+    const val SETTINGS_SHOW_SPEND = "Tampilkan biaya per key"
+    const val SETTINGS_HIDE_SPEND = "Sembunyikan"
 
     // Settings → Model AI
     const val SETTINGS_MODELS_TITLE = "Model AI"

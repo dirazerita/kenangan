@@ -171,6 +171,19 @@ class AssemblyService(
                     projectId, result.value.absolutePath, ratioLabel, project.tier,
                     costTracker.projectTotalUsd(projectId),
                 )
+                // Owner 2026-08-28: also ship the individual scene clips next
+                // to the merged video (OUTPUT/<project>/Adegan/Adegan_01.mp4…).
+                runCatching {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val sceneDir = File(result.value.parentFile, "Adegan").apply { mkdirs() }
+                        done.forEachIndexed { index, scene ->
+                            scene.local_clip_path?.let(::File)?.takeIf { it.isFile }?.copyTo(
+                                File(sceneDir, "Adegan_%02d.mp4".format(index + 1)),
+                                overwrite = true,
+                            )
+                        }
+                    }
+                }.onFailure { Napier.w("scene clip export failed: ${it.message}") }
                 projects.updateStatus(projectId, "done")
                 runCatching {
                     // Per-output thumbnail so a re-export never clobbers the
