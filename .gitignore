@@ -29,6 +29,10 @@ demo-run.log
 kenang-desktop/app/ffmpeg-dist/
 # Distributable installer output of "Buat Installer Kenang.bat" (~240 MB)
 DISTRIBUSI/
+# Android: SDK location is machine-specific (Android Studio regenerates it)
+ANDROID/local.properties
+ANDROID/.idea/
+ANDROID/captures/
 
 # ---------------------------------------------------------------------------
 # PoC heavy artifacts (venv + 200 MB of generated clips/audio)

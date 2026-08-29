@@ -1,0 +1,2 @@
+-- Tuntunan adegan: free-text user guidance steering the story planner.
+ALTER TABLE project ADD COLUMN scene_guidance TEXT;

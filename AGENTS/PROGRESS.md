@@ -75,6 +75,16 @@
 - [ ] Legal pages published; consent gate linked
 - [ ] Beta checklist executed (clean-VM, offline-grace, revoke, kill-switch, friction run, 20–30 testers)
 
+## ANDROID PORT (owner request 2026-08-29) — see ANDROID/README.md, D-016..D-018
+- [x] Standalone Android Studio project at `ANDROID/` (AGP 8.13.2, Gradle 8.14.3, minSdk 29, compileSdk 36)
+- [x] Core reused by copy: config, prompts, motion templates, fal client, analysis, storyboard, orchestration
+- [x] Platform seams rewritten: AppDirs, image decode/upload, SQLDelight driver, key vault, TTS playback, pickers
+- [x] Video assembly on Media3 Transformer (no xfade, no burned-in subtitles — KI-020)
+- [x] Output to gallery `Movies/Kenang/<project>/` + per-scene clips, no storage permission
+- [x] Phone layouts fixed (Home header, wizard step chips, Settings key rows) — desktop-width Rows pushed controls off-screen
+- [x] Verified on emulator: install, run, onboarding, Home, wizard, Settings, DB, key vault
+- [ ] Owner end-to-end run on a real device with a fal key (analysis → storyboard → video) — KI-019
+- [ ] Decide whether to extract a shared KMP core to end the two-place maintenance (KI-021)
 ## BLOCKERS
 - (none — Phase 00 blockers all closed 2026-08-25: B-1 fal top-up done; B-2 invalid GOOGLE_API_KEY downgraded to OPTIONAL, fal VLM route proven; B-3 paid ElevenLabs plan NOT NEEDED, MiniMax locked as default voice; B-4 owner scored 49/49 rows → PASS)
 

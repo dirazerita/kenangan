@@ -1,0 +1,17 @@
+package id.kenang.core.common
+
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+
+/** Injectable dispatchers so tests can swap in a TestDispatcher. */
+interface DispatcherProvider {
+    val io: CoroutineDispatcher
+    val default: CoroutineDispatcher
+    val main: CoroutineDispatcher
+}
+
+class DefaultDispatcherProvider : DispatcherProvider {
+    override val io: CoroutineDispatcher = Dispatchers.IO
+    override val default: CoroutineDispatcher = Dispatchers.Default
+    override val main: CoroutineDispatcher = Dispatchers.Main
+}

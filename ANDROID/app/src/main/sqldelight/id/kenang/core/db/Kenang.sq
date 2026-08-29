@@ -1,0 +1,264 @@
+-- Kenang local DB — mirrors MEMORY §6 contracts. All writes run in transactions;
+-- the app must be able to resume any project after a force-kill.
+
+CREATE TABLE project (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  ratio TEXT NOT NULL,            -- "9:16" | "16:9"
+  vibe TEXT NOT NULL,
+  tier TEXT NOT NULL,             -- "hemat" | "standar" | "premium"
+  narration TEXT,
+  music_path TEXT,
+  status TEXT NOT NULL,           -- "draft" | "analyzing" | "storyboard" | "generating" | "done" | "failed"
+  scene_duration_s INTEGER NOT NULL DEFAULT 5,
+  target_scenes INTEGER,          -- single-photo projects: user-chosen scene count (NULL = auto)
+  restore_photos INTEGER NOT NULL DEFAULT 0, -- restorasi foto lama toggle
+  scene_guidance TEXT,            -- tuntunan adegan (free-text planner steering)
+  custom_vibe TEXT,               -- suasana kustom (used when vibe='custom')
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE photo (
+  id TEXT NOT NULL PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  local_path TEXT NOT NULL,
+  upload_id TEXT,
+  analysis_json TEXT              -- PhotoAnalysis JSON (MEMORY §6)
+);
+
+CREATE TABLE scene (
+  scene_id TEXT NOT NULL PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  source_photos_json TEXT NOT NULL, -- JSON array of photo ids
+  type TEXT NOT NULL,               -- "single" | "fusion"
+  vibe TEXT NOT NULL,
+  keyframe_prompt_en TEXT,
+  keyframe_url TEXT,
+  motion_prompt_en TEXT,
+  motion_summary_id TEXT,
+  duration_s INTEGER NOT NULL,
+  regen_count INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL,             -- draft|keyframe_pending|keyframe_ready|confirmed|generating|done|failed
+  order_index INTEGER NOT NULL DEFAULT 0,
+  local_keyframe_path TEXT,
+  local_clip_path TEXT
+);
+
+CREATE TABLE job (
+  id TEXT NOT NULL PRIMARY KEY,
+  scene_id TEXT NOT NULL REFERENCES scene(scene_id) ON DELETE CASCADE,
+  backend_job_id TEXT,              -- fal queue request id
+  model TEXT,
+  key_label TEXT,                   -- which fal key submitted this job (AD-14); polling sticks to it
+  status TEXT NOT NULL,             -- queued|running|done|failed_retryable|failed_permanent
+  error_code TEXT,
+  est_cost_usd REAL,
+  output_url TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE output (
+  id TEXT NOT NULL PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  path TEXT NOT NULL,
+  ratio TEXT NOT NULL,
+  tier TEXT NOT NULL,
+  est_cost_usd REAL NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+-- CostTracker ledger (AD-14: key_label enables per-key/per-client reporting).
+CREATE TABLE gen_cost (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  job_id TEXT,
+  model TEXT NOT NULL,
+  key_label TEXT,
+  qty REAL NOT NULL,
+  unit TEXT NOT NULL,               -- per_second|per_image|per_1k_chars
+  est_usd REAL NOT NULL,
+  at INTEGER NOT NULL
+);
+
+-- Key-value settings. Keys reserved for the future LicenseState cache and the
+-- trial export counter (unused while LicenseGate is stubbed — D-002).
+CREATE TABLE settings (
+  key TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- ---------- project ----------
+
+selectAllProjects:
+SELECT * FROM project ORDER BY updated_at DESC;
+
+selectProjectById:
+SELECT * FROM project WHERE id = ?;
+
+insertProject:
+INSERT INTO project(id, name, ratio, vibe, tier, narration, music_path, status, scene_duration_s, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateProjectStatus:
+UPDATE project SET status = ?, updated_at = ? WHERE id = ?;
+
+updateProjectMeta:
+UPDATE project SET name = ?, ratio = ?, vibe = ?, tier = ?, narration = ?, music_path = ?, scene_duration_s = ?, updated_at = ?
+WHERE id = ?;
+
+updateProjectTier:
+UPDATE project SET tier = ?, updated_at = ? WHERE id = ?;
+
+updateProjectTargetScenes:
+UPDATE project SET target_scenes = ?, updated_at = ? WHERE id = ?;
+
+updateProjectRestore:
+UPDATE project SET restore_photos = ?, updated_at = ? WHERE id = ?;
+
+updateProjectGuidance:
+UPDATE project SET scene_guidance = ?, updated_at = ? WHERE id = ?;
+
+updateProjectCustomVibe:
+UPDATE project SET custom_vibe = ?, updated_at = ? WHERE id = ?;
+
+deleteProject:
+DELETE FROM project WHERE id = ?;
+
+-- ---------- photo ----------
+
+selectPhotosByProject:
+SELECT * FROM photo WHERE project_id = ?;
+
+selectFirstPhotoPath:
+SELECT local_path FROM photo WHERE project_id = ? LIMIT 1;
+
+insertPhoto:
+INSERT INTO photo(id, project_id, local_path, upload_id, analysis_json)
+VALUES (?, ?, ?, ?, ?);
+
+deletePhoto:
+DELETE FROM photo WHERE id = ?;
+
+updatePhotoUpload:
+UPDATE photo SET upload_id = ? WHERE id = ?;
+
+updatePhotoAnalysis:
+UPDATE photo SET analysis_json = ? WHERE id = ?;
+
+deletePhotosByProject:
+DELETE FROM photo WHERE project_id = ?;
+
+-- ---------- scene ----------
+
+selectScenesByProject:
+SELECT * FROM scene WHERE project_id = ? ORDER BY order_index;
+
+selectFirstKeyframePath:
+SELECT local_keyframe_path FROM scene
+WHERE project_id = ? AND local_keyframe_path IS NOT NULL
+ORDER BY order_index LIMIT 1;
+
+upsertScene:
+INSERT OR REPLACE INTO scene(scene_id, project_id, source_photos_json, type, vibe,
+  keyframe_prompt_en, keyframe_url, motion_prompt_en, motion_summary_id,
+  duration_s, regen_count, status, order_index, local_keyframe_path, local_clip_path)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteScene:
+DELETE FROM scene WHERE scene_id = ?;
+
+deleteScenesByProject:
+DELETE FROM scene WHERE project_id = ?;
+
+countScenes:
+SELECT COUNT(*) FROM scene WHERE project_id = ?;
+
+updateSceneStatus:
+UPDATE scene SET status = ? WHERE scene_id = ?;
+
+updateSceneKeyframe:
+UPDATE scene SET status = ?, keyframe_url = ?, local_keyframe_path = ?, regen_count = regen_count + ?
+WHERE scene_id = ?;
+
+updateSceneMotion:
+UPDATE scene SET motion_prompt_en = ?, motion_summary_id = ? WHERE scene_id = ?;
+
+updateSceneOrder:
+UPDATE scene SET order_index = ? WHERE scene_id = ?;
+
+updateSceneDuration:
+UPDATE scene SET duration_s = ? WHERE scene_id = ?;
+
+selectSceneById:
+SELECT * FROM scene WHERE scene_id = ?;
+
+-- ---------- job ----------
+
+selectOpenJobs:
+SELECT * FROM job WHERE status IN ('queued', 'running');
+
+upsertJob:
+INSERT OR REPLACE INTO job(id, scene_id, backend_job_id, model, key_label, status,
+  error_code, est_cost_usd, output_url, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateJobStatus:
+UPDATE job SET status = ?, error_code = ?, output_url = ?, updated_at = ? WHERE id = ?;
+
+updateJobSubmitted:
+UPDATE job SET backend_job_id = ?, key_label = ?, status = ?, updated_at = ? WHERE id = ?;
+
+selectJobById:
+SELECT * FROM job WHERE id = ?;
+
+selectJobsByProject:
+SELECT job.* FROM job
+JOIN scene ON job.scene_id = scene.scene_id
+WHERE scene.project_id = ?
+ORDER BY job.created_at;
+
+selectLatestJobForScene:
+SELECT * FROM job WHERE scene_id = ? ORDER BY created_at DESC, id DESC LIMIT 1;
+
+updateSceneClipPath:
+UPDATE scene SET local_clip_path = ? WHERE scene_id = ?;
+
+-- ---------- output ----------
+
+insertOutput:
+INSERT INTO output(id, project_id, path, ratio, tier, est_cost_usd, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+selectOutputsByProject:
+SELECT * FROM output WHERE project_id = ? ORDER BY created_at DESC;
+
+-- ---------- gen_cost (CostTracker) ----------
+
+insertGenCost:
+INSERT INTO gen_cost(project_id, job_id, model, key_label, qty, unit, est_usd, at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+sumCostByProject:
+SELECT COALESCE(SUM(est_usd), 0.0) FROM gen_cost WHERE project_id = ?;
+
+sumCostSince:
+SELECT COALESCE(SUM(est_usd), 0.0) FROM gen_cost WHERE at >= ?;
+
+sumCostPerKeySince:
+SELECT key_label, COALESCE(SUM(est_usd), 0.0) AS total_usd
+FROM gen_cost WHERE at >= ?
+GROUP BY key_label
+ORDER BY total_usd DESC;
+
+-- ---------- settings ----------
+
+selectSetting:
+SELECT value FROM settings WHERE key = ?;
+
+upsertSetting:
+INSERT OR REPLACE INTO settings(key, value) VALUES (?, ?);
+
+deleteSetting:
+DELETE FROM settings WHERE key = ?;

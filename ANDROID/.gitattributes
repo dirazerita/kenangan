@@ -1,0 +1,5 @@
+# The Gradle wrapper script must keep LF endings or it breaks on macOS/Linux.
+gradlew text eol=lf
+*.jar binary
+*.mp3 binary
+*.png binary

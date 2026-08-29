@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Everything the app produces lives under filesDir/Kenang. -->
+    <files-path name="kenang_files" path="Kenang/" />
+    <cache-path name="kenang_cache" path="." />
+</paths>

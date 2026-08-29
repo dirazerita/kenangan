@@ -1,0 +1,3 @@
+-- Single-photo storyboard picker: how many scenes to derive from one photo
+-- (NULL = automatic, planner decides).
+ALTER TABLE project ADD COLUMN target_scenes INTEGER;

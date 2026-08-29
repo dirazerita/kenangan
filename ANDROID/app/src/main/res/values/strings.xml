@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- User-facing copy lives in core/common/i18n/Strings.kt (Indonesian);
+         this file only carries what the Android manifest needs. -->
+    <string name="app_name">Kenang</string>
+</resources>
