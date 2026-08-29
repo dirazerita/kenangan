@@ -27,6 +27,8 @@ build/
 demo-run.log
 # Pinned FFmpeg binary (138 MB) — staged by the downloadFfmpeg Gradle task
 kenang-desktop/app/ffmpeg-dist/
+# Distributable installer output of "Buat Installer Kenang.bat" (~240 MB)
+DISTRIBUSI/
 
 # ---------------------------------------------------------------------------
 # PoC heavy artifacts (venv + 200 MB of generated clips/audio)

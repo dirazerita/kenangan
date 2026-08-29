@@ -178,7 +178,10 @@ compose.desktop {
             windows {
                 menuGroup = "Kenang"
                 shortcut = true
-                dirChooser = true
+                // Lay-user install (owner 2026-08-29): per-user (no admin/UAC
+                // prompt) and no folder question — double-click and it's in.
+                perUserInstall = true
+                dirChooser = false
                 // Custom icon (regenerate with :app:generateIcon).
                 iconFile.set(project.file("icons/kenang.ico"))
                 // Stable upgrade UUID so MSI updates replace older installs — never change.
