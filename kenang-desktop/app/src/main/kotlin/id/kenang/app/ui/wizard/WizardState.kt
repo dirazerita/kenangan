@@ -99,6 +99,29 @@ class WizardState(
         }
     }
 
+    /**
+     * Picks a narration suggestion at random, never the one the previous
+     * project got (owner 2026-09-01: every project used to open with the same
+     * text). The chosen index is remembered in settings so the variety holds
+     * across app restarts, not just within one session.
+     */
+    private fun nextNarrationSuggestion(): String {
+        val templates = Strings.WIZARD_NARRATION_TEMPLATES
+        if (templates.isEmpty()) return ""
+        val previous = settings.lastNarrationTemplate
+        val candidates = templates.indices.filter { it != previous }
+            .ifEmpty { templates.indices.toList() }
+        val picked = candidates.random()
+        settings.lastNarrationTemplate = picked
+        return templates[picked]
+    }
+
+    /** "Ganti contoh narasi": swaps in another suggestion (never the same one). */
+    fun shuffleNarration() {
+        narration = nextNarrationSuggestion()
+        persistMeta()
+    }
+
     fun start() {
         scope.launch {
             val id = projectId
@@ -106,7 +129,7 @@ class WizardState(
                 projectId = projects.create(name, ratio, vibeId, config.tierRouting.defaultTier)
                 // Prefill the narration so users edit instead of starting from
                 // a blank box (owner request); clearing it = no narration.
-                narration = Strings.WIZARD_NARRATION_TEMPLATE
+                narration = nextNarrationSuggestion()
             } else {
                 // Resume: restore all wizard fields from DB.
                 projects.get(id)?.let { p ->

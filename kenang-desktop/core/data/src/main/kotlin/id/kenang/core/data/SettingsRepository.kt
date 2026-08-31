@@ -20,6 +20,8 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_MODEL_ANALYSIS = "model_analysis"
         const val KEY_MODEL_TTS = "model_tts"
         const val KEY_DEFAULT_VOICE = "default_voice"
+        /** Index of the last narration suggestion used, so the next project differs. */
+        const val KEY_LAST_NARRATION_TEMPLATE = "last_narration_template"
         // TODO(D-002): "license_state" + "trial_exports_used" reserved for Phase 05.
     }
 
@@ -61,6 +63,10 @@ class SettingsRepository(private val db: KenangDb) {
     var defaultVoice: String?
         get() = getOverride(KEY_DEFAULT_VOICE)
         set(v) = set(KEY_DEFAULT_VOICE, v ?: "")
+
+    var lastNarrationTemplate: Int
+        get() = get(KEY_LAST_NARRATION_TEMPLATE)?.toIntOrNull() ?: -1
+        set(v) = set(KEY_LAST_NARRATION_TEMPLATE, v.toString())
 
     val consentAccepted: Boolean
         get() = get(KEY_CONSENT_ACCEPTED_AT) != null

@@ -373,7 +373,7 @@ private fun StepStory(state: WizardState) {
     // project creation. Users edit instead of writing from scratch.
     LaunchedEffect(state.noNarration) {
         if (state.narration.isBlank() && !state.noNarration) {
-            state.narration = Strings.WIZARD_NARRATION_TEMPLATE
+            state.shuffleNarration()
         }
     }
     Column {
@@ -402,6 +402,18 @@ private fun StepStory(state: WizardState) {
             minLines = 4,
             modifier = Modifier.fillMaxWidth(),
         )
+        // The prefill is only a starting point, and a new one is one click
+        // away (owner 2026-09-01: every project opened with identical text).
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SkeuoOutlinedButton(onClick = { state.shuffleNarration() }) {
+                Text("🎲  " + Strings.WIZARD_NARRATION_SHUFFLE)
+            }
+            Text(
+                Strings.WIZARD_NARRATION_TEMPLATE_NOTE,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            )
+        }
         Spacer(Modifier.height(16.dp))
         Text(Strings.WIZARD_VOICE_LABEL, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(8.dp))

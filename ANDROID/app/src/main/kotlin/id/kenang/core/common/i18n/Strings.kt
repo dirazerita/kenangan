@@ -153,7 +153,44 @@ object Strings {
     const val WIZARD_SINGLE_PHOTO_SCENES_SUFFIX = " adegan"
 
     const val WIZARD_NARRATION_LABEL = "Narasi (opsional)"
-    const val WIZARD_NARRATION_TEMPLATE = "Waktu boleh berlalu, namun senyum dan kasih sayangmu tetap tinggal di hati kami. Di setiap sudut rumah ini, kami masih merasakan kehangatanmu — tawa yang menenangkan, nasihat yang menguatkan, dan doa-doa yang tak pernah putus untuk kami. Terima kasih untuk setiap pengorbanan yang tak sempat kami balas, untuk cinta yang kau berikan tanpa pamrih, dan untuk setiap kenangan indah yang pernah kita bagi bersama. Meski kini kita tak lagi bersama, engkau tetap hidup dalam setiap cerita yang kami kisahkan dan dalam setiap doa yang kami panjatkan. Kenangan ini akan selalu kami jaga dan kami rawat, selamanya, sampai tiba waktunya kita berkumpul kembali."
+    const val WIZARD_NARRATION_SHUFFLE = "Ganti contoh narasi"
+    const val WIZARD_NARRATION_TEMPLATE_NOTE = "Ini hanya contoh — silakan ubah sesuai cerita Anda."
+
+    /**
+     * Prefill suggestions for the narration box. The wizard picks one at
+     * random per project and never repeats the previous project's pick
+     * (owner 2026-09-01: a single fixed template made every project sound the
+     * same). Different subjects and tones on purpose — grandparent, parent,
+     * whole family, childhood home, gratitude, short and poetic.
+     */
+    val WIZARD_NARRATION_TEMPLATES: List<String> = listOf(
+        "Waktu boleh berlalu, namun senyum dan kasih sayangmu tetap tinggal di hati kami. Di setiap sudut rumah ini, kami masih merasakan kehangatanmu — tawa yang menenangkan, nasihat yang menguatkan, dan doa-doa yang tak pernah putus untuk kami. Terima kasih untuk setiap pengorbanan yang tak sempat kami balas, untuk cinta yang kau berikan tanpa pamrih, dan untuk setiap kenangan indah yang pernah kita bagi bersama. Meski kini kita tak lagi bersama, engkau tetap hidup dalam setiap cerita yang kami kisahkan dan dalam setiap doa yang kami panjatkan.",
+
+        "Ada rindu yang tak pernah selesai, dan namamu selalu ada di dalamnya. Kami menyimpan suaramu, cara tertawamu, juga sabarmu yang tak pernah habis menghadapi kami. Setiap foto ini membawa kami pulang ke hari-hari yang dulu terasa biasa saja, padahal ternyata itulah hari-hari paling berharga. Terima kasih sudah menjadi bagian terindah dari perjalanan hidup kami. Doa kami selalu menyertaimu, di mana pun engkau berada sekarang.",
+
+        "Dari tangan yang selalu sibuk bekerja, tumbuh kami yang hari ini bisa berdiri. Engkau jarang mengeluh, jarang meminta, tetapi selalu memberi lebih dari yang kami butuhkan. Kami belajar arti sabar dari caramu menjalani hidup, dan arti kasih dari caramu memaafkan. Semoga setiap tetes keringatmu menjadi cahaya yang menerangi jalanmu. Kami akan menjaga apa yang telah kau tanam, dan meneruskannya kepada anak-anak kami.",
+
+        "Rumah ini pernah begitu ramai. Ada suara di dapur, ada langkah kaki di ruang tamu, ada panggilan lembut saat waktu makan tiba. Kini suasananya berbeda, tetapi kenangannya tidak pernah pergi. Kami masih menyimpan semua tawa itu, semua cerita sebelum tidur, semua nasihat yang dulu kami dengar sambil lalu dan baru kami pahami sekarang. Terima kasih untuk rumah yang engkau bangun dengan cinta.",
+
+        "Kami berkumpul lagi hari ini, membuka album lama, dan tiba-tiba semua terasa dekat kembali. Wajah-wajah ini, momen-momen ini, adalah bukti bahwa kita pernah begitu bahagia bersama. Ada yang sudah pergi, ada yang kini jauh, tetapi ikatan ini tidak pernah putus. Semoga kenangan ini terus hidup, diceritakan turun-temurun, agar generasi berikutnya tahu betapa hangatnya keluarga ini.",
+
+        "Terima kasih untuk setiap doa yang kau panjatkan diam-diam. Kami tidak selalu melihatnya, tetapi kami merasakan hasilnya di sepanjang hidup kami. Untuk semua kesabaran menghadapi kenakalan kami, untuk semua pelukan saat kami gagal, dan untuk semua senyum yang menyembunyikan lelahmu — kami mohon maaf dan kami berterima kasih. Semoga kebaikanmu dibalas dengan tempat terbaik.",
+
+        "Masa kecil kami penuh dengan suaramu. Sepeda di halaman, hujan sore hari, dan cerita yang tidak pernah membosankan meski diulang berkali-kali. Kami dulu tidak tahu bahwa masa itu akan begitu kami rindukan. Sekarang, setiap kali mengingatnya, kami tersenyum lebih dulu sebelum air mata jatuh. Terima kasih sudah membuat hari-hari sederhana itu terasa begitu istimewa.",
+
+        "Engkau mengajari kami berjalan, lalu melepas kami berlari, dan tetap menunggu di rumah setiap kali kami pulang. Tidak pernah ada syarat dalam kasih sayangmu. Hari ini kami ingin mengatakan apa yang dulu terlalu jarang kami ucapkan: kami sayang padamu, kami bangga padamu, dan kami bersyukur pernah menjadi bagian dari hidupmu.",
+
+        "Kenangan tidak pernah benar-benar pergi. Ia hanya berpindah tempat, dari mata ke hati, dari hari ini ke selamanya. Dalam setiap foto ini ada cerita yang tidak cukup diceritakan dengan kata-kata. Biarlah wajah-wajah ini yang bicara, tentang cinta yang pernah nyata, dan tentang rindu yang masih terus tinggal.",
+
+        "Hari ini kami mengenangmu dengan syukur, bukan hanya dengan air mata. Karena hidupmu meninggalkan begitu banyak kebaikan yang masih kami rasakan sampai sekarang. Setiap nasihatmu masih kami pegang, setiap teladanmu masih kami tiru. Selamat beristirahat dengan tenang. Kami akan baik-baik saja, seperti yang selalu engkau doakan.",
+
+        "Ada orang-orang yang kehadirannya membuat hidup terasa lebih ringan, dan engkau salah satunya. Kami merindukan obrolan panjang tanpa tujuan, candaan yang hanya kita yang mengerti, dan kebersamaan yang dulu terasa akan selamanya. Terima kasih untuk waktu yang pernah kita punya. Kenangan ini kami simpan baik-baik.",
+
+        "Untuk semua yang pernah kita lalui bersama — suka, duka, tawa, dan air mata — terima kasih. Perjalanan ini tidak akan sama tanpamu. Foto-foto ini bukan sekadar gambar, melainkan potongan hidup yang ingin kami jaga selamanya. Semoga setiap kali video ini diputar, kehangatan itu kembali hadir di tengah kita.",
+    )
+
+    /** Kept for compatibility; the wizard uses the randomized list above. */
+    val WIZARD_NARRATION_TEMPLATE: String get() = WIZARD_NARRATION_TEMPLATES.first()
     const val WIZARD_NO_NARRATION = "Tanpa narasi"
     const val WIZARD_NO_NARRATION_HINT = "Video akan dibuat tanpa suara narasi dan tanpa subtitle — hanya musik (jika dipilih di langkah berikutnya)."
     const val WIZARD_NARRATION_HINT = "Tulis pesan atau kenangan singkat — akan dibacakan sebagai narasi."
