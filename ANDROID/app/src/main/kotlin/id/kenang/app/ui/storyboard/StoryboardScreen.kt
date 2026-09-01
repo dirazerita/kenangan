@@ -215,6 +215,34 @@ fun StoryboardScreen(
                     },
                 )
             }
+            // Owner feature 2026-09-02: AI continues the story with one more
+            // fresh-activity scene (normal per-image price).
+            item(key = "add-ai-scene") {
+                SkeuoCard(
+                    Modifier.height(180.dp).fillMaxWidth().clickable { state.addAiScene() },
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("✨", style = MaterialTheme.typography.headlineMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            Strings.SB_ADD_AI_SCENE + " ±$" + "%.3f".format(state.regenCostUsd()),
+                            style = MaterialTheme.typography.titleSmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            Strings.SB_ADD_AI_SCENE_NOTE,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
             // Owner feature 2026-08-28: append your own photo as a new scene.
             item(key = "add-user-scene") {
                 SkeuoCard(

@@ -37,7 +37,15 @@ object KeyframePrompts {
         exactSubjects: Int? = null,
     ): String {
         val ratioPhrase = if (ratio == "16:9") "16:9 landscape" else "9:16 portrait"
-        val who = if (isPet) "pet" else "people"
+        // Owner 2026-09-02 (5 people came out as 6): the person count now
+        // leads the prompt inside the subject phrase itself, not only in a
+        // trailing clause — leading positions bind harder on edit models.
+        val who = when {
+            isPet -> "pet"
+            exactSubjects == 1 -> "one person"
+            exactSubjects != null && exactSubjects > 0 && !isFusion -> "$exactSubjects people"
+            else -> "people"
+        }
         val restoration = if (restore) {
             "First fully restore the old photograph: repair scratches, tears, stains and creases, " +
                 "remove noise and grain, correct color fading and color cast, recover natural skin " +
@@ -62,11 +70,13 @@ object KeyframePrompts {
             " Combine the $who from the source photos into one natural scene together. " +
                 "Exactly $subjectCount $who, no additional people."
         } else if (exactSubjects != null && exactSubjects > 0) {
-            // D-003 extended (owner 2026-09-01): the exact-count clause now
-            // guards EVERY scene, not just fusion — without it a single
-            // subject came out duplicated as twins.
+            // D-003 extended (owner 2026-09-01, tightened 2026-09-02): the
+            // exact-count clause guards EVERY scene and demands a recount —
+            // without it a 5-person family came out as 6.
             val unit = if (isPet) "pet" else if (exactSubjects == 1) "person" else "people"
-            " The scene contains exactly $exactSubjects $unit — no more, no fewer."
+            " The scene contains exactly $exactSubjects $unit — count them before finalizing: " +
+                "exactly $exactSubjects, the same individuals as the source photo, nobody added, " +
+                "nobody repeated, no extra similar-looking person in the background."
         } else ""
         // Identity locked, composition freed: this is what makes multi-scene
         // single-photo storyboards varied instead of 12 clones of the photo.

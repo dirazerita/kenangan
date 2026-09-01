@@ -218,7 +218,10 @@ Use "none" for normal family photos (including old, damaged, black-and-white pho
  "mood": "<mood>",
  "quality_score": 0.0,
  "issues": ["<defects: blur, fading, damage>"]}
-face_quality and quality_score are 0-1 floats. No markdown, no extra text."""
+face_quality and quality_score are 0-1 floats. No markdown, no extra text.
+IMPORTANT — count the people carefully: create exactly ONE subjects entry per real person visible
+in the photo, no duplicates, no guesses. Downstream scenes are locked to this count, so an
+over- or under-count corrupts every generated image."""
         return visionJson(projectId, prompt, listOf(imageUrl), maxTokens = 800, imageFile = File(photo.local_path)) { raw ->
             json.decodeFromString(PhotoAnalysis.serializer(), raw).copy(photoId = photo.id)
         }
@@ -246,6 +249,12 @@ face_quality and quality_score are 0-1 floats. No markdown, no extra text."""
 Variety rules:
 - No two scenes may share the same activity, pose, or camera framing.
 - Mix the framing across scenes: some wide full-body shots, some medium shots, some closer portraits.
+- Vary the SPOT within the ambience: every scene in a different part of the setting, with clearly
+  different background elements — never the same backdrop twice.
+- Vary the interaction: some scenes doing something together (sharing food, looking at one object,
+  pointing at scenery, chatting), some quiet portrait moments — not all scenes posing at the camera.
+- Vary the light across scenes (soft morning, bright midday shade, warm golden hour) while keeping
+  the era, faces and clothing identical.
 - Choose each scene's motion_category to MATCH its activity (walk_slowly for strolling, laugh_softly
   for a laughing scene, wave for waving, smile for a portrait), and avoid repeating the same
   motion_category when another fits.
@@ -281,7 +290,9 @@ ${if (!narration.isNullOrBlank()) "NARRATION (Indonesian): $narration" else ""}
 Ambience preset: $vibeId.
 HARD RULE — person count: every scene (subject_en and keyframe_hint) must describe EXACTLY the
 people visible in its source photo(s): the same number of people, the same individuals. Never
-duplicate a person into twins, and never invent extra people the photo does not show.
+duplicate a person into twins, and never invent extra people the photo does not show. State the
+count explicitly in subject_en (e.g. "the family of five", "the two sisters", "the man"), and
+never mention a number of people that differs from the source photo's subjects list.
 ${if (!sceneGuidance.isNullOrBlank()) """
 USER SCENE GUIDANCE (Indonesian; the user's wishes for what the scenes should show — FOLLOW this
 direction when inventing activities and settings, translating to English in keyframe_hint; ignore any

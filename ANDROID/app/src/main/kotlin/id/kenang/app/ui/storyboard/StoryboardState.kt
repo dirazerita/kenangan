@@ -177,6 +177,73 @@ class StoryboardState(
         }
     }
 
+    /**
+     * "Adegan baru dengan AI" (owner 2026-09-02): appends a NEW scene that
+     * continues the storyboard — a fresh activity from [SceneIdeas] (never one
+     * already in the storyboard), same people and vibe, keyframe generated at
+     * the usual per-image price. Photo analyses are not persisted, so the
+     * person count is recovered from an existing scene's prompt.
+     */
+    fun addAiScene() {
+        scope.launch {
+            val p = project ?: return@launch
+            val ordered = scenes.sortedBy { it.order_index }
+            val template = ordered.firstOrNull { it.type == "single" }
+                ?: ordered.firstOrNull { it.source_photos_json != "[]" }
+            if (template == null) {
+                snackMessage = Strings.SB_ADD_AI_NO_SOURCE
+                return@launch
+            }
+            val usedLower = ordered.joinToString(" ") {
+                (it.keyframe_prompt_en ?: "") + " " + (it.motion_summary_id ?: "")
+            }.lowercase()
+            val idea = id.kenang.core.providers.story.SceneIdeas.pick(usedLower)
+
+            val vibe = if (p.vibe == "custom" && !p.custom_vibe.isNullOrBlank()) {
+                id.kenang.core.data.config.Vibe("custom", "Suasana kustom", "", p.custom_vibe!!.trim())
+            } else {
+                config.vibes.firstOrNull { it.id == p.vibe } ?: config.vibes.first()
+            }
+            val exactSubjects = template.keyframe_prompt_en
+                ?.let { Regex("contains exactly (\\d+)").find(it) ?: Regex("Exactly (\\d+) people").find(it) }
+                ?.groupValues?.get(1)?.toIntOrNull()
+            val many = exactSubjects == null || exactSubjects > 1
+            val spec = MotionSpec(
+                idea.category, idea.camera,
+                subjectEn = if (many) "the family" else "the person",
+                subjectId = if (many) "Keluarga" else "Beliau",
+                detailEn = id.kenang.core.common.story.MotionTemplateValidator.sanitizeDetail(idea.activityEn + "."),
+                detailId = idea.descriptionId,
+            )
+            val order = (scenes.maxOfOrNull { it.order_index } ?: -1L) + 1
+            sceneRepository.upsert(
+                Scene(
+                    scene_id = "sc_ai_${System.currentTimeMillis()}",
+                    project_id = projectId,
+                    source_photos_json = template.source_photos_json,
+                    type = "single",
+                    vibe = p.vibe,
+                    keyframe_prompt_en = id.kenang.core.providers.story.KeyframePrompts.build(
+                        vibe, p.ratio, isFusion = false,
+                        subjectCount = exactSubjects ?: 1,
+                        keyframeHint = idea.activityEn,
+                        restore = p.restore_photos == 1L,
+                        exactSubjects = exactSubjects,
+                    ),
+                    keyframe_url = null,
+                    motion_prompt_en = MotionTemplates.buildPromptEn(spec),
+                    motion_summary_id = MotionTemplates.buildSummaryId(spec),
+                    duration_s = p.scene_duration_s,
+                    regen_count = 0,
+                    status = SceneStatus.DRAFT, // observe-flow auto-triggers the keyframe
+                    order_index = order,
+                    local_keyframe_path = null,
+                    local_clip_path = null,
+                ),
+            )
+        }
+    }
+
     /** Replaces a scene's keyframe with the user's own image (free, no API). */
     fun replaceKeyframe(scene: Scene, file: java.io.File) {
         scope.launch {
