@@ -10,6 +10,20 @@ import id.kenang.core.data.config.Vibe
  */
 object KeyframePrompts {
 
+    /**
+     * Anti-twin guardrail (owner 2026-09-01: composition-freed prompts made
+     * Nano Banana clone a single subject into twins). Appended to EVERY
+     * keyframe prompt; [ensureNoDuplicateGuard] retrofits it onto prompts
+     * stored before the fix so regens on old projects benefit too.
+     */
+    const val NO_DUPLICATE_CLAUSE =
+        " Never duplicate or clone any person: each individual from the source photo appears " +
+            "exactly ONCE — no twins, no mirrored copies, no lookalikes — and no new people are added."
+
+    fun ensureNoDuplicateGuard(prompt: String): String =
+        if (prompt.isBlank() || prompt.contains("no twins")) prompt
+        else prompt + NO_DUPLICATE_CLAUSE
+
     fun build(
         vibe: Vibe,
         ratio: String,               // "9:16" | "16:9"
@@ -19,6 +33,8 @@ object KeyframePrompts {
         isPet: Boolean = false,
         /** "Restorasi foto lama": explicit damage/fade repair before styling. */
         restore: Boolean = false,
+        /** Uncapped person count for non-fusion scenes; null = unknown. */
+        exactSubjects: Int? = null,
     ): String {
         val ratioPhrase = if (ratio == "16:9") "16:9 landscape" else "9:16 portrait"
         val who = if (isPet) "pet" else "people"
@@ -45,6 +61,12 @@ object KeyframePrompts {
         val fusion = if (isFusion) {
             " Combine the $who from the source photos into one natural scene together. " +
                 "Exactly $subjectCount $who, no additional people."
+        } else if (exactSubjects != null && exactSubjects > 0) {
+            // D-003 extended (owner 2026-09-01): the exact-count clause now
+            // guards EVERY scene, not just fusion — without it a single
+            // subject came out duplicated as twins.
+            val unit = if (isPet) "pet" else if (exactSubjects == 1) "person" else "people"
+            " The scene contains exactly $exactSubjects $unit — no more, no fewer."
         } else ""
         // Identity locked, composition freed: this is what makes multi-scene
         // single-photo storyboards varied instead of 12 clones of the photo.
@@ -55,7 +77,7 @@ object KeyframePrompts {
                 "position, expression, camera angle and framing naturally to fit the scene — " +
                 "do NOT copy the original photo's composition."
         }
-        return restoration + base + fusion + preservation +
+        return restoration + base + fusion + preservation + NO_DUPLICATE_CLAUSE +
             " Photorealistic, warm natural light, $ratioPhrase."
     }
 }

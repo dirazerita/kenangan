@@ -51,4 +51,48 @@ class KeyframePromptsTest {
         val prompt = KeyframePrompts.build(asli, "9:16", isFusion = false, subjectCount = 1)
         assertTrue("keeping the original setting" in prompt)
     }
+
+    @Test
+    fun `every prompt carries the anti-twin clause (owner 2026-09-01)`() {
+        // Composition-freed prompts cloned a single subject into twins; the
+        // no-duplication guard must survive on every variant.
+        listOf(
+            KeyframePrompts.build(taman, "9:16", isFusion = false, subjectCount = 1),
+            KeyframePrompts.build(taman, "9:16", isFusion = true, subjectCount = 2),
+            KeyframePrompts.build(asli, "16:9", isFusion = false, subjectCount = 1),
+            KeyframePrompts.build(
+                taman, "9:16", isFusion = false, subjectCount = 1,
+                keyframeHint = "They play on a wooden swing together, laughing.",
+            ),
+        ).forEach { prompt ->
+            assertTrue("no twins" in prompt, prompt)
+            assertTrue("Never duplicate or clone any person" in prompt, prompt)
+        }
+    }
+
+    @Test
+    fun `non-fusion prompt with known count pins the exact person count`() {
+        val one = KeyframePrompts.build(
+            taman, "9:16", isFusion = false, subjectCount = 1,
+            keyframeHint = "He waves cheerfully near a fountain.", exactSubjects = 1,
+        )
+        assertTrue("exactly 1 person" in one, one)
+        val five = KeyframePrompts.build(
+            taman, "9:16", isFusion = false, subjectCount = 4,
+            keyframeHint = "The family strolls along a path.", exactSubjects = 5,
+        )
+        // Uncapped: a 5-person group photo says 5 even though fusion caps at 4.
+        assertTrue("exactly 5 people" in five, five)
+    }
+
+    @Test
+    fun `ensureNoDuplicateGuard retrofits old prompts exactly once`() {
+        val old = "Create a new photorealistic scene of the exact same people in a garden."
+        val patched = KeyframePrompts.ensureNoDuplicateGuard(old)
+        assertTrue("no twins" in patched, patched)
+        // Idempotent: patching again (or a freshly built prompt) adds nothing.
+        kotlin.test.assertEquals(patched, KeyframePrompts.ensureNoDuplicateGuard(patched))
+        val fresh = KeyframePrompts.build(taman, "9:16", isFusion = false, subjectCount = 1)
+        kotlin.test.assertEquals(fresh, KeyframePrompts.ensureNoDuplicateGuard(fresh))
+    }
 }

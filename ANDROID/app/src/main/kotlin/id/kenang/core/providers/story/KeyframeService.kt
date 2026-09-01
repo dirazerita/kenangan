@@ -114,7 +114,9 @@ class KeyframeService(
         if (urls.isEmpty()) return AppError.Unknown("no source photos for scene ${scene.scene_id}").err()
 
         val body = buildJsonObject {
-            put("prompt", scene.keyframe_prompt_en ?: "")
+            // Retrofit the anti-twin guard onto prompts stored before the fix
+            // (owner 2026-09-01), so regens on old projects benefit too.
+            put("prompt", KeyframePrompts.ensureNoDuplicateGuard(scene.keyframe_prompt_en ?: ""))
             putJsonArray("image_urls") { urls.forEach { add(it) } }
             put("num_images", 1)
             put("output_format", "jpeg")

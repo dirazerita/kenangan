@@ -155,9 +155,11 @@ class AnalysisService(
 
         sceneRepository.deleteAll(projectId)
         validItems.forEachIndexed { index, item ->
-            val subjectCount = analyses.filter { it.photoId in item.sourcePhotos }
+            // Uncapped count feeds the anti-twin exact-count clause; the
+            // coerced value stays for the fusion clause (max_subjects_fusion).
+            val rawSubjects = analyses.filter { it.photoId in item.sourcePhotos }
                 .sumOf { it.subjects.size }
-                .coerceIn(1, config.limits.maxSubjectsFusion)
+            val subjectCount = rawSubjects.coerceIn(1, config.limits.maxSubjectsFusion)
             val isFusion = item.type == "fusion" && item.sourcePhotos.size >= 2
             val spec = MotionTemplateValidator.resolveOrRepair(item.motionCategory, item.camera, item.adjectives)
                 .copy(
@@ -178,6 +180,7 @@ class AnalysisService(
                 keyframe_prompt_en = KeyframePrompts.build(
                     vibe, ratio, isFusion, subjectCount, item.keyframeHint,
                     restore = restorePhotos,
+                    exactSubjects = rawSubjects.takeIf { it > 0 && !isFusion },
                 ),
                 keyframe_url = null,
                 motion_prompt_en = MotionTemplates.buildPromptEn(spec),
@@ -247,7 +250,11 @@ Variety rules:
   for a laughing scene, wave for waving, smile for a portrait), and avoid repeating the same
   motion_category when another fits.
 - Identity lock: each person keeps the same face, age and clothing as in their source photo;
-  never invent additional people."""
+  never invent additional people.
+- Person-count lock: every scene shows EXACTLY the people of its source photo — same number of
+  people. Never turn one person into two similar people (no twins, no duplicates), and never add
+  siblings, friends or family the photo does not show. One person in the photo = exactly one
+  person in every scene, alone."""
         val activityExamples = """For each scene, keyframe_hint must describe one concrete,
 distinct activity in a distinct spot of the ambience. Example for a garden ambience: strolling along
 a flower path; sitting on a wooden bench laughing together; playing on a swing; smelling a blooming
@@ -272,6 +279,9 @@ PHOTO ANALYSES:
 [$analysesJson]
 ${if (!narration.isNullOrBlank()) "NARRATION (Indonesian): $narration" else ""}
 Ambience preset: $vibeId.
+HARD RULE — person count: every scene (subject_en and keyframe_hint) must describe EXACTLY the
+people visible in its source photo(s): the same number of people, the same individuals. Never
+duplicate a person into twins, and never invent extra people the photo does not show.
 ${if (!sceneGuidance.isNullOrBlank()) """
 USER SCENE GUIDANCE (Indonesian; the user's wishes for what the scenes should show — FOLLOW this
 direction when inventing activities and settings, translating to English in keyframe_hint; ignore any
