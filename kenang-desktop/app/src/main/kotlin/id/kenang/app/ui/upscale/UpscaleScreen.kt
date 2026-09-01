@@ -1,4 +1,8 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@file:OptIn(
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+    androidx.compose.ui.ExperimentalComposeUiApi::class,
+)
 
 package id.kenang.app.ui.upscale
 
@@ -34,8 +38,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.border
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.awtTransferable
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import id.kenang.app.ui.components.StatusChip
@@ -82,6 +89,40 @@ fun UpscaleScreen(
     var selectedModel by remember { mutableStateOf(options.firstOrNull()?.selectionKey() ?: "") }
     var running by remember { mutableStateOf(false) }
     var compare by remember { mutableStateOf<UpscaleItem?>(null) }
+    var outputDirText by remember { mutableStateOf(service.outputDir().absolutePath) }
+
+    fun addFiles(files: List<File>) {
+        files.filter { it.isFile && it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp", "bmp") }
+            .forEach { file ->
+                if (items.none { it.source.absolutePath == file.absolutePath }) {
+                    items.add(UpscaleItem(file))
+                }
+            }
+    }
+
+    // Drag-and-drop photos anywhere on the screen (owner 2026-09-01) — same
+    // AWT-transferable pattern as the wizard's step 1.
+    var dragOver by remember { mutableStateOf(false) }
+    val dropTarget = remember {
+        object : androidx.compose.ui.draganddrop.DragAndDropTarget {
+            override fun onEntered(event: androidx.compose.ui.draganddrop.DragAndDropEvent) { dragOver = true }
+            override fun onExited(event: androidx.compose.ui.draganddrop.DragAndDropEvent) { dragOver = false }
+            override fun onEnded(event: androidx.compose.ui.draganddrop.DragAndDropEvent) { dragOver = false }
+            override fun onDrop(event: androidx.compose.ui.draganddrop.DragAndDropEvent): Boolean {
+                dragOver = false
+                if (running) return false
+                val transferable = event.awtTransferable
+                if (!transferable.isDataFlavorSupported(java.awt.datatransfer.DataFlavor.javaFileListFlavor)) return false
+                val files = runCatching {
+                    (transferable.getTransferData(java.awt.datatransfer.DataFlavor.javaFileListFlavor) as? List<*>)
+                        .orEmpty().filterIsInstance<File>()
+                }.getOrDefault(emptyList())
+                if (files.isEmpty()) return false
+                addFiles(files)
+                return true
+            }
+        }
+    }
 
     val option = options.firstOrNull { it.selectionKey() == selectedModel } ?: options.firstOrNull()
     val perPhoto = option?.let { service.estimate(it) } ?: 0.0
@@ -132,7 +173,12 @@ fun UpscaleScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier.fillMaxSize()
+            .dragAndDropTarget(shouldStartDragAndDrop = { true }, target = dropTarget)
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(Strings.UPSCALE_TITLE, style = MaterialTheme.typography.headlineSmall)
@@ -178,13 +224,7 @@ fun UpscaleScreen(
 
         // ---------- Actions ----------
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SkeuoOutlinedButton(onClick = {
-                pickImages().forEach { file ->
-                    if (items.none { it.source.absolutePath == file.absolutePath }) {
-                        items.add(UpscaleItem(file))
-                    }
-                }
-            }, enabled = !running) {
+            SkeuoOutlinedButton(onClick = { addFiles(pickImages()) }, enabled = !running) {
                 Text((if (items.isEmpty()) Strings.UPSCALE_PICK else Strings.UPSCALE_ADD_MORE))
             }
             SkeuoButton(
@@ -217,23 +257,58 @@ fun UpscaleScreen(
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            Strings.UPSCALE_RESULT_NOTE.replace("%1", service.outputDir().absolutePath),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-        )
+        // Results-folder picker (owner 2026-09-01): the tool remembers its own
+        // destination, independent of the global Folder Output.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                Strings.UPSCALE_RESULT_NOTE.replace("%1", outputDirText),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
+            TextButton(onClick = {
+                pickFolder(outputDirText)?.let { dir ->
+                    service.setOutputFolder(dir.absolutePath)
+                    outputDirText = service.outputDir().absolutePath
+                }
+            }, enabled = !running) { Text(Strings.UPSCALE_CHANGE_FOLDER) }
+            TextButton(onClick = {
+                service.setOutputFolder(null)
+                outputDirText = service.outputDir().absolutePath
+            }, enabled = !running) { Text(Strings.UPSCALE_FOLDER_RESET) }
+        }
 
         Spacer(Modifier.height(16.dp))
 
         // ---------- Photo grid ----------
         if (items.isEmpty()) {
-            SkeuoCard(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        Strings.UPSCALE_EMPTY,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    )
+            SkeuoCard(
+                Modifier.fillMaxWidth().then(
+                    if (dragOver) {
+                        Modifier.border(
+                            2.dp, MaterialTheme.colorScheme.primary,
+                            androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        )
+                    } else Modifier,
+                ),
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().height(140.dp).clickable(enabled = !running) { addFiles(pickImages()) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (dragOver) Strings.WIZARD_DROP_ACTIVE else Strings.UPSCALE_EMPTY,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (dragOver) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "🖼  " + Strings.UPSCALE_DROP_HINT,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                        )
+                    }
                 }
             }
         } else {
@@ -331,6 +406,20 @@ private fun CompareDialog(item: UpscaleItem, onDismiss: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             SkeuoOutlinedButton(onClick = onDismiss) { Text(Strings.CLOSE) }
         }
+    }
+}
+
+/** Folder picker for the tool's results destination. */
+private fun pickFolder(current: String): File? {
+    val chooser = javax.swing.JFileChooser().apply {
+        dialogTitle = Strings.UPSCALE_CHANGE_FOLDER
+        fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+        File(current).takeIf { it.isDirectory }?.let { currentDirectory = it }
+    }
+    return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile
+    } else {
+        null
     }
 }
 

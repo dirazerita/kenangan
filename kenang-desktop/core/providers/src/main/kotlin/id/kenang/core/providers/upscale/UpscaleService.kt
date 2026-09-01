@@ -65,14 +65,26 @@ class UpscaleService(
     fun estimate(option: ModelOption): Double = priceBook.estimate(option.id, 1.0)?.usd ?: 0.0
 
     /**
-     * Results folder: `<Folder Output>/Upscale/` when the setting is usable,
-     * else the app-private fallback — mirroring AssemblyService's routing.
+     * Results folder, in order of preference (owner 2026-09-01: the tool has
+     * its own folder picker): the tool's chosen folder → `<Folder
+     * Output>/Upscale/` → app-private fallback. Unusable paths (unplugged
+     * drive) silently fall through.
      */
     fun outputDir(): File {
-        val custom = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
-            ?.let { File(it, "Upscale") }
-            ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
-        return custom ?: File(AppDirs.root, "upscale").apply { mkdirs() }
+        fun usable(dir: File): File? =
+            dir.takeIf { runCatching { it.mkdirs(); it.isDirectory }.getOrDefault(false) }
+
+        val own = settings.upscaleOutputFolder?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { usable(File(it)) }
+        if (own != null) return own
+        val fromOutput = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { usable(File(it, "Upscale")) }
+        return fromOutput ?: File(AppDirs.root, "upscale").apply { mkdirs() }
+    }
+
+    /** Persists the tool's own results folder (null/blank = back to default). */
+    fun setOutputFolder(path: String?) {
+        settings.upscaleOutputFolder = path
     }
 
     /** Upscales/restores ONE photo; the screen fans this out in parallel. */

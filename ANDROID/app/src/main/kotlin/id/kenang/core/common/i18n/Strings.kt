@@ -349,6 +349,9 @@ object Strings {
     const val UPSCALE_COMPARE_AFTER = "Sesudah"
     const val UPSCALE_EMPTY = "Belum ada foto. Pilih foto lama yang ingin diperbesar atau diperbaiki."
     const val UPSCALE_NEED_KEY = "Tambahkan API key fal dulu di Pengaturan."
+    const val UPSCALE_DROP_HINT = "Atau geser & lepaskan foto ke sini"
+    const val UPSCALE_CHANGE_FOLDER = "Ubah folder…"
+    const val UPSCALE_FOLDER_RESET = "Bawaan"
 
     // Android-only wording (share sheet + gallery instead of a file manager).
     const val RESULT_SHARE = "Bagikan"

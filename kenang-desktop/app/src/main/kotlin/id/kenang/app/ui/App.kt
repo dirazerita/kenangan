@@ -62,6 +62,7 @@ fun App() {
             dev == "about" -> Route.About
             dev == "onboarding" -> Route.Onboarding
             dev == "wizard" -> Route.Wizard(null)
+            dev == "upscale" -> Route.Upscale
             dev?.startsWith("storyboard:") == true -> Route.Storyboard(dev.substringAfter(":"))
             else -> null
         }
