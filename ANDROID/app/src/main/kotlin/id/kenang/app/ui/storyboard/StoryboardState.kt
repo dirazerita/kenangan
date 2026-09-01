@@ -148,6 +148,7 @@ class StoryboardState(
             )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 file.copyTo(target, overwrite = true)
+                cropToProjectRatio(target)
             }
             val spec = MotionSpec(
                 category, camera,
@@ -175,6 +176,38 @@ class StoryboardState(
                 ),
             )
         }
+    }
+
+    /**
+     * Center-crops a user-supplied keyframe to the project's ratio (owner
+     * 2026-09-02: keyframes that don't match the ratio get people cropped
+     * arbitrarily at video time — better to crop predictably NOW so the
+     * storyboard shows exactly what the video will show).
+     */
+    private fun cropToProjectRatio(file: java.io.File) {
+        val ratio = project?.ratio ?: return
+        val target = if (ratio == "16:9") 16.0 / 9.0 else 9.0 / 16.0
+        runCatching {
+            val bmp = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+            if (bmp != null) {
+                val current = bmp.width.toDouble() / bmp.height
+                if (kotlin.math.abs(current - target) > 0.01) {
+                    val w: Int
+                    val h: Int
+                    if (current > target) {
+                        h = bmp.height; w = (bmp.height * target).toInt().coerceAtLeast(1)
+                    } else {
+                        w = bmp.width; h = (bmp.width / target).toInt().coerceAtLeast(1)
+                    }
+                    val cropped = android.graphics.Bitmap.createBitmap(
+                        bmp, (bmp.width - w) / 2, (bmp.height - h) / 2, w, h,
+                    )
+                    file.outputStream().use {
+                        cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, it)
+                    }
+                }
+            }
+        }.onFailure { Napier.w("ratio crop skipped: ${it.message}") }
     }
 
     /**
@@ -260,6 +293,7 @@ class StoryboardState(
             )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 file.copyTo(target, overwrite = true)
+                cropToProjectRatio(target)
             }
             sceneRepository.setCustomKeyframe(scene.scene_id, target.absolutePath)
         }

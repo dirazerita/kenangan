@@ -44,6 +44,7 @@ class KeyframeService(
     private val costTracker: CostTracker,
     private val sceneRepository: SceneRepository,
     private val photoRepository: PhotoRepository,
+    private val projectRepository: id.kenang.core.data.ProjectRepository,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -113,6 +114,14 @@ class KeyframeService(
         }
         if (urls.isEmpty()) return AppError.Unknown("no source photos for scene ${scene.scene_id}").err()
 
+        // The video's ratio is decided in the wizard, so the KEYFRAME must be
+        // generated at that ratio too (owner 2026-09-02): nano-banana defaults
+        // to aspect_ratio=auto (follows the source photo), and the mismatched
+        // frame then got people cropped out when the i2v step forced the
+        // project ratio. The prompt's "9:16 portrait" text alone does nothing.
+        val projectRatio = projectRepository.get(scene.project_id)?.ratio
+        val aspectRatio = if (projectRatio == "16:9") "16:9" else "9:16"
+
         val body = buildJsonObject {
             // Retrofit the anti-twin guard onto prompts stored before the fix
             // (owner 2026-09-01), so regens on old projects benefit too.
@@ -120,6 +129,7 @@ class KeyframeService(
             putJsonArray("image_urls") { urls.forEach { add(it) } }
             put("num_images", 1)
             put("output_format", "jpeg")
+            put("aspect_ratio", aspectRatio)
         }
 
         val submitted = when (val s = falClient.submit(model, body)) {
