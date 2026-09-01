@@ -66,6 +66,7 @@ fun HomeScreen(
     onOpenProject: (projectId: String, status: String) -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
+    onUpscale: () -> Unit = {},
 ) {
     val projects = koinInject<ProjectRepository>()
     val costTracker = koinInject<CostTracker>()
@@ -105,10 +106,16 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        SkeuoButton(onClick = onNewProject) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(Strings.HOME_NEW_PROJECT)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SkeuoButton(onClick = onNewProject) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(Strings.HOME_NEW_PROJECT)
+            }
+            // Standalone tool (owner 2026-09-01): batch upscale/restore photos.
+            id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onUpscale) {
+                Text("✨  " + Strings.UPSCALE_TITLE)
+            }
         }
 
         Spacer(Modifier.height(16.dp))

@@ -153,6 +153,16 @@ tasks.register<JavaExec>("modelDoctor") {
     classpath = sourceSets["main"].runtimeClasspath
 }
 
+// Diagnostic: one real upscale job (~$0.002 default model). gradlew :app:upscaleDoctor
+tasks.register<JavaExec>("upscaleDoctor") {
+    group = "verification"
+    description = "Runs one real upscale/restore job to verify the tool"
+    mainClass.set("id.kenang.app.devtools.UpscaleDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorModel").orNull?.let { systemProperty("doctor.model", it) }
+    providers.gradleProperty("doctorImage").orNull?.let { systemProperty("doctor.image", it) }
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

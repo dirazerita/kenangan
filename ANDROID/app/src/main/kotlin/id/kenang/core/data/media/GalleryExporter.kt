@@ -18,6 +18,40 @@ import java.io.File
  */
 class GalleryExporter(private val context: Context) {
 
+    /** Copies an IMAGE into Pictures/Kenang/[folderName]/; returns its content Uri. */
+    suspend fun exportImage(
+        file: File,
+        folderName: String,
+        displayName: String = file.name,
+    ): Uri? = withContext(Dispatchers.IO) {
+        if (!file.isFile) return@withContext null
+        val safeFolder = folderName.replace(Regex("[\\\\/:*?\"<>|]"), "").trim().ifBlank { "Kenang" }
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+            put(MediaStore.Images.Media.MIME_TYPE, if (displayName.endsWith(".png")) "image/png" else "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Kenang/$safeFolder")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val resolver = context.contentResolver
+        val uri = runCatching {
+            resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        }.getOrNull() ?: run {
+            Napier.w("gallery image export: insert failed for $displayName")
+            return@withContext null
+        }
+        runCatching {
+            resolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            uri
+        }.getOrElse { e ->
+            Napier.w("gallery image export failed for $displayName: ${e.message}")
+            runCatching { resolver.delete(uri, null, null) }
+            null
+        }
+    }
+
     /** Copies [file] into Movies/Kenang/[folderName]/[subFolder]; returns its content Uri. */
     suspend fun export(
         file: File,

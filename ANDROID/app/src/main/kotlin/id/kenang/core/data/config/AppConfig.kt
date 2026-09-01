@@ -46,6 +46,8 @@ data class ModelCatalog(
     val analysis: List<ModelOption> = emptyList(),
     /** TTS slugs (MiniMax family only — same request shape). */
     val tts: List<ModelOption> = emptyList(),
+    /** Upscale/restoration models for the standalone photo tool. */
+    val upscale: List<ModelOption> = emptyList(),
 )
 
 @Serializable
@@ -59,6 +61,14 @@ data class ModelOption(
     val tested: Boolean = true,
     /** Unique selection key when two entries share an id (e.g. Wan flash). */
     val key: String = "",
+    /**
+     * Request-body shape for the upscale tool: "image_url" (default; body is
+     * {image_url, ...params}, result under image.url) or "edit_prompt"
+     * (Nano-Banana-style {prompt, image_urls}, result under images[0].url).
+     */
+    @SerialName("input_mode") val inputMode: String = "image_url",
+    /** Indonesian one-liner shown under the option's chip (upscale tool). */
+    @SerialName("desc_id") val descId: String = "",
 ) {
     fun selectionKey(): String = key.ifBlank { id }
 }

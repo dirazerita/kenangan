@@ -95,7 +95,10 @@
     { "model_slug": "fal-ai/kling-video/v3/pro/image-to-video", "unit": "per_second", "usd": 0.112 },
     { "model_slug": "bytedance/seedance-2.0/mini/reference-to-video", "unit": "per_second", "usd": 0.0721 },
     { "model_slug": "fal-ai/minimax/speech-02-hd", "unit": "per_1k_chars", "usd": 0.10 },
-    { "model_slug": "fal-ai/minimax/speech-02-turbo", "unit": "per_1k_chars", "usd": 0.06 }
+    { "model_slug": "fal-ai/minimax/speech-02-turbo", "unit": "per_1k_chars", "usd": 0.06 },
+    { "model_slug": "fal-ai/clarity-upscaler", "unit": "per_image", "usd": 0.06 },
+    { "model_slug": "fal-ai/aura-sr", "unit": "per_image", "usd": 0.002 },
+    { "model_slug": "fal-ai/codeformer", "unit": "per_image", "usd": 0.005 }
   ],
   "vibes": [
     { "id": "asli", "label_id": "Suasana asli", "desc_id": "Pertahankan suasana foto aslinya", "prompt_en": "" },
@@ -169,6 +172,13 @@
     "tts": [
       { "id": "fal-ai/minimax/speech-02-hd", "label_id": "MiniMax Speech-02 HD (bawaan, teruji)" },
       { "id": "fal-ai/minimax/speech-02-turbo", "label_id": "MiniMax Speech-02 Turbo — lebih cepat & murah", "tested": false }
+    ],
+    "upscale": [
+      { "id": "fal-ai/nano-banana-pro/edit", "label_id": "Restorasi Detail Tinggi", "desc_id": "AI memperbaiki kerusakan (sobek, noda, pudar) dan menajamkan detail — terbaik untuk foto rusak parah", "input_mode": "edit_prompt" },
+      { "id": "fal-ai/nano-banana/edit", "label_id": "Restorasi Hemat", "desc_id": "Perbaikan kerusakan yang sama dengan biaya lebih ringan", "input_mode": "edit_prompt" },
+      { "id": "fal-ai/clarity-upscaler", "label_id": "Upscale Jernih 2×", "desc_id": "Memperbesar 2× sambil menambah detail halus — untuk foto yang sudah bagus", "tested": false, "params": { "upscale_factor": 2, "creativity": 0.35, "resemblance": 0.6 } },
+      { "id": "fal-ai/aura-sr", "label_id": "Upscale Cepat 4×", "desc_id": "Memperbesar 4× dengan cepat dan sangat murah — tanpa mengubah isi foto", "params": { "upscale_factor": 4 } },
+      { "id": "fal-ai/codeformer", "label_id": "Perbaiki Wajah 2×", "desc_id": "Khusus menajamkan wajah yang buram atau rusak, murah", "tested": false, "params": { "fidelity": 0.7, "upscale_factor": 2, "face_upscale": true } }
     ]
   },
   "bundled_music": [

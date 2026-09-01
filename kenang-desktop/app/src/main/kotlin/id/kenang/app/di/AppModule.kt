@@ -36,6 +36,7 @@ import id.kenang.core.providers.story.AnalysisService
 import id.kenang.core.providers.story.CostEstimator
 import id.kenang.core.providers.story.KeyframeService
 import id.kenang.core.providers.story.TtsPreviewService
+import id.kenang.core.providers.upscale.UpscaleService
 import id.kenang.core.providers.optional.ElevenLabsClient
 import id.kenang.core.providers.optional.GeminiClient
 import id.kenang.core.providers.vault.KeyVault
@@ -99,4 +100,7 @@ val appModule = module {
     single { TtsService(get(), get(), get(), get(), get(), get()) }
     single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { AssemblyService(get(), get(), get(), get(), get(), get(), get(), get()) }
+
+    // Standalone photo tool (owner 2026-09-01)
+    single { UpscaleService(get(), get(), get(), get(), get(), get(), get()) }
 }

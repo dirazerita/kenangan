@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package id.kenang.app.ui.home
 import id.kenang.app.ui.theme.SkeuoButton
 import id.kenang.app.ui.theme.SkeuoCard
@@ -60,6 +62,7 @@ fun HomeScreen(
     onOpenProject: (projectId: String, status: String) -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
+    onUpscale: () -> Unit = {},
 ) {
     val projects = koinInject<ProjectRepository>()
     val costTracker = koinInject<CostTracker>()
@@ -106,10 +109,20 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        SkeuoButton(onClick = onNewProject) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(Strings.HOME_NEW_PROJECT)
+        // Phone: the two entry actions wrap instead of overflowing the width.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SkeuoButton(onClick = onNewProject) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(Strings.HOME_NEW_PROJECT)
+            }
+            // Standalone tool (owner 2026-09-01): batch upscale/restore photos.
+            id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onUpscale) {
+                Text("✨  " + Strings.UPSCALE_TITLE)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
