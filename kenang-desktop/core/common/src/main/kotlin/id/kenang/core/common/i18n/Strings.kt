@@ -288,6 +288,7 @@ object Strings {
     const val SB_ADD_SCENE_DESC_HINT = "Contoh: Beliau duduk di teras sambil menikmati teh hangat, lalu tersenyum menatap halaman…"
     const val SB_ADD_SCENE_NOTE = "Gratis — foto Anda langsung dipakai sebagai gambar adegan."
     const val SB_ADD_SCENE_NEED_PHOTO = "Pilih foto dulu."
+    const val SB_ADD_SCENE_DROP_HERE = "Geser & lepaskan foto ke sini — atau klik untuk memilih."
     const val SB_ADD_AI_SCENE = "Adegan baru dengan AI"
     const val SB_ADD_AI_SCENE_NOTE = "AI melanjutkan cerita dengan aktivitas baru dari foto proyek ini."
     const val SB_ADD_AI_NO_SOURCE = "Belum ada adegan berbasis foto untuk dilanjutkan AI."

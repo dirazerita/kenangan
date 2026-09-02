@@ -610,6 +610,7 @@ private fun AddSceneDialog(
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(MotionCategory.SMILE) }
     var camera by remember { mutableStateOf(CameraMove.SLOW_PUSH_IN) }
+    var dropHover by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -620,11 +621,26 @@ private fun AddSceneDialog(
                 Box(
                     Modifier.fillMaxWidth().height(150.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .then(
+                            if (dropHover) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary)
+                            } else Modifier,
+                        )
+                        .filesDropTarget(onHover = { dropHover = it }) { files ->
+                            files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
+                                ?.let { file = it }
+                        }
                         .clickable { pickImage()?.let { file = it } },
                     contentAlignment = Alignment.Center,
                 ) {
                     bmp?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-                        ?: Text(Strings.SB_ADD_SCENE_NEED_PHOTO)
+                        ?: Text(
+                            "🖼  " + Strings.SB_ADD_SCENE_DROP_HERE,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = if (dropHover) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        )
                 }
                 Spacer(Modifier.height(8.dp))
                 SkeuoOutlinedButton(onClick = { pickImage()?.let { file = it } }, modifier = Modifier.fillMaxWidth()) {
@@ -681,6 +697,7 @@ private fun AddRefSceneDialog(
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(MotionCategory.SMILE) }
     var camera by remember { mutableStateOf(CameraMove.SLOW_PUSH_IN) }
+    var dropHover by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -691,11 +708,26 @@ private fun AddRefSceneDialog(
                 Box(
                     Modifier.fillMaxWidth().height(150.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .then(
+                            if (dropHover) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary)
+                            } else Modifier,
+                        )
+                        .filesDropTarget(onHover = { dropHover = it }) { files ->
+                            files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
+                                ?.let { file = it }
+                        }
                         .clickable { pickImage()?.let { file = it } },
                     contentAlignment = Alignment.Center,
                 ) {
                     bmp?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-                        ?: Text(Strings.SB_ADD_SCENE_NEED_PHOTO)
+                        ?: Text(
+                            "🖼  " + Strings.SB_ADD_SCENE_DROP_HERE,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = if (dropHover) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        )
                 }
                 Spacer(Modifier.height(8.dp))
                 SkeuoOutlinedButton(onClick = { pickImage()?.let { file = it } }, modifier = Modifier.fillMaxWidth()) {
