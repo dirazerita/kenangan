@@ -35,6 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
+import id.kenang.app.ui.components.filesDropTarget
 import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.app.ui.theme.SkeuoButton
 import id.kenang.app.ui.theme.SkeuoCard
@@ -72,6 +76,23 @@ fun MotionControlScreen(
     var running by remember { mutableStateOf(false) }
     var elapsed by remember { mutableStateOf(0) }
     var resultFile by remember { mutableStateOf<File?>(null) }
+    var dragOver by remember { mutableStateOf(false) }
+
+    fun setVideo(file: File) {
+        video = file
+        videoDurationS = null
+        scope.launch {
+            videoDurationS = withContext(Dispatchers.IO) { probeDurationSeconds(ffmpegLocator, file) }
+        }
+    }
+
+    // Drop anywhere (owner 2026-09-02): images become the character photo,
+    // videos become the motion reference — both in one drop if mixed.
+    fun acceptDropped(files: List<File>) {
+        files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }?.let { photo = it }
+        files.firstOrNull { it.extension.lowercase() in MotionControlService.VIDEO_EXTENSIONS }
+            ?.let { setVideo(it) }
+    }
 
     LaunchedEffect(running) {
         elapsed = 0
@@ -81,7 +102,12 @@ fun MotionControlScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier.fillMaxSize()
+            .filesDropTarget(enabled = !running, onHover = { dragOver = it }) { acceptDropped(it) }
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(Strings.MOTION_TITLE, style = MaterialTheme.typography.headlineSmall)
@@ -94,11 +120,22 @@ fun MotionControlScreen(
             Spacer(Modifier.width(16.dp))
             SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
         }
-        Spacer(Modifier.height(16.dp))
+        Text(
+            "🖱  " + Strings.MOTION_DROP_HINT,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (dragOver) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        )
+        Spacer(Modifier.height(12.dp))
 
         // ---------- Inputs: photo + reference video ----------
+        val dropBorder = if (dragOver) {
+            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp))
+        } else {
+            Modifier
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SkeuoCard(Modifier.weight(1f)) {
+            SkeuoCard(Modifier.weight(1f).then(dropBorder)) {
                 Column(
                     Modifier.fillMaxWidth().clickable(enabled = !running) {
                         pickFile(Strings.MOTION_PICK_PHOTO, "Foto (JPG, PNG, WebP)",
@@ -125,22 +162,14 @@ fun MotionControlScreen(
                     )
                 }
             }
-            SkeuoCard(Modifier.weight(1f)) {
+            SkeuoCard(Modifier.weight(1f).then(dropBorder)) {
                 Column(
                     Modifier.fillMaxWidth().clickable(enabled = !running) {
                         pickFile(
                             Strings.MOTION_PICK_VIDEO,
                             "Video (${MotionControlService.VIDEO_EXTENSIONS.joinToString(", ") { it.uppercase() }})",
                             *MotionControlService.VIDEO_EXTENSIONS.toTypedArray(),
-                        )?.let { file ->
-                            video = file
-                            videoDurationS = null
-                            scope.launch {
-                                videoDurationS = withContext(Dispatchers.IO) {
-                                    probeDurationSeconds(ffmpegLocator, file)
-                                }
-                            }
-                        }
+                        )?.let { setVideo(it) }
                     }.padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

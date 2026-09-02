@@ -55,7 +55,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
+import id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
 import id.kenang.app.ui.components.StatusChip
+import id.kenang.app.ui.components.filesDropTarget
 import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.core.common.events.GenerationEvents
 import id.kenang.core.common.i18n.Strings
@@ -155,6 +158,13 @@ fun StoryboardScreen(
             }
         }
 
+        Text(
+            "🖱  " + Strings.SB_DROP_REPLACE_HINT,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+        )
+        Spacer(Modifier.height(8.dp))
+
         // ---------- Scene grid ----------
         val ordered = state.scenes.sortedBy { it.order_index }
         LazyVerticalGrid(
@@ -176,6 +186,7 @@ fun StoryboardScreen(
                     onReplace = {
                         pickImage()?.let { file -> state.replaceKeyframe(scene, file) }
                     },
+                    onReplaceFile = { file -> state.replaceKeyframe(scene, file) },
                 )
             }
             // Owner feature 2026-09-02: AI continues the story with one more
@@ -286,8 +297,25 @@ private fun SceneCard(
     onDelete: () -> Unit,
     onMove: (Int) -> Unit,
     onReplace: () -> Unit,
+    onReplaceFile: (java.io.File) -> Unit = {},
 ) {
-    Card {
+    // Drop a photo straight onto the card to replace its keyframe
+    // (owner 2026-09-02: every image input accepts drag-and-drop).
+    var dropHover by remember(scene.scene_id) { mutableStateOf(false) }
+    Card(
+        Modifier
+            .then(
+                if (dropHover) {
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary)
+                } else {
+                    Modifier
+                },
+            )
+            .filesDropTarget(onHover = { dropHover = it }) { files ->
+                files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
+                    ?.let(onReplaceFile)
+            },
+    ) {
         Column {
             Box(
                 Modifier.fillMaxWidth().height(180.dp)

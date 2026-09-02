@@ -46,6 +46,8 @@ object Strings {
     const val MOTION_DURATION_CAPPED = " (dipotong ke batas maks %1 dtk)"
     const val MOTION_NEED_BOTH = "Pilih foto dan video referensinya dulu."
     const val MOTION_RESULT_NOTE = "Hasil disimpan ke: %1"
+    const val MOTION_DROP_HINT = "Tercepat: geser foto dan video dari Explorer, lepaskan di mana saja di layar ini — keduanya sekaligus juga bisa."
+    const val SB_DROP_REPLACE_HINT = "Geser foto ke kartu adegan untuk mengganti gambarnya."
 
     // Generic
     const val CANCEL = "Batal"
