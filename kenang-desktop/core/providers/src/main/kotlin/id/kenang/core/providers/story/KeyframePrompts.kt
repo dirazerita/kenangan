@@ -97,7 +97,14 @@ object KeyframePrompts {
             " Include ONLY the people whose faces are clearly and completely visible in the source " +
                 "photo. Any person who is partially cut off by the photo edge, whose face is not " +
                 "visible, or who is unrecognizable must be OMITTED from the scene entirely — never " +
-                "include them and never invent, reconstruct or guess a face for them."
+                "include them and never invent, reconstruct or guess a face for them." +
+                // Owner 2026-09-03: a group-worded activity made the model
+                // invent two companions for a single-person reference. The
+                // photo's people are the WHOLE cast, no matter the activity.
+                " The people from the source photo are the ONLY people in the scene — the same " +
+                "count, the same individuals. Do NOT add any companion, family member, friend or " +
+                "bystander who is not in the source photo, even if the activity wording suggests " +
+                "company; if it does, depict the source photo's person(s) doing it alone."
         } else ""
         return restoration + base + fusion + preservation + focus + NO_DUPLICATE_CLAUSE +
             " Photorealistic, warm natural light, $ratioPhrase."

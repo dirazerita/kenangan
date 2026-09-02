@@ -94,6 +94,9 @@ class KeyframePromptsTest {
         )
         assertTrue("must be OMITTED" in prompt, prompt)
         assertTrue("never invent, reconstruct or guess a face" in prompt, prompt)
+        // Owner 2026-09-03: group-worded activities must not conjure companions.
+        assertTrue("Do NOT add any companion" in prompt, prompt)
+        assertTrue("doing it alone" in prompt, prompt)
         // Normal scenes stay unchanged.
         val normal = KeyframePrompts.build(taman, "16:9", isFusion = false, subjectCount = 1)
         assertTrue("must be OMITTED" !in normal, normal)

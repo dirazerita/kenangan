@@ -5,15 +5,17 @@ import id.kenang.core.common.story.MotionCategory
 import kotlin.random.Random
 
 /**
- * Curated activity ideas for "Adegan baru dengan AI" (owner 2026-09-02):
- * one click appends a NEW scene that continues the storyboard with a fresh
- * activity — no LLM round-trip needed (photo analyses are not persisted, so
- * a plan re-run would mean re-analyzing every photo). The pool is written to
- * the same standard as the planner's variety examples: concrete activity,
- * distinct spot, motion category that matches the action.
+ * Curated activity ideas for "Adegan baru dengan AI" and the reference-photo
+ * scene dialog (owner 2026-09-02): one click appends a NEW scene with a fresh
+ * activity — no LLM round-trip needed (photo analyses are not persisted).
+ *
+ * [soloSafe] (owner 2026-09-03): activities phrased subject-neutrally, valid
+ * for ANY person count. Group-only ideas ("They gather into a hug") fed to a
+ * single-person reference photo made the model INVENT companions — reference
+ * scenes therefore draw only from the soloSafe subset.
  */
 data class SceneIdea(
-    /** English activity clause for the keyframe prompt (subject-neutral). */
+    /** English activity clause for the keyframe prompt. */
     val activityEn: String,
     /** Indonesian description shown on the scene card. */
     val descriptionId: String,
@@ -21,100 +23,109 @@ data class SceneIdea(
     val keyword: String,
     val category: MotionCategory,
     val camera: CameraMove,
+    /** True when the wording adds no people (safe for 1..N subjects). */
+    val soloSafe: Boolean = true,
 )
 
 object SceneIdeas {
 
     val ALL: List<SceneIdea> = listOf(
         SceneIdea(
-            "They sit together around a small table sharing drinks and light snacks, laughing at a story",
-            "Duduk bersama di meja kecil sambil menikmati minuman dan camilan, tertawa mendengar cerita.",
-            "snacks", MotionCategory.LAUGH_SOFTLY, CameraMove.STATIC,
+            "enjoying warm tea and light snacks at a small table, smiling contentedly",
+            "Menikmati teh hangat dan camilan di meja kecil sambil tersenyum.",
+            "snacks", MotionCategory.SMILE, CameraMove.STATIC,
         ),
         SceneIdea(
-            "They stroll side by side along a shaded path, relaxed and unhurried",
-            "Berjalan santai beriringan di jalur yang teduh.",
-            "shaded path", MotionCategory.WALK_SLOWLY, CameraMove.GENTLE_PAN,
+            "strolling calmly along a shaded garden path",
+            "Berjalan santai menyusuri jalur taman yang teduh.",
+            "garden path", MotionCategory.WALK_SLOWLY, CameraMove.GENTLE_PAN,
         ),
         SceneIdea(
-            "They gather into a gentle warm group hug, eyes closed with contentment",
-            "Berkumpul dalam pelukan hangat penuh kebahagiaan.",
-            "group hug", MotionCategory.HUG, CameraMove.SLOW_PUSH_IN,
-        ),
-        SceneIdea(
-            "They wave cheerfully toward the camera from a doorway, welcoming and warm",
+            "waving cheerfully toward the camera from a doorway",
             "Melambaikan tangan dengan ceria ke arah kamera dari depan pintu.",
             "doorway", MotionCategory.WAVE, CameraMove.SLOW_PUSH_IN,
         ),
         SceneIdea(
-            "They sit together on wide steps, chatting warmly and smiling",
-            "Duduk bersama di anak tangga sambil mengobrol hangat.",
+            "sitting relaxed on wide steps in the warm light",
+            "Duduk santai di anak tangga dalam cahaya hangat.",
             "steps", MotionCategory.SMILE, CameraMove.STATIC,
         ),
         SceneIdea(
-            "One of them points at something interesting in the distance while the others look and smile",
-            "Salah satu menunjuk sesuatu di kejauhan, yang lain menoleh sambil tersenyum.",
-            "points at", MotionCategory.SLIGHT_HEAD_TURN, CameraMove.GENTLE_PAN,
+            "looking through an old photo album, smiling at the memories",
+            "Membuka album foto lama sambil tersenyum mengenang.",
+            "photo album", MotionCategory.SMILE, CameraMove.SLOW_PUSH_IN,
         ),
         SceneIdea(
-            "They look through an old photo album together, heads leaning close",
-            "Membuka album foto lama bersama, saling mendekatkan kepala.",
-            "photo album", MotionCategory.SMILE, CameraMove.SLOW_PUSH_IN,
+            "standing under a big shady tree enjoying the breeze",
+            "Berdiri di bawah pohon rindang menikmati semilir angin.",
+            "shady tree", MotionCategory.SLIGHT_HEAD_TURN, CameraMove.GENTLE_PAN,
+        ),
+        SceneIdea(
+            "a warm portrait in soft golden light, looking gently at the camera",
+            "Potret hangat dalam cahaya keemasan, menatap lembut ke kamera.",
+            "golden light", MotionCategory.LOOK_AT_CAMERA, CameraMove.SLOW_PUSH_IN,
+        ),
+        SceneIdea(
+            "walking toward the camera, relaxed and happy",
+            "Berjalan ke arah kamera dengan santai dan bahagia.",
+            "toward the camera", MotionCategory.WALK_SLOWLY, CameraMove.STATIC,
+        ),
+        SceneIdea(
+            "sitting on a long bench enjoying the quiet afternoon",
+            "Duduk di bangku panjang menikmati sore yang tenang.",
+            "long bench", MotionCategory.SMILE, CameraMove.GENTLE_PAN,
+        ),
+        SceneIdea(
+            "admiring blooming plants nearby, leaning in to look closely",
+            "Mengagumi tanaman yang sedang berbunga, mencondongkan badan mengamati.",
+            "blooming plants", MotionCategory.SLIGHT_HEAD_TURN, CameraMove.GENTLE_PAN,
+        ),
+        SceneIdea(
+            "waving a warm goodbye in soft late-afternoon light",
+            "Melambaikan salam perpisahan hangat dalam cahaya sore yang lembut.",
+            "goodbye", MotionCategory.WAVE, CameraMove.GENTLE_PAN,
+        ),
+        SceneIdea(
+            "raising a cup of tea with a gentle smile",
+            "Mengangkat cangkir teh dengan senyum lembut.",
+            "cup of tea", MotionCategory.SMILE, CameraMove.SLOW_PUSH_IN,
+        ),
+        // ---- group-only wording: NEVER for reference photos (soloSafe=false) ----
+        SceneIdea(
+            "They gather into a gentle warm group hug, eyes closed with contentment",
+            "Berkumpul dalam pelukan hangat penuh kebahagiaan.",
+            "group hug", MotionCategory.HUG, CameraMove.SLOW_PUSH_IN,
+            soloSafe = false,
         ),
         SceneIdea(
             "They hold hands in a relaxed line, smiling proudly at the camera",
             "Bergandengan tangan berjajar santai, tersenyum bangga ke arah kamera.",
             "hold hands in", MotionCategory.HOLD_HANDS, CameraMove.STATIC,
+            soloSafe = false,
         ),
         SceneIdea(
-            "They stand under a big shady tree enjoying the breeze, hair and clothes moving softly",
-            "Berdiri di bawah pohon rindang menikmati semilir angin.",
-            "shady tree", MotionCategory.SLIGHT_HEAD_TURN, CameraMove.GENTLE_PAN,
+            "One of them points at something in the distance while the others look and smile",
+            "Salah satu menunjuk sesuatu di kejauhan, yang lain menoleh sambil tersenyum.",
+            "points at", MotionCategory.SLIGHT_HEAD_TURN, CameraMove.GENTLE_PAN,
+            soloSafe = false,
         ),
         SceneIdea(
-            "They gather close for a warm group portrait in soft golden light",
-            "Merapat untuk potret bersama dalam cahaya keemasan yang lembut.",
-            "group portrait", MotionCategory.LOOK_AT_CAMERA, CameraMove.SLOW_PUSH_IN,
-        ),
-        SceneIdea(
-            "They walk toward the camera together, relaxed and happy",
-            "Berjalan bersama ke arah kamera dengan santai dan bahagia.",
-            "toward the camera", MotionCategory.WALK_SLOWLY, CameraMove.STATIC,
-        ),
-        SceneIdea(
-            "They sit on a long bench sharing quiet stories, one gesturing gently",
-            "Duduk di bangku panjang berbagi cerita, salah satu menggerakkan tangan pelan.",
-            "long bench", MotionCategory.SMILE, CameraMove.GENTLE_PAN,
-        ),
-        SceneIdea(
-            "A candid moment of genuine laughter at a joke, some covering their mouths",
-            "Momen candid tertawa lepas mendengar candaan.",
+            "A candid moment of genuine laughter at a shared joke",
+            "Momen candid tertawa lepas mendengar candaan bersama.",
             "candid", MotionCategory.LAUGH_SOFTLY, CameraMove.STATIC,
-        ),
-        SceneIdea(
-            "They admire blooming plants nearby, one leaning in to look closely",
-            "Mengagumi tanaman yang sedang berbunga, salah satu mencondongkan badan mengamati.",
-            "blooming plants", MotionCategory.SLIGHT_HEAD_TURN, CameraMove.GENTLE_PAN,
-        ),
-        SceneIdea(
-            "They wave a warm goodbye in soft late-afternoon light",
-            "Melambaikan salam perpisahan hangat dalam cahaya sore yang lembut.",
-            "goodbye", MotionCategory.WAVE, CameraMove.GENTLE_PAN,
-        ),
-        SceneIdea(
-            "They share a toast with cups of tea, smiling at each other",
-            "Mengangkat cangkir teh bersama sambil saling tersenyum.",
-            "toast", MotionCategory.SMILE, CameraMove.SLOW_PUSH_IN,
+            soloSafe = false,
         ),
     )
 
     /**
      * Picks an idea whose keyword does not already appear in the storyboard's
-     * existing prompts ([usedLower] = all keyframe prompts + hints, lowercase).
-     * Every idea used up → any random idea (better a repeat than a dead button).
+     * existing prompts ([usedLower], lowercase). [soloOnly] restricts to
+     * subject-neutral ideas (reference-photo scenes). Everything used up →
+     * any idea from the eligible pool (better a repeat than a dead button).
      */
-    fun pick(usedLower: String, random: Random = Random.Default): SceneIdea {
-        val fresh = ALL.filter { it.keyword !in usedLower }
-        return (fresh.ifEmpty { ALL }).random(random)
+    fun pick(usedLower: String, random: Random = Random.Default, soloOnly: Boolean = false): SceneIdea {
+        val pool = if (soloOnly) ALL.filter { it.soloSafe } else ALL
+        val fresh = pool.filter { it.keyword !in usedLower }
+        return (fresh.ifEmpty { pool }).random(random)
     }
 }

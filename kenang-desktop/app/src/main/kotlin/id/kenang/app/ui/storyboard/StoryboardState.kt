@@ -296,7 +296,9 @@ class StoryboardState(
         val used = scenes.joinToString(" ") {
             (it.keyframe_prompt_en ?: "") + " " + (it.motion_summary_id ?: "")
         }.lowercase() + (previous?.let { " " + it.keyword } ?: "")
-        return id.kenang.core.providers.story.SceneIdeas.pick(used)
+        // soloOnly: reference photos may show ONE person - group-worded
+        // ideas would instruct the model to invent companions.
+        return id.kenang.core.providers.story.SceneIdeas.pick(used, soloOnly = true)
     }
 
     fun addAiSceneFromPhoto(
