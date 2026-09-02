@@ -42,7 +42,6 @@ sealed class Route {
     data object Settings : Route()
     data object About : Route()
     data object Upscale : Route()
-    data object Ideas : Route()
 }
 
 @Composable
@@ -128,7 +127,6 @@ fun App() {
                         onSettings = { route = Route.Settings },
                         onAbout = { route = Route.About },
                         onUpscale = { route = Route.Upscale },
-                        onIdeas = { route = Route.Ideas },
                     )
                     is Route.Wizard -> WizardScreen(
                         existingProjectId = (route as Route.Wizard).projectId,
@@ -170,10 +168,6 @@ fun App() {
                         onReopenOnboarding = { route = Route.Onboarding },
                     )
                     Route.About -> AboutScreen(onBack = { route = Route.Home })
-                    Route.Ideas -> id.kenang.app.ui.ideas.IdeasScreen(
-                        snackbar = snackbar,
-                        onBack = { route = Route.Home },
-                    )
                     Route.Upscale -> id.kenang.app.ui.upscale.UpscaleScreen(
                         snackbar = snackbar,
                         onBack = { route = Route.Home },

@@ -8,7 +8,6 @@ import id.kenang.core.common.license.DevFullLicense
 import id.kenang.core.common.license.LicenseGate
 import id.kenang.core.data.AppDirs
 import id.kenang.core.data.GenJobRepository
-import id.kenang.core.data.IdeaRepository
 import id.kenang.core.data.MusicLibrary
 import id.kenang.core.data.OutputRepository
 import id.kenang.core.data.PhotoRepository
@@ -96,7 +95,6 @@ val appModule = module {
 
     // Phase 04 — video pipeline (generate → audio → assemble)
     single { GenJobRepository(get(), get()) }
-    single { IdeaRepository(get(), get()) }
     single { OutputRepository(get(), get()) }
     single { MusicLibrary(get()) }
     single { VideoAssembler(androidContext()) }

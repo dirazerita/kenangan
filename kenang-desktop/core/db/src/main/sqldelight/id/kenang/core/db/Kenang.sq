@@ -262,37 +262,3 @@ INSERT OR REPLACE INTO settings(key, value) VALUES (?, ?);
 
 deleteSetting:
 DELETE FROM settings WHERE key = ?;
-
--- ---------- idea (Ide Produk — owner 2026-09-02) ----------
--- Product-idea inbox: suggestions from advertisers/resellers, captured by the
--- owner. Standalone table, no project linkage.
-
-CREATE TABLE idea (
-  id TEXT NOT NULL PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  source_name TEXT,                          -- pengusul (advertiser)
-  contact TEXT,                              -- WA / IG / email
-  category TEXT NOT NULL DEFAULT 'fitur',    -- fitur|perbaikan|harga|konten|lainnya
-  priority TEXT NOT NULL DEFAULT 'sedang',   -- tinggi|sedang|rendah
-  status TEXT NOT NULL DEFAULT 'baru',       -- baru|dipertimbangkan|dikerjakan|selesai|ditolak
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-
-selectAllIdeas:
-SELECT * FROM idea ORDER BY created_at DESC;
-
-insertIdea:
-INSERT INTO idea(id, title, description, source_name, contact, category, priority, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-updateIdea:
-UPDATE idea SET title = ?, description = ?, source_name = ?, contact = ?, category = ?, priority = ?, updated_at = ?
-WHERE id = ?;
-
-updateIdeaStatus:
-UPDATE idea SET status = ?, updated_at = ? WHERE id = ?;
-
-deleteIdea:
-DELETE FROM idea WHERE id = ?;

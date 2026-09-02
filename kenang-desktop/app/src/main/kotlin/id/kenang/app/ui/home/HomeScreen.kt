@@ -67,7 +67,6 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onUpscale: () -> Unit = {},
-    onIdeas: () -> Unit = {},
 ) {
     val projects = koinInject<ProjectRepository>()
     val costTracker = koinInject<CostTracker>()
@@ -116,10 +115,6 @@ fun HomeScreen(
             // Standalone tool (owner 2026-09-01): batch upscale/restore photos.
             id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onUpscale) {
                 Text("✨  " + Strings.UPSCALE_TITLE)
-            }
-            // Idea inbox (owner 2026-09-02): advertiser product suggestions.
-            id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onIdeas) {
-                Text("💡  " + Strings.IDEAS_TITLE)
             }
         }
 
