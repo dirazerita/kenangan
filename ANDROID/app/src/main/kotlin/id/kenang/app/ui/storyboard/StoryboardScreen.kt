@@ -311,8 +311,9 @@ fun StoryboardScreen(
         AddRefSceneDialog(
             photo = refScenePhoto,
             onPickPhoto = { replaceTarget = null; pickForRef = true; launchPicker() },
-            onAdd = { file, category, camera, description ->
-                state.addAiSceneFromPhoto(file, description, category, camera)
+            suggestIdea = { prev -> state.suggestIdea(prev) },
+            onAdd = { file, category, camera, description, idea ->
+                state.addAiSceneFromPhoto(file, description, category, camera, idea)
                 refScenePhoto = null
                 showAddRefScene = false
             },
@@ -565,13 +566,17 @@ private fun MotionEditorDialog(
         title = { Text(Strings.SB_EDIT_PROMPT) },
         text = {
             Column {
-                EnumDropdown(Strings.SB_MOTION_CATEGORY, MotionCategory.entries.map { it.key }, category.key) {
-                    category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE
-                }
+                EnumDropdown(
+                    Strings.SB_MOTION_CATEGORY,
+                    MotionCategory.entries.map { it.key to categoryLabelId(it) },
+                    categoryLabelId(category),
+                ) { category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE }
                 Spacer(Modifier.height(8.dp))
-                EnumDropdown(Strings.SB_MOTION_CAMERA, CameraMove.entries.map { it.key }, camera.key) {
-                    camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN
-                }
+                EnumDropdown(
+                    Strings.SB_MOTION_CAMERA,
+                    CameraMove.entries.map { it.key to cameraLabelId(it) },
+                    cameraLabelId(camera),
+                ) { camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = adjectives,
@@ -642,13 +647,17 @@ private fun AddSceneDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
-                EnumDropdown(Strings.SB_MOTION_CATEGORY, MotionCategory.entries.map { it.key }, category.key) {
-                    category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE
-                }
+                EnumDropdown(
+                    Strings.SB_MOTION_CATEGORY,
+                    MotionCategory.entries.map { it.key to categoryLabelId(it) },
+                    categoryLabelId(category),
+                ) { category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE }
                 Spacer(Modifier.height(8.dp))
-                EnumDropdown(Strings.SB_MOTION_CAMERA, CameraMove.entries.map { it.key }, camera.key) {
-                    camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN
-                }
+                EnumDropdown(
+                    Strings.SB_MOTION_CAMERA,
+                    CameraMove.entries.map { it.key to cameraLabelId(it) },
+                    cameraLabelId(camera),
+                ) { camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN }
                 Spacer(Modifier.height(8.dp))
                 Text(
                     Strings.SB_ADD_SCENE_NOTE,
@@ -676,13 +685,16 @@ private fun AddSceneDialog(
 private fun AddRefSceneDialog(
     photo: java.io.File?,
     onPickPhoto: () -> Unit,
-    onAdd: (java.io.File, MotionCategory, CameraMove, String) -> Unit,
+    suggestIdea: (id.kenang.core.providers.story.SceneIdea?) -> id.kenang.core.providers.story.SceneIdea,
+    onAdd: (java.io.File, MotionCategory, CameraMove, String, id.kenang.core.providers.story.SceneIdea) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val file = photo
     var description by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf(MotionCategory.SMILE) }
-    var camera by remember { mutableStateOf(CameraMove.SLOW_PUSH_IN) }
+    // Prefilled from a story-connected suggestion (owner 2026-09-03).
+    var idea by remember { mutableStateOf(suggestIdea(null)) }
+    var category by remember { mutableStateOf(idea.category) }
+    var camera by remember { mutableStateOf(idea.camera) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -712,14 +724,29 @@ private fun AddRefSceneDialog(
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(12.dp))
-                EnumDropdown(Strings.SB_MOTION_CATEGORY, MotionCategory.entries.map { it.key }, category.key) {
-                    category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE
-                }
                 Spacer(Modifier.height(8.dp))
-                EnumDropdown(Strings.SB_MOTION_CAMERA, CameraMove.entries.map { it.key }, camera.key) {
-                    camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN
-                }
+                // Story-connected suggestion + one-click re-roll.
+                Text(
+                    Strings.SB_ADD_AIREF_SUGGEST_PREFIX + idea.descriptionId,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TextButton(onClick = {
+                    idea = suggestIdea(idea)
+                    category = idea.category
+                    camera = idea.camera
+                }) { Text("🎲  " + Strings.SB_ADD_AIREF_SUGGEST_SWAP) }
+                Spacer(Modifier.height(4.dp))
+                EnumDropdown(
+                    Strings.SB_MOTION_CATEGORY,
+                    MotionCategory.entries.map { it.key to categoryLabelId(it) },
+                    categoryLabelId(category),
+                ) { category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE }
+                Spacer(Modifier.height(8.dp))
+                EnumDropdown(
+                    Strings.SB_MOTION_CAMERA,
+                    CameraMove.entries.map { it.key to cameraLabelId(it) },
+                    cameraLabelId(camera),
+                ) { camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN }
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "🛡  " + Strings.SB_ADD_AIREF_FACE_NOTE,
@@ -736,7 +763,7 @@ private fun AddRefSceneDialog(
         },
         confirmButton = {
             SkeuoButton(
-                onClick = { file?.let { onAdd(it, category, camera, description) } },
+                onClick = { file?.let { onAdd(it, category, camera, description, idea) } },
                 enabled = file != null,
             ) { Text(Strings.SAVE) }
         },
@@ -744,18 +771,31 @@ private fun AddRefSceneDialog(
     )
 }
 
+/** Indonesian display labels for the template pickers (owner 2026-09-03). */
+private fun categoryLabelId(c: MotionCategory): String =
+    c.phraseId.replace("{s}", "").trim().replaceFirstChar { it.uppercase() }
+
+private fun cameraLabelId(c: CameraMove): String =
+    c.phraseId.replaceFirstChar { it.uppercase() }
+
+/** [options] = key → Indonesian label; [selectedLabel] shown on the button. */
 @Composable
-private fun EnumDropdown(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
+private fun EnumDropdown(
+    label: String,
+    options: List<Pair<String, String>>,
+    selectedLabel: String,
+    onSelect: (String) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         SkeuoOutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("$label: $selected")
+            Text("$label: $selectedLabel")
         }
         androidx.compose.material3.DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
+            options.forEach { (key, display) ->
                 DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = { onSelect(option); expanded = false },
+                    text = { Text(display) },
+                    onClick = { onSelect(key); expanded = false },
                 )
             }
         }

@@ -287,11 +287,24 @@ class StoryboardState(
      * the prompt carries the focus guard: people with cut-off faces in the
      * reference are omitted entirely instead of getting an invented face.
      */
+    /**
+     * Suggests a fresh activity for a new scene, deduped against everything
+     * the storyboard already shows (owner 2026-09-03: the ref-scene dialog
+     * must connect to the story being built, not start blank).
+     */
+    fun suggestIdea(previous: id.kenang.core.providers.story.SceneIdea? = null): id.kenang.core.providers.story.SceneIdea {
+        val used = scenes.joinToString(" ") {
+            (it.keyframe_prompt_en ?: "") + " " + (it.motion_summary_id ?: "")
+        }.lowercase() + (previous?.let { " " + it.keyword } ?: "")
+        return id.kenang.core.providers.story.SceneIdeas.pick(used)
+    }
+
     fun addAiSceneFromPhoto(
         file: java.io.File,
         description: String,
         category: id.kenang.core.common.story.MotionCategory,
         camera: id.kenang.core.common.story.CameraMove,
+        idea: id.kenang.core.providers.story.SceneIdea,
     ) {
         scope.launch {
             val p = project ?: return@launch
@@ -309,10 +322,16 @@ class StoryboardState(
             } else {
                 config.vibes.firstOrNull { it.id == p.vibe } ?: config.vibes.first()
             }
+            // An empty description used to collapse into the "restore subtly"
+            // prompt — the result barely differed from the reference (owner
+            // 2026-09-03). The suggested idea now guarantees a concrete
+            // activity, so the scene is always a real new moment.
+            val useIdea = description.isBlank()
+            val hint = if (useIdea) idea.activityEn else description.trim()
             val spec = MotionSpec(
                 category, camera,
-                detailEn = id.kenang.core.common.story.MotionTemplateValidator.sanitizeDetail(description),
-                detailId = description.trim().take(260),
+                detailEn = id.kenang.core.common.story.MotionTemplateValidator.sanitizeDetail("$hint."),
+                detailId = (if (useIdea) idea.descriptionId else description.trim()).take(260),
             )
             val order = (scenes.maxOfOrNull { it.order_index } ?: -1L) + 1
             sceneRepository.upsert(
@@ -324,7 +343,7 @@ class StoryboardState(
                     vibe = p.vibe,
                     keyframe_prompt_en = id.kenang.core.providers.story.KeyframePrompts.build(
                         vibe, p.ratio, isFusion = false, subjectCount = 1,
-                        keyframeHint = description.trim(),
+                        keyframeHint = hint,
                         restore = p.restore_photos == 1L,
                         focusMainOnly = true,
                     ),
