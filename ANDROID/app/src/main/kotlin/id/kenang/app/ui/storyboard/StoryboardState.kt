@@ -29,6 +29,7 @@ class StoryboardState(
     private val projectId: String,
     private val projects: ProjectRepository,
     private val sceneRepository: SceneRepository,
+    private val photoRepository: id.kenang.core.data.PhotoRepository,
     private val keyframeService: KeyframeService,
     private val estimator: CostEstimator,
     private val configRepository: ConfigRepository,
@@ -262,6 +263,68 @@ class StoryboardState(
                         keyframeHint = idea.activityEn,
                         restore = p.restore_photos == 1L,
                         exactSubjects = exactSubjects,
+                    ),
+                    keyframe_url = null,
+                    motion_prompt_en = MotionTemplates.buildPromptEn(spec),
+                    motion_summary_id = MotionTemplates.buildSummaryId(spec),
+                    duration_s = p.scene_duration_s,
+                    regen_count = 0,
+                    status = SceneStatus.DRAFT, // observe-flow auto-triggers the keyframe
+                    order_index = order,
+                    local_keyframe_path = null,
+                    local_clip_path = null,
+                ),
+            )
+        }
+    }
+
+    /**
+     * "Adegan AI dari foto referensi" (owner 2026-09-02): the user's NEW photo
+     * becomes the source of an AI-generated scene. The photo joins the
+     * project's photos (so the normal upload/keyframe pipeline applies), and
+     * the prompt carries the focus guard: people with cut-off faces in the
+     * reference are omitted entirely instead of getting an invented face.
+     */
+    fun addAiSceneFromPhoto(
+        file: java.io.File,
+        description: String,
+        category: id.kenang.core.common.story.MotionCategory,
+        camera: id.kenang.core.common.story.CameraMove,
+    ) {
+        scope.launch {
+            val p = project ?: return@launch
+            val check = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.core.data.story.ImageQuality.check(file)
+            }
+            if (!check.ok) {
+                snackMessage = "${file.name}: ${check.rejectReasonId}"
+                return@launch
+            }
+            val photo = photoRepository.addPhoto(projectId, file)
+
+            val vibe = if (p.vibe == "custom" && !p.custom_vibe.isNullOrBlank()) {
+                id.kenang.core.data.config.Vibe("custom", "Suasana kustom", "", p.custom_vibe!!.trim())
+            } else {
+                config.vibes.firstOrNull { it.id == p.vibe } ?: config.vibes.first()
+            }
+            val spec = MotionSpec(
+                category, camera,
+                detailEn = id.kenang.core.common.story.MotionTemplateValidator.sanitizeDetail(description),
+                detailId = description.trim().take(260),
+            )
+            val order = (scenes.maxOfOrNull { it.order_index } ?: -1L) + 1
+            sceneRepository.upsert(
+                Scene(
+                    scene_id = "sc_airef_${System.currentTimeMillis()}",
+                    project_id = projectId,
+                    source_photos_json = "[\"${photo.id}\"]",
+                    type = "single",
+                    vibe = p.vibe,
+                    keyframe_prompt_en = id.kenang.core.providers.story.KeyframePrompts.build(
+                        vibe, p.ratio, isFusion = false, subjectCount = 1,
+                        keyframeHint = description.trim(),
+                        restore = p.restore_photos == 1L,
+                        focusMainOnly = true,
                     ),
                     keyframe_url = null,
                     motion_prompt_en = MotionTemplates.buildPromptEn(spec),

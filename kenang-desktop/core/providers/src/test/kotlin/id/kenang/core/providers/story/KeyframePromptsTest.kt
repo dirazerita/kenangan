@@ -86,6 +86,20 @@ class KeyframePromptsTest {
     }
 
     @Test
+    fun `reference-photo scenes omit cut-off faces instead of inventing them`() {
+        val prompt = KeyframePrompts.build(
+            taman, "16:9", isFusion = false, subjectCount = 1,
+            keyframeHint = "Beliau tersenyum tenang di kursi roda.",
+            focusMainOnly = true,
+        )
+        assertTrue("must be OMITTED" in prompt, prompt)
+        assertTrue("never invent, reconstruct or guess a face" in prompt, prompt)
+        // Normal scenes stay unchanged.
+        val normal = KeyframePrompts.build(taman, "16:9", isFusion = false, subjectCount = 1)
+        assertTrue("must be OMITTED" !in normal, normal)
+    }
+
+    @Test
     fun `ensureNoDuplicateGuard retrofits old prompts exactly once`() {
         val old = "Create a new photorealistic scene of the exact same people in a garden."
         val patched = KeyframePrompts.ensureNoDuplicateGuard(old)

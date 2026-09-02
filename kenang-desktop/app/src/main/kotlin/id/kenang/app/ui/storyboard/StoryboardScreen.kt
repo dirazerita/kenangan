@@ -90,8 +90,9 @@ fun StoryboardScreen(
     val configRepo = koinInject<ConfigRepository>()
     val events = koinInject<GenerationEvents>()
 
+    val photosRepo = koinInject<id.kenang.core.data.PhotoRepository>()
     val state = remember {
-        StoryboardState(projectId, projects, sceneRepo, keyframes, estimator, configRepo, events, scope)
+        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, scope)
     }
     LaunchedEffect(Unit) { state.start() }
     LaunchedEffect(state.snackMessage) {
@@ -100,6 +101,8 @@ fun StoryboardScreen(
 
     var editing by remember { mutableStateOf<Scene?>(null) }
     var showAddScene by remember { mutableStateOf(false) }
+    var showAddRefScene by remember { mutableStateOf(false) }
+    var refSceneFile by remember { mutableStateOf<java.io.File?>(null) }
 
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         // ---------- Header ----------
@@ -217,6 +220,39 @@ fun StoryboardScreen(
                     }
                 }
             }
+            // Owner feature 2026-09-02: a NEW reference photo becomes the
+            // source of an AI-generated scene (cut-off faces omitted).
+            item(key = "add-airef-scene") {
+                SkeuoCard(
+                    Modifier.height(180.dp).fillMaxWidth()
+                        .clickable { showAddRefScene = true }
+                        .filesDropTarget { files ->
+                            files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
+                                ?.let { refSceneFile = it; showAddRefScene = true }
+                        },
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("🖼✨", style = MaterialTheme.typography.headlineMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            Strings.SB_ADD_AIREF + " ±$" + "%.3f".format(state.regenCostUsd()),
+                            style = MaterialTheme.typography.titleSmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            Strings.SB_ADD_AIREF_NOTE,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
             // Owner feature 2026-08-28: append your own photo as a new scene.
             item(key = "add-user-scene") {
                 SkeuoCard(
@@ -250,6 +286,18 @@ fun StoryboardScreen(
                 showAddScene = false
             },
             onDismiss = { showAddScene = false },
+        )
+    }
+
+    if (showAddRefScene) {
+        AddRefSceneDialog(
+            initialFile = refSceneFile,
+            onAdd = { file, category, camera, description ->
+                state.addAiSceneFromPhoto(file, description, category, camera)
+                refSceneFile = null
+                showAddRefScene = false
+            },
+            onDismiss = { refSceneFile = null; showAddRefScene = false },
         )
     }
 
@@ -604,6 +652,83 @@ private fun AddSceneDialog(
                     Strings.SB_ADD_SCENE_NOTE,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        },
+        confirmButton = {
+            SkeuoButton(
+                onClick = { file?.let { onAdd(it, category, camera, description) } },
+                enabled = file != null,
+            ) { Text(Strings.SAVE) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.CANCEL) } },
+    )
+}
+
+/**
+ * "Adegan AI dari foto referensi" (owner 2026-09-02): a NEW photo becomes the
+ * SOURCE of an AI-generated keyframe. Key promise surfaced in the dialog:
+ * people with cut-off/unclear faces in the reference are omitted, never given
+ * an invented face.
+ */
+@Composable
+private fun AddRefSceneDialog(
+    initialFile: java.io.File?,
+    onAdd: (java.io.File, MotionCategory, CameraMove, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var file by remember { mutableStateOf(initialFile) }
+    var description by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(MotionCategory.SMILE) }
+    var camera by remember { mutableStateOf(CameraMove.SLOW_PUSH_IN) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(Strings.SB_ADD_AIREF_TITLE) },
+        text = {
+            Column {
+                val bmp by rememberFileBitmap(file?.absolutePath)
+                Box(
+                    Modifier.fillMaxWidth().height(150.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { pickImage()?.let { file = it } },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    bmp?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+                        ?: Text(Strings.SB_ADD_SCENE_NEED_PHOTO)
+                }
+                Spacer(Modifier.height(8.dp))
+                SkeuoOutlinedButton(onClick = { pickImage()?.let { file = it } }, modifier = Modifier.fillMaxWidth()) {
+                    Text(Strings.SB_ADD_SCENE_PICK)
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it.take(260) },
+                    label = { Text(Strings.SB_ADD_AIREF_DESC) },
+                    placeholder = { Text(Strings.SB_ADD_AIREF_DESC_HINT) },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                EnumDropdown(Strings.SB_MOTION_CATEGORY, MotionCategory.entries.map { it.key }, category.key) {
+                    category = MotionCategory.fromKey(it) ?: MotionCategory.SMILE
+                }
+                Spacer(Modifier.height(8.dp))
+                EnumDropdown(Strings.SB_MOTION_CAMERA, CameraMove.entries.map { it.key }, camera.key) {
+                    camera = CameraMove.fromKey(it) ?: CameraMove.SLOW_PUSH_IN
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "🛡  " + Strings.SB_ADD_AIREF_FACE_NOTE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    Strings.SB_ADD_AIREF_PHOTO_JOIN_NOTE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
             }
         },

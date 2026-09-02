@@ -35,6 +35,12 @@ object KeyframePrompts {
         restore: Boolean = false,
         /** Uncapped person count for non-fusion scenes; null = unknown. */
         exactSubjects: Int? = null,
+        /**
+         * Reference-photo scenes (owner 2026-09-02): keep only the clearly
+         * visible people and DROP anyone whose face is cut off by the frame —
+         * otherwise the model invents a stranger's face for them.
+         */
+        focusMainOnly: Boolean = false,
     ): String {
         val ratioPhrase = if (ratio == "16:9") "16:9 landscape" else "9:16 portrait"
         // Owner 2026-09-02 (5 people came out as 6): the person count now
@@ -87,7 +93,13 @@ object KeyframePrompts {
                 "position, expression, camera angle and framing naturally to fit the scene — " +
                 "do NOT copy the original photo's composition."
         }
-        return restoration + base + fusion + preservation + NO_DUPLICATE_CLAUSE +
+        val focus = if (focusMainOnly) {
+            " Include ONLY the people whose faces are clearly and completely visible in the source " +
+                "photo. Any person who is partially cut off by the photo edge, whose face is not " +
+                "visible, or who is unrecognizable must be OMITTED from the scene entirely — never " +
+                "include them and never invent, reconstruct or guess a face for them."
+        } else ""
+        return restoration + base + fusion + preservation + focus + NO_DUPLICATE_CLAUSE +
             " Photorealistic, warm natural light, $ratioPhrase."
     }
 }
