@@ -25,6 +25,7 @@ data class AppConfig(
     @SerialName("key_test") val keyTest: KeyTestConfig,
     val tts: TtsConfig,
     @SerialName("voice_clone") val voiceClone: VoiceCloneConfig = VoiceCloneConfig(),
+    @SerialName("motion_control") val motionControl: MotionControlConfig = MotionControlConfig(),
     @SerialName("tts_premium") val ttsPremium: TtsPremiumConfig? = null,
     @SerialName("tier_routing") val tierRouting: TierRouting,
     @SerialName("price_hints") val priceHints: List<PriceHint>,
@@ -139,6 +140,21 @@ data class VoiceCloneConfig(
         "Halo, ini contoh suara hasil kloning untuk video kenangan keluarga.",
     /** Minimum sample length in seconds (provider requirement). */
     @SerialName("min_seconds") val minSeconds: Int = 10,
+)
+
+/**
+ * Motion Control (owner 2026-09-02): photo + reference motion video →
+ * the photo's character performs the reference movements. Kling 3.0 Pro
+ * Motion Control — fal's best/most expensive motion-transfer stack.
+ */
+@Serializable
+data class MotionControlConfig(
+    val slug: String = "fal-ai/kling-video/v3/pro/motion-control",
+    /** Max reference-video seconds for character_orientation=image. */
+    @SerialName("max_s_image") val maxSImage: Int = 10,
+    /** Max reference-video seconds for character_orientation=video. */
+    @SerialName("max_s_video") val maxSVideo: Int = 30,
+    val note: String = "",
 )
 
 @Serializable

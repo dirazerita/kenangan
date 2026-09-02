@@ -32,6 +32,7 @@ import id.kenang.core.providers.gen.AssemblyService
 import id.kenang.core.providers.gen.ClipDownloader
 import id.kenang.core.providers.gen.GenerationOrchestrator
 import id.kenang.core.providers.gen.TtsService
+import id.kenang.core.providers.motion.MotionControlService
 import id.kenang.core.providers.optional.ElevenLabsClient
 import id.kenang.core.providers.optional.GeminiClient
 import id.kenang.core.providers.story.AnalysisService
@@ -91,6 +92,7 @@ val appModule = module {
     single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }
+    single { MotionControlService(get(), get(), get(), get(), get(), get(), get()) }
     single { CostEstimator(get(), get(), get()) }
 
     // Phase 04 — video pipeline (generate → audio → assemble)

@@ -50,6 +50,12 @@
     "preview_text": "Halo, ini contoh suara hasil kloning untuk video kenangan keluarga.",
     "min_seconds": 10
   },
+  "motion_control": {
+    "slug": "fal-ai/kling-video/v3/pro/motion-control",
+    "max_s_image": 10,
+    "max_s_video": 30,
+    "note": "Kling 3.0 Pro Motion Control - transfers motion from a reference video onto a character image. Best/most expensive motion-transfer stack on fal (owner 2026-09-02)."
+  },
   "tts_premium": {
     "provider": "elevenlabs",
     "model_id": "eleven_multilingual_v2",
@@ -101,6 +107,7 @@
     { "model_slug": "fal-ai/kling-video/v3/pro/image-to-video", "unit": "per_second", "usd": 0.112 },
     { "model_slug": "bytedance/seedance-2.0/mini/reference-to-video", "unit": "per_second", "usd": 0.0721 },
     { "model_slug": "fal-ai/minimax/voice-clone", "unit": "per_call", "usd": 1.5 },
+    { "model_slug": "fal-ai/kling-video/v3/pro/motion-control", "unit": "per_second", "usd": 0.168 },
     { "model_slug": "fal-ai/minimax/speech-02-hd", "unit": "per_1k_chars", "usd": 0.10 },
     { "model_slug": "fal-ai/minimax/speech-02-turbo", "unit": "per_1k_chars", "usd": 0.06 },
     { "model_slug": "fal-ai/clarity-upscaler", "unit": "per_image", "usd": 0.06 },

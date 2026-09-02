@@ -63,6 +63,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onUpscale: () -> Unit = {},
+    onMotionControl: () -> Unit = {},
 ) {
     val projects = koinInject<ProjectRepository>()
     val costTracker = koinInject<CostTracker>()
@@ -122,6 +123,11 @@ fun HomeScreen(
             // Standalone tool (owner 2026-09-01): batch upscale/restore photos.
             id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onUpscale) {
                 Text("✨  " + Strings.UPSCALE_TITLE)
+            }
+            // Standalone tool (owner 2026-09-02): motion transfer from a
+            // reference video onto a photo.
+            id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onMotionControl) {
+                Text("🎬  " + Strings.MOTION_TITLE)
             }
         }
 
