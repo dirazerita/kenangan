@@ -50,6 +50,12 @@ data class ModelCatalog(
     val tts: List<ModelOption> = emptyList(),
     /** Upscale/restoration models for the standalone photo tool. */
     val upscale: List<ModelOption> = emptyList(),
+    /**
+     * Motion-transfer models for the Motion Control tool. input_mode "kling"
+     * sends {image_url, video_url, character_orientation, keep_original_sound};
+     * "plain" sends only {image_url, video_url} (+ params).
+     */
+    val motion: List<ModelOption> = emptyList(),
 )
 
 @Serializable

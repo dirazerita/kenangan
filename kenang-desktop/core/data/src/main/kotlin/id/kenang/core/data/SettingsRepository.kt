@@ -19,6 +19,7 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_MODEL_I2V = "model_i2v"
         const val KEY_MODEL_ANALYSIS = "model_analysis"
         const val KEY_MODEL_TTS = "model_tts"
+        const val KEY_MODEL_MOTION = "model_motion"
         const val KEY_DEFAULT_VOICE = "default_voice"
         /** Index of the last narration suggestion used, so the next project differs. */
         const val KEY_LAST_NARRATION_TEMPLATE = "last_narration_template"
@@ -61,6 +62,10 @@ class SettingsRepository(private val db: KenangDb) {
     var modelTts: String?
         get() = getOverride(KEY_MODEL_TTS)
         set(v) = set(KEY_MODEL_TTS, v ?: "")
+
+    var modelMotion: String?
+        get() = getOverride(KEY_MODEL_MOTION)
+        set(v) = set(KEY_MODEL_MOTION, v ?: "")
 
     var defaultVoice: String?
         get() = getOverride(KEY_DEFAULT_VOICE)

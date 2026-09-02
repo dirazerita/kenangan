@@ -108,6 +108,10 @@
     { "model_slug": "bytedance/seedance-2.0/mini/reference-to-video", "unit": "per_second", "usd": 0.0721 },
     { "model_slug": "fal-ai/minimax/voice-clone", "unit": "per_call", "usd": 1.5 },
     { "model_slug": "fal-ai/kling-video/v3/pro/motion-control", "unit": "per_second", "usd": 0.168 },
+    { "model_slug": "fal-ai/kling-video/v3/standard/motion-control", "unit": "per_second", "usd": 0.126 },
+    { "model_slug": "fal-ai/kling-video/v2.6/pro/motion-control", "unit": "per_second", "usd": 0.112 },
+    { "model_slug": "fal-ai/kling-video/v2.6/standard/motion-control", "unit": "per_second", "usd": 0.07 },
+    { "model_slug": "fal-ai/wan/v2.2-14b/animate/move", "unit": "per_second", "usd": 0.08 },
     { "model_slug": "fal-ai/minimax/speech-02-hd", "unit": "per_1k_chars", "usd": 0.10 },
     { "model_slug": "fal-ai/minimax/speech-02-turbo", "unit": "per_1k_chars", "usd": 0.06 },
     { "model_slug": "fal-ai/clarity-upscaler", "unit": "per_image", "usd": 0.06 },
@@ -186,6 +190,13 @@
     "tts": [
       { "id": "fal-ai/minimax/speech-02-hd", "label_id": "MiniMax Speech-02 HD (bawaan, teruji)" },
       { "id": "fal-ai/minimax/speech-02-turbo", "label_id": "MiniMax Speech-02 Turbo — lebih cepat & murah", "tested": false }
+    ],
+    "motion": [
+      { "id": "fal-ai/kling-video/v3/pro/motion-control", "label_id": "Kling 3.0 Pro — premium, kualitas tertinggi (bawaan)", "input_mode": "kling" },
+      { "id": "fal-ai/kling-video/v3/standard/motion-control", "label_id": "Kling 3.0 Standard — kualitas tinggi, lebih hemat", "input_mode": "kling", "tested": false },
+      { "id": "fal-ai/kling-video/v2.6/pro/motion-control", "label_id": "Kling 2.6 Pro — generasi sebelumnya", "input_mode": "kling", "tested": false },
+      { "id": "fal-ai/kling-video/v2.6/standard/motion-control", "label_id": "Kling 2.6 Standard — paling hemat", "input_mode": "kling", "tested": false },
+      { "id": "fal-ai/wan/v2.2-14b/animate/move", "label_id": "Wan 2.2 Animate 720p — alternatif ekspresi & gerak", "input_mode": "plain", "params": { "resolution": "720p" }, "tested": false }
     ],
     "upscale": [
       { "id": "fal-ai/nano-banana-pro/edit", "label_id": "Restorasi Detail Tinggi", "desc_id": "AI memperbaiki kerusakan (sobek, noda, pudar) dan menajamkan detail — terbaik untuk foto rusak parah", "input_mode": "edit_prompt" },

@@ -56,8 +56,40 @@ class MotionControlService(
 
     fun config() = configRepository.current().motionControl
 
-    fun pricePerSecond(): Double =
-        priceBook.estimate(config().slug, 1.0)?.usd ?: 0.0
+    /**
+     * User-selectable models (owner 2026-09-02): all fal motion-control
+     * models from the config catalog; falls back to the legacy single slug
+     * when the catalog is empty (older user-override configs).
+     */
+    fun options(): List<id.kenang.core.data.config.ModelOption> =
+        configRepository.current().modelCatalog.motion.ifEmpty {
+            listOf(
+                id.kenang.core.data.config.ModelOption(
+                    id = config().slug,
+                    labelId = "Kling 3.0 Pro (bawaan)",
+                    inputMode = "kling",
+                ),
+            )
+        }
+
+    /** The active model — the Settings choice, else the catalog's first entry. */
+    fun selected(): id.kenang.core.data.config.ModelOption {
+        val opts = options()
+        val key = settings.modelMotion
+        return opts.firstOrNull { it.selectionKey() == key } ?: opts.first()
+    }
+
+    fun select(key: String?) {
+        settings.modelMotion = key
+    }
+
+    /** True when the active model takes the Kling body (orientation + sound). */
+    fun selectedIsKling(): Boolean = selected().inputMode != "plain"
+
+    fun pricePerSecond(): Double = pricePerSecondOf(selected())
+
+    fun pricePerSecondOf(option: id.kenang.core.data.config.ModelOption): Double =
+        priceBook.estimate(option.id, 1.0)?.usd ?: 0.0
 
     /** Estimated cost for a reference of [durationS] seconds (capped per orientation). */
     fun estimateUsd(durationS: Double?, orientation: String): Double {
@@ -66,8 +98,11 @@ class MotionControlService(
         return pricePerSecond() * s
     }
 
-    fun capSeconds(orientation: String): Int =
-        if (orientation == "image") config().maxSImage else config().maxSVideo
+    fun capSeconds(orientation: String): Int = when {
+        !selectedIsKling() -> config().maxSVideo
+        orientation == "image" -> config().maxSImage
+        else -> config().maxSVideo
+    }
 
     /**
      * Results folder: `<Folder Output>/MotionControl/` when usable, else the
@@ -89,7 +124,6 @@ class MotionControlService(
         /** Reference duration probed by the UI (null = unknown). */
         durationS: Double?,
     ): AppResult<MotionResult> {
-        val cfg = config()
         if (video.length() > MAX_VIDEO_BYTES) {
             return AppError.Unknown("Video referensi terlalu besar (maks 200MB).").err()
         }
@@ -107,15 +141,20 @@ class MotionControlService(
             is AppResult.Err -> return up
         }
 
+        val option = selected()
         val body = buildJsonObject {
             put("image_url", imageUrl)
             put("video_url", videoUrl)
-            put("character_orientation", if (orientation == "image") "image" else "video")
-            put("keep_original_sound", keepSound)
+            if (option.inputMode != "plain") {
+                put("character_orientation", if (orientation == "image") "image" else "video")
+                put("keep_original_sound", keepSound)
+            }
             prompt?.trim()?.takeIf { it.isNotBlank() }?.let { put("prompt", it.take(500)) }
+            // Catalog params (e.g. Wan resolution) merged last, like i2v params.
+            option.params?.forEach { (k, v) -> put(k, v) }
         }
 
-        var submitted = when (val s = falClient.submit(cfg.slug, body)) {
+        var submitted = when (val s = falClient.submit(option.id, body)) {
             is AppResult.Ok -> s.value
             is AppResult.Err -> return s
         }
@@ -125,7 +164,7 @@ class MotionControlService(
         val err = (awaited as? AppResult.Err)?.error
         if (err is AppError.ProviderFailed || err is AppError.Timeout || err is AppError.RateLimited) {
             falClient.rotateKey()
-            submitted = when (val s = falClient.submit(cfg.slug, body)) {
+            submitted = when (val s = falClient.submit(option.id, body)) {
                 is AppResult.Ok -> s.value
                 is AppResult.Err -> return s
             }
@@ -144,7 +183,7 @@ class MotionControlService(
             outFile.writeBytes(http.get(resultUrl).readRawBytes())
             val est = estimateUsd(durationS, orientation)
             costTracker.record(
-                COST_PROJECT, submitted.requestId, cfg.slug, submitted.keyLabel,
+                COST_PROJECT, submitted.requestId, option.id, submitted.keyLabel,
                 (durationS ?: capSeconds(orientation).toDouble()), "per_second", est,
             )
             Napier.i("motion-control done -> ${outFile.absolutePath}")

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package id.kenang.app.ui.motion
 
 import androidx.compose.foundation.Image
@@ -67,6 +69,7 @@ fun MotionControlScreen(
     val ffmpegLocator = koinInject<FfmpegLocator>()
     val scope = rememberCoroutineScope()
 
+    var modelKey by remember { mutableStateOf(service.selected().selectionKey()) }
     var photo by remember { mutableStateOf<File?>(null) }
     var video by remember { mutableStateOf<File?>(null) }
     var videoDurationS by remember { mutableStateOf<Double?>(null) }
@@ -203,29 +206,64 @@ fun MotionControlScreen(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ---------- Orientation ----------
-        Text(Strings.MOTION_ORIENTATION, style = MaterialTheme.typography.titleSmall)
+        // ---------- Model picker (owner 2026-09-02: user decides the model) ----------
+        Text(Strings.MOTION_MODEL_LABEL, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = orientation == "video",
-                onClick = { orientation = "video" },
-                label = { Text(Strings.MOTION_ORIENT_VIDEO.replace("%1", service.config().maxSVideo.toString())) },
-                enabled = !running,
-            )
-            FilterChip(
-                selected = orientation == "image",
-                onClick = { orientation = "image" },
-                label = { Text(Strings.MOTION_ORIENT_IMAGE.replace("%1", service.config().maxSImage.toString())) },
-                enabled = !running,
-            )
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            service.options().forEach { option ->
+                val perS = service.pricePerSecondOf(option)
+                FilterChip(
+                    selected = modelKey == option.selectionKey(),
+                    onClick = {
+                        service.select(option.selectionKey())
+                        modelKey = option.selectionKey()
+                    },
+                    label = {
+                        Text(
+                            (if (option.tested) "" else "◦ ") + option.labelId +
+                                "  ·  $" + "%.3f".format(perS) + "/dtk",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
+                    enabled = !running,
+                )
+            }
         }
         Text(
-            if (orientation == "video") Strings.MOTION_ORIENT_VIDEO_DESC else Strings.MOTION_ORIENT_IMAGE_DESC,
+            Strings.MOTION_MODEL_NOTE,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
         )
         Spacer(Modifier.height(12.dp))
+
+        // ---------- Orientation (Kling family only) ----------
+        if (service.selectedIsKling()) {
+            Text(Strings.MOTION_ORIENTATION, style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = orientation == "video",
+                    onClick = { orientation = "video" },
+                    label = { Text(Strings.MOTION_ORIENT_VIDEO.replace("%1", service.config().maxSVideo.toString())) },
+                    enabled = !running,
+                )
+                FilterChip(
+                    selected = orientation == "image",
+                    onClick = { orientation = "image" },
+                    label = { Text(Strings.MOTION_ORIENT_IMAGE.replace("%1", service.config().maxSImage.toString())) },
+                    enabled = !running,
+                )
+            }
+            Text(
+                if (orientation == "video") Strings.MOTION_ORIENT_VIDEO_DESC else Strings.MOTION_ORIENT_IMAGE_DESC,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            )
+            Spacer(Modifier.height(12.dp))
+        }
 
         OutlinedTextField(
             value = prompt,
@@ -236,10 +274,12 @@ fun MotionControlScreen(
             enabled = !running,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Switch(checked = keepSound, onCheckedChange = { keepSound = it }, enabled = !running)
-            Text(Strings.MOTION_KEEP_SOUND, style = MaterialTheme.typography.bodyMedium)
+        if (service.selectedIsKling()) {
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Switch(checked = keepSound, onCheckedChange = { keepSound = it }, enabled = !running)
+                Text(Strings.MOTION_KEEP_SOUND, style = MaterialTheme.typography.bodyMedium)
+            }
         }
         Spacer(Modifier.height(16.dp))
 

@@ -48,6 +48,8 @@ object Strings {
     const val MOTION_RESULT_NOTE = "Hasil disimpan ke: %1"
     // Desktop-only hints (drag & drop); kept for Strings parity.
     const val MOTION_DROP_HINT = "Tercepat: geser foto dan video dari Explorer, lepaskan di mana saja di layar ini — keduanya sekaligus juga bisa."
+    const val MOTION_MODEL_LABEL = "Model"
+    const val MOTION_MODEL_NOTE = "Opsi bertanda ◦ belum teruji penuh — hasil dan biaya bisa berbeda. Pilihan diingat untuk pemakaian berikutnya."
     const val SB_DROP_REPLACE_HINT = "Geser foto ke kartu adegan untuk mengganti gambarnya."
 
     // Generic
