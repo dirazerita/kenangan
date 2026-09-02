@@ -44,6 +44,12 @@
       { "id": "Decent_Boy", "label_id": "Pemuda Sopan", "gender": "M" }
     ]
   },
+  "voice_clone": {
+    "slug": "fal-ai/minimax/voice-clone",
+    "tts_model": "speech-02-hd",
+    "preview_text": "Halo, ini contoh suara hasil kloning untuk video kenangan keluarga.",
+    "min_seconds": 10
+  },
   "tts_premium": {
     "provider": "elevenlabs",
     "model_id": "eleven_multilingual_v2",
@@ -94,6 +100,7 @@
     { "model_slug": "fal-ai/kling-video/v3/standard/image-to-video", "unit": "per_second", "usd": 0.084 },
     { "model_slug": "fal-ai/kling-video/v3/pro/image-to-video", "unit": "per_second", "usd": 0.112 },
     { "model_slug": "bytedance/seedance-2.0/mini/reference-to-video", "unit": "per_second", "usd": 0.0721 },
+    { "model_slug": "fal-ai/minimax/voice-clone", "unit": "per_call", "usd": 1.5 },
     { "model_slug": "fal-ai/minimax/speech-02-hd", "unit": "per_1k_chars", "usd": 0.10 },
     { "model_slug": "fal-ai/minimax/speech-02-turbo", "unit": "per_1k_chars", "usd": 0.06 },
     { "model_slug": "fal-ai/clarity-upscaler", "unit": "per_image", "usd": 0.06 },

@@ -82,8 +82,9 @@ fun WizardScreen(
     val settings = koinInject<SettingsRepository>()
     val configRepo = koinInject<ConfigRepository>()
     val ttsPreview = koinInject<TtsPreviewService>()
+    val voiceClone = koinInject<id.kenang.core.providers.voice.VoiceCloneService>()
     val state = remember {
-        WizardState(projects, photosRepo, settings, configRepo, ttsPreview, scope, existingProjectId)
+        WizardState(projects, photosRepo, settings, configRepo, ttsPreview, voiceClone, scope, existingProjectId)
     }
     LaunchedEffect(Unit) { state.start() }
 

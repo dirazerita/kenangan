@@ -65,6 +65,19 @@ object Strings {
     const val SETTINGS_MODEL_ANALYSIS = "2 · Analisa Foto"
     const val SETTINGS_MODEL_TTS = "3 · Suara Narasi — model"
     const val SETTINGS_MODEL_VOICE = "3 · Suara Narasi — jenis suara"
+
+    // Kloning Suara (owner 2026-09-02)
+    const val SETTINGS_CLONE_TITLE = "Kloning Suara"
+    const val SETTINGS_CLONE_DESC = "Kloning suara orang tercinta dari rekaman audio, lalu pakai sebagai suara narasi. Memakai model kloning terbaik di fal.ai (MiniMax Voice Clone) yang tersambung langsung ke narasi Speech-02 HD. Sampel minimal 10 detik, makin panjang & jernih makin mirip (WAV/MP3/M4A)."
+    const val SETTINGS_CLONE_LABEL = "Nama suara (mis. Suara Ayah)"
+    const val SETTINGS_CLONE_BUTTON = "Pilih audio & kloning"
+    const val SETTINGS_CLONE_PICK_TITLE = "Pilih rekaman suara"
+    const val SETTINGS_CLONE_RUNNING = "Mengkloning suara… biasanya 1–2 menit, biarkan terbuka."
+    const val SETTINGS_CLONE_DONE = "Suara berhasil dikloning: "
+    const val SETTINGS_CLONE_EMPTY = "Belum ada suara kloning."
+    const val SETTINGS_CLONE_LIST_TITLE = "Suara kloning tersimpan"
+    const val SETTINGS_CLONE_KEY_NOTE = "Terikat ke akun API key pembuatnya — jangan hapus key itu selama suara ini dipakai."
+    const val SETTINGS_CLONE_APPEARS = "Suara hasil kloning muncul otomatis di pilihan Suara narasi (wizard langkah 2) dengan tanda 🎤."
     const val SETTINGS_MODEL_DEFAULT = "Bawaan"
     const val SETTINGS_REOPEN_ONBOARDING = "Buka panduan awal lagi"
 

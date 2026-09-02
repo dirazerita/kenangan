@@ -37,6 +37,7 @@ class WizardState(
     private val settings: SettingsRepository,
     private val configRepository: ConfigRepository,
     private val ttsPreview: TtsPreviewService,
+    private val voiceClone: id.kenang.core.providers.voice.VoiceCloneService,
     private val scope: CoroutineScope,
     private val existingProjectId: String?,
 ) {
@@ -79,12 +80,15 @@ class WizardState(
     var finished by mutableStateOf(false)
 
     /**
-     * Selectable MiniMax voices from config (AD-10). Only Calm_Woman and
-     * Wise_Woman were blind-tested in Phase 00; the rest are MiniMax system
-     * voices offered as-is with language_boost Indonesian.
+     * Selectable voices: the user's CLONED voices first (owner 2026-09-02 —
+     * a loved one's cloned voice narrating is the point of the feature),
+     * then the MiniMax system voices from config (AD-10). Getter, so a voice
+     * cloned in Settings appears without restarting the wizard.
      */
-    val voiceOptions: List<id.kenang.core.data.config.TtsVoice> =
-        configRepository.current().tts.voices.ifEmpty {
+    val voiceOptions: List<id.kenang.core.data.config.TtsVoice>
+        get() = voiceClone.cloned().map {
+            id.kenang.core.data.config.TtsVoice(it.voiceId, "🎤 " + it.label, "kloning")
+        } + configRepository.current().tts.voices.ifEmpty {
             listOf(
                 id.kenang.core.data.config.TtsVoice(configRepository.current().tts.voice, "Wanita Tenang", "F"),
                 id.kenang.core.data.config.TtsVoice("Wise_Woman", "Wanita Bijak", "F"),

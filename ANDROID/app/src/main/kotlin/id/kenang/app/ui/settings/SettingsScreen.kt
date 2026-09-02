@@ -57,6 +57,7 @@ import id.kenang.core.providers.KeyTester
 import id.kenang.core.providers.fal.FalKeyPool
 import id.kenang.core.providers.fal.FalKeyStatus
 import id.kenang.core.providers.vault.KeyVault
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 const val FAL_KEYS_URL = "https://fal.ai/dashboard/keys"
@@ -73,6 +74,7 @@ fun SettingsScreen(
     val vault = koinInject<KeyVault>()
     val pool = koinInject<FalKeyPool>()
     val tester = koinInject<KeyTester>()
+    val voiceCloneService = koinInject<id.kenang.core.providers.voice.VoiceCloneService>()
     val settings = koinInject<SettingsRepository>()
     val configRepo = koinInject<ConfigRepository>()
     val costTracker = koinInject<CostTracker>()
@@ -169,12 +171,139 @@ fun SettingsScreen(
             ModelPicker(
                 title = Strings.SETTINGS_MODEL_VOICE,
                 note = null,
-                options = configRepo.current().tts.voices.map {
-                    Triple(it.id, it.labelId + if (it.gender.isNotBlank()) " (${it.gender})" else "", true)
-                },
+                // Cloned voices lead the list (owner 2026-09-02).
+                options = voiceCloneService.cloned().map { Triple(it.voiceId, "🎤 " + it.label, true) } +
+                    configRepo.current().tts.voices.map {
+                        Triple(it.id, it.labelId + if (it.gender.isNotBlank()) " (${it.gender})" else "", true)
+                    },
                 selected = voiceSel,
                 onSelect = { voiceSel = it; settings.defaultVoice = it },
             )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
+
+        // ------------------- Kloning Suara (owner 2026-09-02) -------------------
+        Text(Strings.SETTINGS_CLONE_TITLE, style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            Strings.SETTINGS_CLONE_DESC,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
+        Spacer(Modifier.height(12.dp))
+        run {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val cloneScope = rememberCoroutineScope()
+            var cloneLabel by remember { mutableStateOf("") }
+            var cloning by remember { mutableStateOf(false) }
+            var clonedList by remember { mutableStateOf(voiceCloneService.cloned()) }
+
+            val audioPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+            ) { uri ->
+                if (uri != null) {
+                    cloneScope.launch {
+                        cloning = true
+                        val copied = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            runCatching {
+                                val mime = context.contentResolver.getType(uri) ?: "audio/mpeg"
+                                val ext = when {
+                                    mime.contains("wav") -> "wav"
+                                    mime.contains("mp4") || mime.contains("m4a") -> "m4a"
+                                    mime.contains("aac") -> "aac"
+                                    mime.contains("ogg") -> "ogg"
+                                    mime.contains("flac") -> "flac"
+                                    else -> "mp3"
+                                }
+                                val f = java.io.File(context.cacheDir, "voice_sample.$ext")
+                                context.contentResolver.openInputStream(uri)!!.use { input ->
+                                    f.outputStream().use { input.copyTo(it) }
+                                }
+                                f
+                            }.getOrNull()
+                        }
+                        if (copied == null) {
+                            snackbar.showSnackbar("Gagal membaca file audio.")
+                        } else {
+                            when (val r = voiceCloneService.clone(copied, cloneLabel)) {
+                                is id.kenang.core.common.AppResult.Ok -> {
+                                    clonedList = voiceCloneService.cloned()
+                                    cloneLabel = ""
+                                    snackbar.showSnackbar(Strings.SETTINGS_CLONE_DONE + r.value.label)
+                                }
+                                is id.kenang.core.common.AppResult.Err ->
+                                    snackbar.showSnackbar(
+                                        id.kenang.core.common.ErrorTranslator.translate(r.error).message,
+                                    )
+                            }
+                        }
+                        cloning = false
+                    }
+                }
+            }
+
+            SkeuoCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    OutlinedTextField(
+                        value = cloneLabel,
+                        onValueChange = { cloneLabel = it.take(40) },
+                        label = { Text(Strings.SETTINGS_CLONE_LABEL) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SkeuoButton(
+                            onClick = { audioPicker.launch("audio/*") },
+                            enabled = !cloning,
+                        ) { Text(Strings.SETTINGS_CLONE_BUTTON + "  ±$" + "%.2f".format(voiceCloneService.estimateUsd())) }
+                        if (cloning) {
+                            CircularProgressIndicator(Modifier.width(20.dp).height(20.dp))
+                            Text(Strings.SETTINGS_CLONE_RUNNING, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(Strings.SETTINGS_CLONE_LIST_TITLE, style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(4.dp))
+                    if (clonedList.isEmpty()) {
+                        Text(
+                            Strings.SETTINGS_CLONE_EMPTY,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        )
+                    } else {
+                        clonedList.forEach { v ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🎤 " + v.label, style = MaterialTheme.typography.bodyMedium)
+                                Spacer(Modifier.width(8.dp))
+                                v.keyLabel?.let { StatusChip(it) }
+                                Spacer(Modifier.weight(1f))
+                                IconButton(onClick = {
+                                    voiceCloneService.remove(v.voiceId)
+                                    clonedList = voiceCloneService.cloned()
+                                }) {
+                                    Icon(Icons.Default.Delete, Strings.SB_DELETE_SCENE,
+                                        tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                        Text(
+                            Strings.SETTINGS_CLONE_KEY_NOTE,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        Strings.SETTINGS_CLONE_APPEARS,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(24.dp))

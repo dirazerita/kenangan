@@ -24,6 +24,7 @@ data class AppConfig(
     val analysis: AnalysisConfig,
     @SerialName("key_test") val keyTest: KeyTestConfig,
     val tts: TtsConfig,
+    @SerialName("voice_clone") val voiceClone: VoiceCloneConfig = VoiceCloneConfig(),
     @SerialName("tts_premium") val ttsPremium: TtsPremiumConfig? = null,
     @SerialName("tier_routing") val tierRouting: TierRouting,
     @SerialName("price_hints") val priceHints: List<PriceHint>,
@@ -118,6 +119,26 @@ data class TtsConfig(
     @SerialName("max_chars") val maxChars: Int = 500,
     /** Selectable MiniMax system voices; [voice] stays the locked default. */
     val voices: List<TtsVoice> = emptyList(),
+)
+
+/**
+ * Voice cloning (owner 2026-09-02): the loved one's voice becomes the
+ * narration voice. MiniMax voice-clone — the cloned id plugs straight into
+ * the existing Speech-02 HD narration path (best quality, id-ID proven).
+ */
+@Serializable
+data class VoiceCloneConfig(
+    val slug: String = "fal-ai/minimax/voice-clone",
+    /**
+     * TTS model the clone is registered against AND immediately previewed
+     * with — the preview "uses" the voice so MiniMax keeps it permanently
+     * (unused clones are auto-deleted after 7 days).
+     */
+    @SerialName("tts_model") val ttsModel: String = "speech-02-hd",
+    @SerialName("preview_text") val previewText: String =
+        "Halo, ini contoh suara hasil kloning untuk video kenangan keluarga.",
+    /** Minimum sample length in seconds (provider requirement). */
+    @SerialName("min_seconds") val minSeconds: Int = 10,
 )
 
 @Serializable
