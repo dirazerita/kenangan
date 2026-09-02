@@ -1,0 +1,12 @@
+CREATE TABLE idea (
+  id TEXT NOT NULL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  source_name TEXT,
+  contact TEXT,
+  category TEXT NOT NULL DEFAULT 'fitur',
+  priority TEXT NOT NULL DEFAULT 'sedang',
+  status TEXT NOT NULL DEFAULT 'baru',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);

@@ -21,6 +21,46 @@ object Strings {
     const val HOME_DELETE_CONFIRM = "Hapus"
     const val HOME_MONTHLY_SPEND_PREFIX = "Estimasi biaya API bulan ini: "
 
+    // Ide Produk (owner 2026-09-02) — advertiser suggestion inbox
+    const val IDEAS_TITLE = "Ide Produk"
+    const val IDEAS_SUBTITLE = "Catatan masukan & ide dari advertiser/reseller — tampung dulu, pilah kemudian."
+    const val IDEAS_ADD = "Catat Ide"
+    const val IDEAS_EMPTY = "Belum ada ide tercatat. Klik \"Catat Ide\" saat ada masukan masuk."
+    const val IDEAS_FORM_TITLE_NEW = "Catat ide baru"
+    const val IDEAS_FORM_TITLE_EDIT = "Ubah ide"
+    const val IDEAS_FIELD_TITLE = "Judul ide"
+    const val IDEAS_FIELD_DESC = "Detail / penjelasan (opsional)"
+    const val IDEAS_FIELD_SOURCE = "Nama pengusul (advertiser)"
+    const val IDEAS_FIELD_CONTACT = "Kontak (WA / IG / email)"
+    const val IDEAS_FIELD_CATEGORY = "Kategori"
+    const val IDEAS_FIELD_PRIORITY = "Prioritas"
+    const val IDEAS_FILTER_ALL = "Semua"
+    const val IDEAS_DELETE_CONFIRM = "Hapus ide ini?"
+    const val IDEAS_SAVED = "Ide tersimpan."
+    const val IDEAS_NEED_TITLE = "Isi judul idenya dulu."
+    const val IDEAS_FROM_PREFIX = "Dari: "
+    const val IDEAS_COUNT_SUFFIX = " ide"
+
+    val IDEA_CATEGORIES: List<Pair<String, String>> = listOf(
+        "fitur" to "Fitur Baru",
+        "perbaikan" to "Perbaikan",
+        "harga" to "Harga & Paket",
+        "konten" to "Konten & Promo",
+        "lainnya" to "Lainnya",
+    )
+    val IDEA_PRIORITIES: List<Pair<String, String>> = listOf(
+        "tinggi" to "Tinggi",
+        "sedang" to "Sedang",
+        "rendah" to "Rendah",
+    )
+    val IDEA_STATUSES: List<Pair<String, String>> = listOf(
+        "baru" to "Baru",
+        "dipertimbangkan" to "Dipertimbangkan",
+        "dikerjakan" to "Dikerjakan",
+        "selesai" to "Selesai",
+        "ditolak" to "Ditolak",
+    )
+
     // Generic
     const val CANCEL = "Batal"
     const val SAVE = "Simpan"
