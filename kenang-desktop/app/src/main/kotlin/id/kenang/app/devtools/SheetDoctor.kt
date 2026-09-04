@@ -48,5 +48,24 @@ fun main(): Unit = runBlocking {
         project.name, project.ratio, list, File(dir, "Storyboard_$safeName.png"),
     )
     println("SHEET OK -> ${out.absolutePath} (${out.length() / 1024} KB)")
+
+    // The ~10s slideshow clip (D-030 extension): verify the ffmpeg path too.
+    val assembler = koin.get<id.kenang.core.data.ffmpeg.VideoAssembler>()
+    val runner = assembler.runner()
+    if (runner == null) {
+        println("CLIP SKIPPED - ffmpeg unavailable")
+    } else {
+        val clipFile = File(dir, "Storyboard_$safeName.mp4")
+        when (val r = id.kenang.app.ui.storyboard.StoryboardPreviewClip.render(
+            list, project.ratio, clipFile, runner,
+        )) {
+            null -> println("CLIP SKIPPED - no keyframe images")
+            is id.kenang.core.common.AppResult.Ok -> {
+                val ms = runner.probeDurationMs(clipFile)
+                println("CLIP OK -> ${clipFile.absolutePath} (${clipFile.length() / 1024} KB, ${ms}ms)")
+            }
+            is id.kenang.core.common.AppResult.Err -> println("CLIP FAILED: ${r.error}")
+        }
+    }
     exitProcess(0)
 }

@@ -133,14 +133,16 @@ fun StoryboardScreen(
             Spacer(Modifier.width(16.dp))
             SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
             Spacer(Modifier.width(8.dp))
-            // Owner 2026-09-04: customers ask for the whole storyboard as ONE
-            // image for approval before the video is generated. Local render, free.
+            // Owner 2026-09-04: the approval package is the PNG contact sheet
+            // PLUS a ~10s slideshow clip of the keyframes. Local render, free.
             var makingSheet by remember { mutableStateOf(false) }
             val settingsRepo = koinInject<id.kenang.core.data.SettingsRepository>()
+            val assembler = koinInject<id.kenang.core.data.ffmpeg.VideoAssembler>()
             SkeuoOutlinedButton(
                 onClick = {
                     makingSheet = true
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        var videoMade = false
                         val hasil = runCatching {
                             val project = state.project
                             val safeName = (project?.name ?: "kenang")
@@ -153,18 +155,34 @@ fun StoryboardScreen(
                                 ?.let { java.io.File(it, folderName) }
                                 ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
                             val outDir = customDir ?: id.kenang.core.data.AppDirs.projectOutput(projectId)
-                            StoryboardSheetRenderer.render(
+                            val sheet = StoryboardSheetRenderer.render(
                                 projectName = project?.name ?: "Kenang",
                                 ratioLabel = project?.ratio ?: "16:9",
                                 scenes = state.scenes,
                                 outFile = java.io.File(outDir, "Storyboard_${safeName}.png"),
                             )
+                            // Short slideshow beside the sheet; skipped when no
+                            // keyframe image exists yet. Failure here must not
+                            // lose the sheet — log & fall back to sheet-only.
+                            assembler.runner()?.let { runner ->
+                                val clip = StoryboardPreviewClip.render(
+                                    state.scenes, project?.ratio ?: "16:9",
+                                    java.io.File(outDir, "Storyboard_${safeName}.mp4"), runner,
+                                )
+                                videoMade = clip is id.kenang.core.common.AppResult.Ok
+                                if (clip is id.kenang.core.common.AppResult.Err) {
+                                    io.github.aakira.napier.Napier.w("sheet clip failed: ${clip.error}")
+                                }
+                            }
+                            sheet
                         }
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             makingSheet = false
                             hasil.onSuccess { file ->
-                                runCatching { java.awt.Desktop.getDesktop().open(file) }
-                                state.snackMessage = Strings.SB_SHEET_SAVED.replace("%1", file.absolutePath)
+                                runCatching { java.awt.Desktop.getDesktop().open(file.parentFile) }
+                                state.snackMessage = (
+                                    if (videoMade) Strings.SB_SHEET_SAVED else Strings.SB_SHEET_SAVED_NO_VIDEO
+                                    ).replace("%1", file.parentFile.absolutePath)
                             }.onFailure { e ->
                                 state.snackMessage = Strings.SB_SHEET_FAILED.replace("%1", e.message ?: "error")
                             }
