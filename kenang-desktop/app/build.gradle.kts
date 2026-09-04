@@ -163,6 +163,15 @@ tasks.register<JavaExec>("upscaleDoctor") {
     providers.gradleProperty("doctorImage").orNull?.let { systemProperty("doctor.image", it) }
 }
 
+// Diagnostic: render the storyboard contact sheet headlessly (free, offline).
+tasks.register<JavaExec>("sheetDoctor") {
+    group = "verification"
+    description = "Renders the newest project's storyboard sheet (no UI, no cost)"
+    mainClass.set("id.kenang.app.devtools.SheetDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

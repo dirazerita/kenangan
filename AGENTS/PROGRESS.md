@@ -47,6 +47,7 @@
 
 ## STABILIZATION — "app sempurna" gate (unlocks Phase 01)
 > Started 2026-08-25 — owner-driven dogfooding. Docs: kenang-desktop/docs/STAB_RECIPE.md (5 projects + edge cases + perf thresholds), DOGFOOD_LOG.md (owner fills), KNOWN_ISSUES.md (KI-001…KI-012 seeded; gate needs zero OPEN P0/P1).
+> 2026-09-04: owner feature during dogfooding — "Buat Gambar Storyboard" (one-PNG contact sheet) shipped, D-021; compile-verified. ANDROID twin pending (two-place rule, KI-021).
 - [ ] 5 real projects E2E (mixed photo types incl. BW + fusion) with zero blocking bugs
 - [ ] 1 week dogfooding: no crashes; all errors land in the translator (no raw exceptions to UI)
 - [ ] Performance: analysis ≤30s/5 photos; 30s-1080p assembly ≤60s on a mid laptop; UI never freezes

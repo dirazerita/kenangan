@@ -74,6 +74,7 @@ import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.db.Scene
 import id.kenang.core.providers.story.CostEstimator
 import id.kenang.core.providers.story.KeyframeService
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @Composable
@@ -131,6 +132,49 @@ fun StoryboardScreen(
             }
             Spacer(Modifier.width(16.dp))
             SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
+            Spacer(Modifier.width(8.dp))
+            // Owner 2026-09-04: customers ask for the whole storyboard as ONE
+            // image for approval before the video is generated. Local render, free.
+            var makingSheet by remember { mutableStateOf(false) }
+            val settingsRepo = koinInject<id.kenang.core.data.SettingsRepository>()
+            SkeuoOutlinedButton(
+                onClick = {
+                    makingSheet = true
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        val hasil = runCatching {
+                            val project = state.project
+                            val safeName = (project?.name ?: "kenang")
+                                .replace(Regex("[^A-Za-z0-9_\\- ]"), "").trim()
+                                .replace(' ', '_').ifBlank { "kenang" }
+                            val folderName = (project?.name ?: "Kenang")
+                                .replace(Regex("[\\\\/:*?\"<>|]"), "").trim().ifBlank { "Kenang" }
+                            // Same destination convention as the final video (AssemblyService)
+                            val customDir = settingsRepo.outputFolder?.trim()?.takeIf { it.isNotBlank() }
+                                ?.let { java.io.File(it, folderName) }
+                                ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
+                            val outDir = customDir ?: id.kenang.core.data.AppDirs.projectOutput(projectId)
+                            StoryboardSheetRenderer.render(
+                                projectName = project?.name ?: "Kenang",
+                                ratioLabel = project?.ratio ?: "16:9",
+                                scenes = state.scenes,
+                                outFile = java.io.File(outDir, "Storyboard_${safeName}.png"),
+                            )
+                        }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            makingSheet = false
+                            hasil.onSuccess { file ->
+                                runCatching { java.awt.Desktop.getDesktop().open(file) }
+                                state.snackMessage = Strings.SB_SHEET_SAVED.replace("%1", file.absolutePath)
+                            }.onFailure { e ->
+                                state.snackMessage = Strings.SB_SHEET_FAILED.replace("%1", e.message ?: "error")
+                            }
+                        }
+                    }
+                },
+                enabled = state.scenes.isNotEmpty() && !makingSheet,
+            ) {
+                Text(if (makingSheet) Strings.SB_SHEET_RENDERING else Strings.SB_SHEET_BUTTON)
+            }
             Spacer(Modifier.width(8.dp))
             SkeuoButton(onClick = { state.showConfirm = true }, enabled = state.allReady() && !state.confirmed) {
                 Text(Strings.SB_CREATE_VIDEO)
