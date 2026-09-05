@@ -199,7 +199,8 @@
       { "id": "fal-ai/wan/v2.2-14b/animate/move", "label_id": "Wan 2.2 Animate 720p — alternatif ekspresi & gerak", "input_mode": "plain", "params": { "resolution": "720p" }, "tested": false }
     ],
     "upscale": [
-      { "id": "fal-ai/nano-banana-pro/edit", "label_id": "Restorasi Detail Tinggi", "desc_id": "AI memperbaiki kerusakan (sobek, noda, pudar) dan menajamkan detail — terbaik untuk foto rusak parah", "input_mode": "edit_prompt" },
+      { "id": "fal-ai/nano-banana-pro/edit", "key": "resto-max", "label_id": "Restorasi Maksimal — 2 tahap", "desc_id": "Terbaik untuk foto rusak parah: tahap 1 membersihkan seluruh kerusakan, tahap 2 menajamkan detail hingga resolusi tinggi", "input_mode": "edit_then_upscale", "params": { "stage2": "fal-ai/clarity-upscaler", "upscale_factor": 2, "creativity": 0.2, "resemblance": 0.8 }, "tested": false },
+      { "id": "fal-ai/nano-banana-pro/edit", "label_id": "Restorasi Detail Tinggi", "desc_id": "AI memperbaiki kerusakan (sobek, noda, pudar) dan menajamkan detail — satu tahap", "input_mode": "edit_prompt" },
       { "id": "fal-ai/nano-banana/edit", "label_id": "Restorasi Hemat", "desc_id": "Perbaikan kerusakan yang sama dengan biaya lebih ringan", "input_mode": "edit_prompt" },
       { "id": "fal-ai/clarity-upscaler", "label_id": "Upscale Jernih 2×", "desc_id": "Memperbesar 2× sambil menambah detail halus — untuk foto yang sudah bagus", "tested": false, "params": { "upscale_factor": 2, "creativity": 0.35, "resemblance": 0.6 } },
       { "id": "fal-ai/aura-sr", "label_id": "Upscale Cepat 4×", "desc_id": "Memperbesar 4× dengan cepat dan sangat murah — tanpa mengubah isi foto", "params": { "upscale_factor": 4 } },

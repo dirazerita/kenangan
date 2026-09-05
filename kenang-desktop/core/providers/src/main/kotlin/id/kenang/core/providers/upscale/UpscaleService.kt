@@ -47,13 +47,33 @@ class UpscaleService(
     private val settings: id.kenang.core.data.SettingsRepository,
 ) {
     companion object {
-        /** Same repair wording as the wizard's "Restorasi foto lama" (proven). */
+        /**
+         * Damage-inventory restoration prompt (owner 2026-09-05: the generic
+         * wording left leftover smudges — a teal blob on jeans, blotchy shirt,
+         * mottled background). Every damage type is named, leftovers are
+         * explicitly forbidden, and covered areas must be reconstructed to
+         * MATCH their surroundings instead of being patched over.
+         */
         const val RESTORE_PROMPT =
-            "Fully restore and upscale this old photograph to a highly detailed, high-resolution " +
-                "image: repair scratches, tears, stains and creases, remove noise and grain, correct " +
-                "color fading and color cast, recover natural skin tones and fine facial detail, and " +
-                "sharpen softly. Keep every person's identity, pose, clothing and the original " +
-                "composition exactly the same — do not add, remove or reimagine anything."
+            "Completely restore this old damaged photograph into a clean, highly detailed, " +
+                "high-resolution photo. Remove EVERY defect everywhere in the frame — faces, hair, " +
+                "clothing, hands and background: mold spots, fungus, black ink-like blotches, dark " +
+                "round stains, water damage, chemical stains, dust specks, scratches, tears, creases " +
+                "and color bleeding. Where a stain covered something, reconstruct what is underneath " +
+                "so it seamlessly continues the surrounding material — fabric continues the same " +
+                "fabric with its folds and texture, skin continues natural skin, the backdrop " +
+                "continues the same backdrop pattern. Leave NO leftover smudges, blurry patches, " +
+                "discolored blobs or paint-like marks anywhere. Correct the color fading and color " +
+                "cast to natural, realistic colors; recover sharp facial features, eyes, hair " +
+                "strands and fabric texture; keep a natural film-photo look, never plastic or " +
+                "airbrushed skin. Keep every person's identity, face, age, expression, pose, " +
+                "clothing and the original composition exactly the same — do not add, remove or " +
+                "reimagine anything."
+
+        /** input_mode: restore (edit_prompt) then feed the result to an upscaler. */
+        const val MODE_EDIT_THEN_UPSCALE = "edit_then_upscale"
+        /** params key holding the stage-2 upscaler slug for [MODE_EDIT_THEN_UPSCALE]. */
+        const val PARAM_STAGE2 = "stage2"
 
         /** Cost-tracker bucket; the tool is not tied to any project. */
         const val PROJECT_BUCKET = "upscale"
@@ -61,8 +81,13 @@ class UpscaleService(
 
     fun options(): List<ModelOption> = configRepository.current().modelCatalog.upscale
 
-    /** Per-image cost estimate for the UI ("±$0.15 / foto"). */
-    fun estimate(option: ModelOption): Double = priceBook.estimate(option.id, 1.0)?.usd ?: 0.0
+    /** Per-image cost estimate for the UI ("±$0.15 / foto"); two-stage options sum both calls. */
+    fun estimate(option: ModelOption): Double {
+        val base = priceBook.estimate(option.id, 1.0)?.usd ?: 0.0
+        val stage2 = option.params?.get(PARAM_STAGE2)?.jsonPrimitive?.content
+            ?.let { priceBook.estimate(it, 1.0)?.usd } ?: 0.0
+        return base + stage2
+    }
 
     /**
      * Results folder, in order of preference (owner 2026-09-01: the tool has
@@ -107,9 +132,37 @@ class UpscaleService(
             falClient.rotateKey()
             result = runJob(uploaded, option)
         }
-        val imageUrl = when (result) {
+        var imageUrl = when (result) {
             is AppResult.Ok -> result.value
             is AppResult.Err -> return result
+        }
+
+        // "Restorasi Maksimal" (owner 2026-09-05: results lacked detail):
+        // stage 2 feeds the repaired image straight into a detail upscaler.
+        val optionParams = option.params
+        val stage2Slug = optionParams?.get(PARAM_STAGE2)?.jsonPrimitive?.content
+        if (option.inputMode == MODE_EDIT_THEN_UPSCALE && stage2Slug != null) {
+            val stage2Option = ModelOption(
+                id = stage2Slug,
+                labelId = option.labelId + " (tahap 2)",
+                // Stage-2 body params = the catalog option's params minus the slug marker.
+                params = kotlinx.serialization.json.JsonObject(
+                    optionParams.filterKeys { it != PARAM_STAGE2 },
+                ),
+                inputMode = "image_url",
+            )
+            var s2 = runJob(imageUrl, stage2Option)
+            val e2 = (s2 as? AppResult.Err)?.error
+            if (e2 is AppError.ProviderFailed || e2 is AppError.Timeout || e2 is AppError.RateLimited) {
+                falClient.rotateKey()
+                s2 = runJob(imageUrl, stage2Option)
+            }
+            when (s2) {
+                is AppResult.Ok -> imageUrl = s2.value
+                // Stage-2 trouble must not throw away a good restoration —
+                // keep the stage-1 result and log the downgrade.
+                is AppResult.Err -> Napier.w("stage2 upscale failed, keeping stage1: ${s2.error}")
+            }
         }
 
         val target = uniqueTarget(source)
@@ -124,7 +177,7 @@ class UpscaleService(
 
     /** Submits one job and returns the result image URL. */
     private suspend fun runJob(sourceUrl: String, option: ModelOption): AppResult<String> {
-        val body = if (option.inputMode == "edit_prompt") {
+        val body = if (option.inputMode == "edit_prompt" || option.inputMode == MODE_EDIT_THEN_UPSCALE) {
             buildJsonObject {
                 put("prompt", RESTORE_PROMPT)
                 putJsonArray("image_urls") { add(sourceUrl) }
