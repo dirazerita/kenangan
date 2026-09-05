@@ -335,6 +335,26 @@ private fun StepPhotos(state: WizardState) {
                         minLines = 2,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Spacer(Modifier.height(8.dp))
+                    // Gunakan foto asli (owner 2026-09-05): originals become
+                    // their scenes' keyframes directly — free, no AI image.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Switch(
+                            checked = state.useOriginalPhotos,
+                            onCheckedChange = { state.useOriginalPhotos = it; state.persistMeta() },
+                        )
+                        Text(Strings.WIZARD_USE_ORIGINALS, style = MaterialTheme.typography.titleSmall)
+                    }
+                    if (state.useOriginalPhotos) {
+                        Text(
+                            Strings.WIZARD_USE_ORIGINALS_DESC,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        )
+                    }
                 }
             }
         }

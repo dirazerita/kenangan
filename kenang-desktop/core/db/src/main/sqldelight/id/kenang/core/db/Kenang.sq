@@ -15,6 +15,7 @@ CREATE TABLE project (
   restore_photos INTEGER NOT NULL DEFAULT 0, -- restorasi foto lama toggle
   scene_guidance TEXT,            -- tuntunan adegan (free-text planner steering)
   custom_vibe TEXT,               -- suasana kustom (used when vibe='custom')
+  use_original_photos INTEGER NOT NULL DEFAULT 0, -- originals become scene keyframes directly
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -119,6 +120,9 @@ UPDATE project SET restore_photos = ?, updated_at = ? WHERE id = ?;
 
 updateProjectGuidance:
 UPDATE project SET scene_guidance = ?, updated_at = ? WHERE id = ?;
+
+updateProjectUseOriginals:
+UPDATE project SET use_original_photos = ?, updated_at = ? WHERE id = ?;
 
 updateProjectCustomVibe:
 UPDATE project SET custom_vibe = ?, updated_at = ? WHERE id = ?;

@@ -57,6 +57,7 @@ fun main(): Unit = runBlocking {
         restorePhotos = project.restore_photos == 1L,
         sceneGuidance = project.scene_guidance,
         customVibe = project.custom_vibe,
+        useOriginalPhotos = project.use_original_photos == 1L,
     ) { stage -> println("  [${(System.currentTimeMillis() - t0) / 1000}s] stage: $stage") }
     println("OUTCOME after ${(System.currentTimeMillis() - t0) / 1000}s: $outcome")
     if (outcome is id.kenang.core.providers.story.AnalysisOutcome.Ok) {

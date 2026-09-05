@@ -15,6 +15,8 @@ import id.kenang.core.data.ProjectRepository
 import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
+import id.kenang.core.data.story.AwtRatioCropper
+import id.kenang.core.data.story.RatioCropper
 import id.kenang.core.data.ffmpeg.FfmpegLocator
 import id.kenang.core.data.ffmpeg.VideoAssembler
 import id.kenang.core.providers.gen.AssemblyService
@@ -87,8 +89,9 @@ val appModule = module {
     single { ConnectivityMonitor() }
 
     // Phase 03 — storyboard engine services
+    single<RatioCropper> { AwtRatioCropper() }
     single { FalStorage(get(), get()) }
-    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }

@@ -233,6 +233,8 @@ object Strings {
 
     /** Kept for compatibility; the wizard uses the randomized list above. */
     val WIZARD_NARRATION_TEMPLATE: String get() = WIZARD_NARRATION_TEMPLATES.first()
+    const val WIZARD_USE_ORIGINALS = "Gunakan foto asli sebagai adegan"
+    const val WIZARD_USE_ORIGINALS_DESC = "Setiap foto asli langsung dipakai sebagai gambar adegannya sendiri (gratis, tanpa AI) — hanya adegan tambahan di atas jumlah foto yang dibuat AI. Contoh: 4 foto + 8 adegan = 4 adegan foto asli + 4 adegan AI. Foto dipotong-tengah mengikuti rasio video."
     const val WIZARD_NO_NARRATION = "Tanpa narasi"
     const val WIZARD_NO_NARRATION_HINT = "Video akan dibuat tanpa suara narasi dan tanpa subtitle — hanya musik (jika dipilih di langkah berikutnya)."
     const val WIZARD_NARRATION_HINT = "Tulis pesan atau kenangan singkat — akan dibacakan sebagai narasi."

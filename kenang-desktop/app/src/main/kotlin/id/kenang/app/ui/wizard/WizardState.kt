@@ -73,6 +73,8 @@ class WizardState(
     var sceneGuidance by mutableStateOf("")
     /** Suasana kustom: user-written ambience (active when vibeId == "custom"). */
     var customVibe by mutableStateOf("")
+    /** Gunakan foto asli: originals become their scenes' keyframes directly (free). */
+    var useOriginalPhotos by mutableStateOf(false)
     var ratio by mutableStateOf("9:16")
     var vibeId by mutableStateOf(configRepository.current().vibes.firstOrNull()?.id ?: "asli")
     var durationS by mutableStateOf(5L)
@@ -144,6 +146,7 @@ class WizardState(
                     restorePhotos = p.restore_photos == 1L
                     sceneGuidance = p.scene_guidance ?: ""
                     customVibe = p.custom_vibe ?: ""
+                    useOriginalPhotos = p.use_original_photos == 1L
                 }
                 reloadPhotos()
             }
@@ -234,6 +237,7 @@ class WizardState(
             projects.updateRestorePhotos(id, restorePhotos)
             projects.updateSceneGuidance(id, sceneGuidance)
             projects.updateCustomVibe(id, customVibe)
+            projects.updateUseOriginals(id, useOriginalPhotos)
         }
     }
 

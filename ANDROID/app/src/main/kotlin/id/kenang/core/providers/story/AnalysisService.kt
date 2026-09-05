@@ -63,6 +63,7 @@ class AnalysisService(
     private val photoRepository: PhotoRepository,
     private val sceneRepository: SceneRepository,
     private val settings: id.kenang.core.data.SettingsRepository,
+    private val ratioCropper: id.kenang.core.data.story.RatioCropper,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -80,6 +81,12 @@ class AnalysisService(
         sceneGuidance: String? = null,
         /** "Suasana kustom": user-written ambience (used when vibeId == "custom"). */
         customVibe: String? = null,
+        /**
+         * "Gunakan foto asli" (owner 2026-09-05): each photo's first
+         * single-source scene uses the ORIGINAL photo as its keyframe (free,
+         * ratio-cropped copy); only the extra scenes are AI-generated.
+         */
+        useOriginalPhotos: Boolean = false,
         onStage: suspend (AnalysisStage) -> Unit,
     ): AnalysisOutcome {
         val config = configRepository.current()
@@ -136,7 +143,7 @@ class AnalysisService(
         // the planner translates it into the English keyframe hints).
         val ambienceForPlan =
             if (vibeId == "custom" && !customVibe.isNullOrBlank()) customVibe.trim() else vibeId
-        val plan = when (val res = storyPlan(projectId, analyses, ambienceForPlan, narration, config.limits.maxScenes, targetScenes, sceneGuidance)) {
+        val plan = when (val res = storyPlan(projectId, analyses, ambienceForPlan, narration, config.limits.maxScenes, targetScenes, sceneGuidance, useOriginalPhotos)) {
             is AppResult.Ok -> res.value
             is AppResult.Err -> return AnalysisOutcome.Failed(res.error)
         }
@@ -154,6 +161,11 @@ class AnalysisService(
             .ifEmpty { return AnalysisOutcome.Failed(AppError.ProviderFailed(Provider.FAL, "story plan empty/invalid")) }
 
         sceneRepository.deleteAll(projectId)
+        // "Gunakan foto asli": each photo claims its FIRST single-source scene
+        // as an original-keyframe scene (free; ratio-cropped COPY so the
+        // original file stays untouched and the video never crops people out).
+        val originalsDone = mutableSetOf<String>()
+        val photosById = photos.associateBy { it.id }
         validItems.forEachIndexed { index, item ->
             // Uncapped count feeds the anti-twin exact-count clause; the
             // coerced value stays for the fusion clause (max_subjects_fusion).
@@ -168,6 +180,26 @@ class AnalysisService(
                     detailEn = MotionTemplateValidator.sanitizeDetail(item.motionDetailEn),
                     detailId = item.motionDetailId.trim().take(260),
                 )
+            // Original-photo keyframe? Only for non-fusion scenes whose single
+            // source photo has not been used as an original yet.
+            val originalPhoto = if (
+                useOriginalPhotos && !isFusion && item.sourcePhotos.size == 1 &&
+                item.sourcePhotos[0] !in originalsDone
+            ) photosById[item.sourcePhotos[0]] else null
+            val originalCopy = originalPhoto?.let { photo ->
+                runCatching {
+                    val src = File(photo.local_path)
+                    val target = File(
+                        id.kenang.core.data.AppDirs.projectKeyframes(projectId),
+                        "orig_${index}_${photo.id.take(8)}.${src.extension.ifBlank { "jpg" }}",
+                    )
+                    src.copyTo(target, overwrite = true)
+                    ratioCropper.cropToRatio(target, ratio)
+                    originalsDone += photo.id
+                    target.absolutePath
+                }.onFailure { Napier.w("original keyframe copy failed: ${it.message}") }.getOrNull()
+            }
+
             val scene = Scene(
                 scene_id = "sc_${projectId.take(8)}_$index",
                 project_id = projectId,
@@ -182,14 +214,16 @@ class AnalysisService(
                     restore = restorePhotos,
                     exactSubjects = rawSubjects.takeIf { it > 0 && !isFusion },
                 ),
+                // Original scenes ship READY with the photo itself (uploaded at
+                // video submit, setCustomKeyframe-style); AI scenes stay DRAFT.
                 keyframe_url = null,
                 motion_prompt_en = MotionTemplates.buildPromptEn(spec),
                 motion_summary_id = MotionTemplates.buildSummaryId(spec),
                 duration_s = sceneDurationS,
                 regen_count = 0,
-                status = SceneStatus.DRAFT,
+                status = if (originalCopy != null) SceneStatus.KEYFRAME_READY else SceneStatus.DRAFT,
                 order_index = index.toLong(),
-                local_keyframe_path = null,
+                local_keyframe_path = originalCopy,
                 local_clip_path = null,
             )
             sceneRepository.upsert(scene)
@@ -235,6 +269,7 @@ over- or under-count corrupts every generated image."""
         maxScenes: Int,
         targetScenes: Long? = null,
         sceneGuidance: String? = null,
+        useOriginalPhotos: Boolean = false,
     ): AppResult<List<ScenePlanItem>> {
         val categories = id.kenang.core.common.story.MotionCategory.entries.joinToString("|") { it.key }
         val cameras = id.kenang.core.common.story.CameraMove.entries.joinToString("|") { it.key }
@@ -288,6 +323,10 @@ PHOTO ANALYSES:
 [$analysesJson]
 ${if (!narration.isNullOrBlank()) "NARRATION (Indonesian): $narration" else ""}
 Ambience preset: $vibeId.
+${if (useOriginalPhotos) """
+ORIGINALS RULE: every photo must be the SOLE source of at least one type "single" scene (its own
+moment, before any extra derived scenes) — the app will use those photos directly as the scene
+images.""" else ""}
 HARD RULE — person count: every scene (subject_en and keyframe_hint) must describe EXACTLY the
 people visible in its source photo(s): the same number of people, the same individuals. Never
 duplicate a person into twins, and never invent extra people the photo does not show. State the

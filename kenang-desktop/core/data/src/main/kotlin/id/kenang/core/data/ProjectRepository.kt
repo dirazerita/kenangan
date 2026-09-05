@@ -93,6 +93,13 @@ class ProjectRepository(
     }
 
     /** Suasana kustom: user-written ambience (used when vibe == "custom"). */
+    /** "Gunakan foto asli": originals become scene keyframes directly (free). */
+    suspend fun updateUseOriginals(projectId: String, enabled: Boolean) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectUseOriginals(
+            if (enabled) 1L else 0L, System.currentTimeMillis(), projectId,
+        )
+    }
+
     suspend fun updateCustomVibe(projectId: String, text: String?) = withContext(dispatchers.io) {
         db.kenangQueries.updateProjectCustomVibe(text?.ifBlank { null }, System.currentTimeMillis(), projectId)
     }

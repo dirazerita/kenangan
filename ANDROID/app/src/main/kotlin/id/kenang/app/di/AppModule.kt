@@ -16,6 +16,8 @@ import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.media.GalleryExporter
+import id.kenang.core.data.story.AndroidRatioCropper
+import id.kenang.core.data.story.RatioCropper
 import id.kenang.core.data.media.VideoAssembler
 import id.kenang.core.db.DatabaseFactory
 import id.kenang.core.db.KenangDb
@@ -87,8 +89,9 @@ val appModule = module {
     single { ConnectivityMonitor() }
 
     // Phase 03 — storyboard engine services
+    single<RatioCropper> { AndroidRatioCropper() }
     single { FalStorage(get(), get()) }
-    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }
