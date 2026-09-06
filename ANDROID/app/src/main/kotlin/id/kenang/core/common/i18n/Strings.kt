@@ -51,6 +51,9 @@ object Strings {
     const val MOTION_MODEL_LABEL = "Model"
     const val MOTION_MODEL_NOTE = "Opsi bertanda ◦ belum teruji penuh — hasil dan biaya bisa berbeda. Pilihan diingat untuk pemakaian berikutnya."
     const val SB_DROP_REPLACE_HINT = "Geser foto ke kartu adegan untuk mengganti gambarnya."
+    const val SB_NEGATIVE_LABEL = "Negative prompt — yang TIDAK boleh muncul di gambar"
+    const val SB_NEGATIVE_HINT = "Contoh: orang asing di latar belakang, teks, watermark, jari/tangan ekstra…"
+    const val SB_NEGATIVE_NOTE = "Berlaku setiap gambar dibuat — tulis larangannya, lalu klik \"Buat ulang gambar\" pada adegan yang bermasalah."
 
     // Generic
     const val CANCEL = "Batal"

@@ -24,6 +24,18 @@ object KeyframePrompts {
         if (prompt.isBlank() || prompt.contains("no twins")) prompt
         else prompt + NO_DUPLICATE_CLAUSE
 
+    /**
+     * User "negative prompt" (owner 2026-09-06: unwanted new people/objects
+     * keep appearing). Nano Banana has no negative_prompt API param, so the
+     * exclusion rides the prompt as a strict ban list. Applied at SUBMIT time
+     * (KeyframeService) so regens on existing scenes honor it immediately.
+     */
+    fun negativeClause(negative: String?): String {
+        val text = negative?.trim()?.takeIf { it.isNotBlank() } ?: return ""
+        return " STRICTLY FORBIDDEN — none of the following may appear anywhere in the image, " +
+            "remove them if present: ${text.take(300)}."
+    }
+
     fun build(
         vibe: Vibe,
         ratio: String,               // "9:16" | "16:9"

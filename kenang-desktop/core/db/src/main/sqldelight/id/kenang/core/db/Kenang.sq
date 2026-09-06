@@ -16,6 +16,7 @@ CREATE TABLE project (
   scene_guidance TEXT,            -- tuntunan adegan (free-text planner steering)
   custom_vibe TEXT,               -- suasana kustom (used when vibe='custom')
   use_original_photos INTEGER NOT NULL DEFAULT 0, -- originals become scene keyframes directly
+  negative_prompt TEXT,           -- things that must NOT appear in generated images
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -120,6 +121,9 @@ UPDATE project SET restore_photos = ?, updated_at = ? WHERE id = ?;
 
 updateProjectGuidance:
 UPDATE project SET scene_guidance = ?, updated_at = ? WHERE id = ?;
+
+updateProjectNegativePrompt:
+UPDATE project SET negative_prompt = ?, updated_at = ? WHERE id = ?;
 
 updateProjectUseOriginals:
 UPDATE project SET use_original_photos = ?, updated_at = ? WHERE id = ?;

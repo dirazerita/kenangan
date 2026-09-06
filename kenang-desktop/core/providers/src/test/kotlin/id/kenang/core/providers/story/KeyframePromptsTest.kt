@@ -103,6 +103,17 @@ class KeyframePromptsTest {
     }
 
     @Test
+    fun `negative clause is a strict ban list and empty input adds nothing`() {
+        // Owner 2026-09-06: unwanted new people/objects — the user's negative
+        // prompt must ride every keyframe submit as an explicit prohibition.
+        val clause = KeyframePrompts.negativeClause("orang asing di latar belakang, teks, watermark")
+        assertTrue("STRICTLY FORBIDDEN" in clause, clause)
+        assertTrue("orang asing di latar belakang" in clause, clause)
+        kotlin.test.assertEquals("", KeyframePrompts.negativeClause(null))
+        kotlin.test.assertEquals("", KeyframePrompts.negativeClause("   "))
+    }
+
+    @Test
     fun `ensureNoDuplicateGuard retrofits old prompts exactly once`() {
         val old = "Create a new photorealistic scene of the exact same people in a garden."
         val patched = KeyframePrompts.ensureNoDuplicateGuard(old)

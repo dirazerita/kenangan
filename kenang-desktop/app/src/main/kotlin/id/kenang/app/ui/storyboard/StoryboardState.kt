@@ -40,6 +40,8 @@ class StoryboardState(
     var scenes by mutableStateOf<List<Scene>>(emptyList())
     var estimate by mutableStateOf<StoryboardEstimate?>(null)
     var snackMessage by mutableStateOf<String?>(null)
+    /** Negative prompt: things that must NOT appear in generated images. */
+    var negativePrompt by mutableStateOf("")
     var showConfirm by mutableStateOf(false)
     var confirmTier by mutableStateOf("standar")
     var confirmed by mutableStateOf(false)
@@ -56,6 +58,7 @@ class StoryboardState(
     fun start() {
         scope.launch {
             project = projects.get(projectId)
+            negativePrompt = project?.negative_prompt ?: ""
             confirmTier = tier()
             // Crash recovery: stale keyframe_pending rows have no live job → mark failed, retried below.
             sceneRepository.scenes(projectId)
@@ -96,6 +99,15 @@ class StoryboardState(
             } finally {
                 synchronized(inFlight) { inFlight.remove(sceneId) }
             }
+        }
+    }
+
+    /** Autosaves the negative prompt; KeyframeService reads it fresh per submit. */
+    fun saveNegativePrompt(text: String) {
+        negativePrompt = text
+        scope.launch {
+            projects.updateNegativePrompt(projectId, text)
+            project = projects.get(projectId)
         }
     }
 

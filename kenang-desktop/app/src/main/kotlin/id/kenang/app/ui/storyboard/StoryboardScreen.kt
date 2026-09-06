@@ -230,6 +230,20 @@ fun StoryboardScreen(
         )
         Spacer(Modifier.height(8.dp))
 
+        // ---------- Negative prompt (owner 2026-09-06: unwanted people/objects) ----------
+        OutlinedTextField(
+            value = state.negativePrompt,
+            onValueChange = { state.saveNegativePrompt(it.take(300)) },
+            label = { Text(Strings.SB_NEGATIVE_LABEL) },
+            placeholder = { Text(Strings.SB_NEGATIVE_HINT) },
+            supportingText = {
+                Text(Strings.SB_NEGATIVE_NOTE, style = MaterialTheme.typography.labelSmall)
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+
         // ---------- Scene grid ----------
         val ordered = state.scenes.sortedBy { it.order_index }
         LazyVerticalGrid(

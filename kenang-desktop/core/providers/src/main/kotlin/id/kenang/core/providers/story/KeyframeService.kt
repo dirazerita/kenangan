@@ -119,13 +119,19 @@ class KeyframeService(
         // to aspect_ratio=auto (follows the source photo), and the mismatched
         // frame then got people cropped out when the i2v step forced the
         // project ratio. The prompt's "9:16 portrait" text alone does nothing.
-        val projectRatio = projectRepository.get(scene.project_id)?.ratio
-        val aspectRatio = if (projectRatio == "16:9") "16:9" else "9:16"
+        val project = projectRepository.get(scene.project_id)
+        val aspectRatio = if (project?.ratio == "16:9") "16:9" else "9:16"
 
         val body = buildJsonObject {
             // Retrofit the anti-twin guard onto prompts stored before the fix
-            // (owner 2026-09-01), so regens on old projects benefit too.
-            put("prompt", KeyframePrompts.ensureNoDuplicateGuard(scene.keyframe_prompt_en ?: ""))
+            // (owner 2026-09-01), so regens on old projects benefit too; the
+            // project-level negative prompt rides every submit (owner
+            // 2026-09-06) so "Buat ulang gambar" honors it immediately.
+            put(
+                "prompt",
+                KeyframePrompts.ensureNoDuplicateGuard(scene.keyframe_prompt_en ?: "") +
+                    KeyframePrompts.negativeClause(project?.negative_prompt),
+            )
             putJsonArray("image_urls") { urls.forEach { add(it) } }
             put("num_images", 1)
             put("output_format", "jpeg")

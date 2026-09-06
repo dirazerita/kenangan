@@ -93,6 +93,13 @@ class ProjectRepository(
     }
 
     /** Suasana kustom: user-written ambience (used when vibe == "custom"). */
+    /** Negative prompt: things that must NOT appear in generated images (blank = none). */
+    suspend fun updateNegativePrompt(projectId: String, text: String?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateProjectNegativePrompt(
+            text?.trim()?.ifBlank { null }, System.currentTimeMillis(), projectId,
+        )
+    }
+
     /** "Gunakan foto asli": originals become scene keyframes directly (free). */
     suspend fun updateUseOriginals(projectId: String, enabled: Boolean) = withContext(dispatchers.io) {
         db.kenangQueries.updateProjectUseOriginals(
