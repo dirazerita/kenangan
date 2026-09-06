@@ -65,7 +65,9 @@ class AnalysisService(
     private val settings: id.kenang.core.data.SettingsRepository,
     private val ratioCropper: id.kenang.core.data.story.RatioCropper,
 ) {
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    // allowTrailingComma: models regularly emit "...},]" — seen live
+    // 2026-09-06 ("Trailing comma before the end of JSON array").
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true; allowTrailingComma = true }
 
     suspend fun run(
         projectId: String,
@@ -357,7 +359,11 @@ plus subtle ambient life (leaves swaying, curtains moving, light shifting, steam
 slow movements — no running, jumping or dancing. Make each scene's motion arc DIFFERENT from every
 other scene's. motion_detail_id says the same thing briefly in warm natural Indonesian.
 Order scenes as a calm narrative arc. Give every scene a keyframe_hint with a concrete activity and
-framing so no two scenes look alike. No markdown, no extra text."""
+framing so no two scenes look alike. No markdown, no extra text.
+COMPACT OUTPUT (the response is hard-capped — an oversized reply gets cut mid-JSON and fails):
+keyframe_hint at most 18 words; motion_detail_en at most 2 short sentences; motion_detail_id at
+most 2 short sentences; adjectives at most 4 words; subject_en/subject_id short phrases. Keep the
+JSON tight: no spaces after ':' or ',', no line breaks inside strings."""
         // Response budget scales with the scene count: each plan item costs
         // ~330 tokens with the motion-detail fields (a fixed 1600 once
         // silently truncated 10-12-scene plans into invalid JSON).
@@ -427,8 +433,23 @@ framing so no two scenes look alike. No markdown, no extra text."""
                         .removeSuffix("```").trim('`', ' ', '\n', '\r')
                     runCatching { parse(cleaned) }.fold(
                         onSuccess = { return AppResult.Ok(it) },
-                        onFailure = {
-                            Napier.w("visionJson attempt $attempt: invalid JSON (${it.message?.take(80)}) — retrying")
+                        onFailure = { first ->
+                            // The router path hard-caps output around ~2000
+                            // tokens (seen live 2026-09-06: every failure cut
+                            // at 7.3–8.0K chars regardless of max_tokens), so
+                            // long plans arrive TRUNCATED mid-string. Salvage
+                            // the complete array elements instead of failing.
+                            val salvaged = salvageTruncatedArray(cleaned)
+                            if (salvaged != null) {
+                                runCatching { parse(salvaged) }.onSuccess {
+                                    Napier.w(
+                                        "visionJson attempt $attempt: salvaged truncated JSON " +
+                                            "(${cleaned.length} -> ${salvaged.length} chars)",
+                                    )
+                                    return AppResult.Ok(it)
+                                }
+                            }
+                            Napier.w("visionJson attempt $attempt: invalid JSON (${first.message?.take(80)}) — retrying")
                             lastError = AppError.ProviderFailed(Provider.FAL, "invalid JSON after retries")
                         },
                     )
@@ -436,6 +457,38 @@ framing so no two scenes look alike. No markdown, no extra text."""
             }
         }
         return AppResult.Err(lastError)
+    }
+
+    /**
+     * Rescues a TRUNCATED top-level JSON array by cutting at the last element
+     * that closed completely (depth 2→1 on '}') and re-closing the array.
+     * String/escape aware; returns null when the payload is not an array or
+     * nothing complete survives — the caller then falls back to a retry.
+     */
+    private fun salvageTruncatedArray(raw: String): String? {
+        val start = raw.indexOf('[')
+        if (start < 0) return null
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var lastCompleteElementEnd = -1
+        for (i in start until raw.length) {
+            val ch = raw[i]
+            if (escaped) { escaped = false; continue }
+            when {
+                ch == '\\' && inString -> escaped = true
+                ch == '"' -> inString = !inString
+                inString -> Unit
+                ch == '[' || ch == '{' -> depth++
+                ch == ']' || ch == '}' -> {
+                    depth--
+                    if (ch == '}' && depth == 1) lastCompleteElementEnd = i
+                    if (ch == ']' && depth == 0) return null // array closed fine — not a truncation
+                }
+            }
+        }
+        if (lastCompleteElementEnd < 0) return null
+        return raw.substring(start, lastCompleteElementEnd + 1) + "]"
     }
 
     private suspend fun falVision(
