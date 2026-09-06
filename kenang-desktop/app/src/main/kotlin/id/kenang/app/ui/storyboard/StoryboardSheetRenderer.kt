@@ -129,7 +129,7 @@ object StoryboardSheetRenderer {
         g.drawString(chip, x + 21, y + 31)
 
         // Caption: Indonesian motion summary, wrapped + ellipsized
-        val teks = scene.motion_summary_id?.trim().orEmpty()
+        val teks = (scene.user_description ?: scene.motion_summary_id)?.trim().orEmpty()
             .ifBlank { "(belum ada deskripsi gerakan)" }
         g.font = Font("Segoe UI", Font.PLAIN, 16)
         g.color = TEXT

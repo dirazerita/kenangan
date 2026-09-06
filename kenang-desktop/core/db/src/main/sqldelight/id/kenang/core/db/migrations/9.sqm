@@ -1,0 +1,2 @@
+ALTER TABLE scene ADD COLUMN negative_prompt TEXT;
+ALTER TABLE scene ADD COLUMN user_description TEXT;

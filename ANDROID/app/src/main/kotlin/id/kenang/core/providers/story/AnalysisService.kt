@@ -223,6 +223,8 @@ class AnalysisService(
                 motion_summary_id = MotionTemplates.buildSummaryId(spec),
                 duration_s = sceneDurationS,
                 regen_count = 0,
+                    negative_prompt = null,
+                    user_description = null,
                 status = if (originalCopy != null) SceneStatus.KEYFRAME_READY else SceneStatus.DRAFT,
                 order_index = index.toLong(),
                 local_keyframe_path = originalCopy,

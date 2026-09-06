@@ -101,6 +101,7 @@ fun StoryboardScreen(
     }
 
     var editing by remember { mutableStateOf<Scene?>(null) }
+    var editingDesc by remember { mutableStateOf<Scene?>(null) }
     var showAddScene by remember { mutableStateOf(false) }
     var showAddRefScene by remember { mutableStateOf(false) }
     var refSceneFile by remember { mutableStateOf<java.io.File?>(null) }
@@ -230,20 +231,6 @@ fun StoryboardScreen(
         )
         Spacer(Modifier.height(8.dp))
 
-        // ---------- Negative prompt (owner 2026-09-06: unwanted people/objects) ----------
-        OutlinedTextField(
-            value = state.negativePrompt,
-            onValueChange = { state.saveNegativePrompt(it.take(300)) },
-            label = { Text(Strings.SB_NEGATIVE_LABEL) },
-            placeholder = { Text(Strings.SB_NEGATIVE_HINT) },
-            supportingText = {
-                Text(Strings.SB_NEGATIVE_NOTE, style = MaterialTheme.typography.labelSmall)
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-
         // ---------- Scene grid ----------
         val ordered = state.scenes.sortedBy { it.order_index }
         LazyVerticalGrid(
@@ -266,6 +253,8 @@ fun StoryboardScreen(
                         pickImage()?.let { file -> state.replaceKeyframe(scene, file) }
                     },
                     onReplaceFile = { file -> state.replaceKeyframe(scene, file) },
+                    onEditDescription = { editingDesc = scene },
+                    onSaveNegative = { text -> state.saveSceneNegative(scene, text) },
                 )
             }
             // Owner feature 2026-09-02: AI continues the story with one more
@@ -386,6 +375,14 @@ fun StoryboardScreen(
         )
     }
 
+    editingDesc?.let { scene ->
+        EditDescriptionDialog(
+            scene = scene,
+            onSave = { text -> state.saveSceneDescription(scene, text); editingDesc = null },
+            onDismiss = { editingDesc = null },
+        )
+    }
+
     if (state.showConfirm) {
         ConfirmDialog(state)
     }
@@ -423,6 +420,8 @@ private fun SceneCard(
     onMove: (Int) -> Unit,
     onReplace: () -> Unit,
     onReplaceFile: (java.io.File) -> Unit = {},
+    onEditDescription: () -> Unit = {},
+    onSaveNegative: (String) -> Unit = {},
 ) {
     // Drop a photo straight onto the card to replace its keyframe
     // (owner 2026-09-02: every image input accepts drag-and-drop).
@@ -513,10 +512,14 @@ private fun SceneCard(
                     }
                 }
                 Spacer(Modifier.height(4.dp))
+                // Click-to-edit description (owner 2026-09-06 rev 2): the
+                // edited Indonesian text becomes AUTHORITATIVE for the image.
                 Text(
-                    scene.motion_summary_id ?: "",
+                    (scene.user_description ?: scene.motion_summary_id ?: "") + "  ✏",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    color = if (scene.user_description != null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    modifier = Modifier.clickable { onEditDescription() },
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -545,9 +548,70 @@ private fun SceneCard(
                     Spacer(Modifier.width(4.dp))
                     Text(Strings.SB_REPLACE_IMAGE)
                 }
+                // Per-scene negative prompt (owner 2026-09-06 rev 2): ban list
+                // for THIS scene's image — type it, then "Buat ulang gambar".
+                var negText by remember(scene.scene_id) {
+                    mutableStateOf(scene.negative_prompt ?: "")
+                }
+                OutlinedTextField(
+                    value = negText,
+                    onValueChange = {
+                        negText = it.take(300)
+                        onSaveNegative(negText)
+                    },
+                    label = { Text(Strings.SB_SCENE_NEGATIVE_LABEL) },
+                    placeholder = { Text(Strings.SB_SCENE_NEGATIVE_HINT) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
+}
+
+/**
+ * "Ubah deskripsi adegan" (owner 2026-09-06 rev 2): the user rewrites the
+ * Indonesian description ("Mereka bertiga…" → "Mereka berdua…") and the text
+ * becomes AUTHORITATIVE for the image on the next (re)generation.
+ */
+@Composable
+private fun EditDescriptionDialog(
+    scene: Scene,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember(scene.scene_id) {
+        mutableStateOf(scene.user_description ?: scene.motion_summary_id ?: "")
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(Strings.SB_EDIT_DESC_TITLE) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.take(300) },
+                    minLines = 3,
+                    supportingText = { Text("${text.length}/300") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    Strings.SB_EDIT_DESC_NOTE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        },
+        confirmButton = {
+            SkeuoButton(onClick = {
+                // Saving the untouched planner text = no override.
+                onSave(if (text.trim() == (scene.motion_summary_id ?: "").trim()) "" else text)
+            }) { Text(Strings.SAVE) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.CANCEL) } },
+    )
 }
 
 @Composable

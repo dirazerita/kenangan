@@ -127,10 +127,16 @@ class KeyframeService(
             // (owner 2026-09-01), so regens on old projects benefit too; the
             // project-level negative prompt rides every submit (owner
             // 2026-09-06) so "Buat ulang gambar" honors it immediately.
+            // Per-scene edits ride every submit (owner 2026-09-06 rev 2):
+            // the user's description override + the scene's own ban list
+            // (project-level negative kept as legacy fallback).
             put(
                 "prompt",
                 KeyframePrompts.ensureNoDuplicateGuard(scene.keyframe_prompt_en ?: "") +
-                    KeyframePrompts.negativeClause(project?.negative_prompt),
+                    KeyframePrompts.descriptionOverrideClause(scene.user_description) +
+                    KeyframePrompts.negativeClause(
+                        scene.negative_prompt ?: project?.negative_prompt,
+                    ),
             )
             putJsonArray("image_urls") { urls.forEach { add(it) } }
             put("num_images", 1)

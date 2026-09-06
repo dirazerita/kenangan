@@ -58,6 +58,7 @@ class SceneRepository(
                 scene.vibe, scene.keyframe_prompt_en, scene.keyframe_url,
                 scene.motion_prompt_en, scene.motion_summary_id, scene.duration_s,
                 scene.regen_count, scene.status, scene.order_index,
+                scene.negative_prompt, scene.user_description,
                 scene.local_keyframe_path, scene.local_clip_path,
             )
         }
@@ -102,6 +103,16 @@ class SceneRepository(
                 SceneStatus.KEYFRAME_READY, null, localPath, 0L, sceneId,
             )
         }
+    }
+
+    /** Per-scene negative prompt (owner 2026-09-06): applied at every image submit. */
+    suspend fun setNegativePrompt(sceneId: String, text: String?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateSceneNegativePrompt(text?.trim()?.ifBlank { null }, sceneId)
+    }
+
+    /** User-edited Indonesian description — authoritative for the image (blank = planner text). */
+    suspend fun setUserDescription(sceneId: String, text: String?) = withContext(dispatchers.io) {
+        db.kenangQueries.updateSceneUserDescription(text?.trim()?.ifBlank { null }, sceneId)
     }
 
     suspend fun updateMotion(sceneId: String, promptEn: String, summaryId: String) =

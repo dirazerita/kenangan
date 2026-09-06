@@ -30,6 +30,19 @@ object KeyframePrompts {
      * exclusion rides the prompt as a strict ban list. Applied at SUBMIT time
      * (KeyframeService) so regens on existing scenes honor it immediately.
      */
+    /**
+     * User-edited scene description (owner 2026-09-06 rev 2: "Mereka bertiga"
+     * → "Mereka berdua" must actually change the image). Appended at submit
+     * as the AUTHORITATIVE description, overriding the stored hint where they
+     * conflict — including the person count.
+     */
+    fun descriptionOverrideClause(description: String?): String {
+        val text = description?.trim()?.takeIf { it.isNotBlank() } ?: return ""
+        return " AUTHORITATIVE SCENE DESCRIPTION (user-edited, Indonesian — follow it EXACTLY and " +
+            "let it OVERRIDE anything above it conflicts with, including how many people appear): " +
+            "${text.take(300)}."
+    }
+
     fun negativeClause(negative: String?): String {
         val text = negative?.trim()?.takeIf { it.isNotBlank() } ?: return ""
         return " STRICTLY FORBIDDEN — none of the following may appear anywhere in the image, " +

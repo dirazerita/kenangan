@@ -21,6 +21,7 @@ class CostEstimatorTest {
         vibe = "taman", keyframe_prompt_en = "", keyframe_url = null,
         motion_prompt_en = "", motion_summary_id = "", duration_s = durationS,
         regen_count = regens, status = "keyframe_ready", order_index = 0,
+        negative_prompt = null, user_description = null,
         local_keyframe_path = null, local_clip_path = null,
     )
 

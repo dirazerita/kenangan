@@ -40,9 +40,8 @@ class StoryboardState(
     var scenes by mutableStateOf<List<Scene>>(emptyList())
     var estimate by mutableStateOf<StoryboardEstimate?>(null)
     var snackMessage by mutableStateOf<String?>(null)
-    /** Negative prompt: things that must NOT appear in generated images. */
-    var negativePrompt by mutableStateOf("")
     var showConfirm by mutableStateOf(false)
+
     var confirmTier by mutableStateOf("standar")
     var confirmed by mutableStateOf(false)
 
@@ -58,7 +57,7 @@ class StoryboardState(
     fun start() {
         scope.launch {
             project = projects.get(projectId)
-            negativePrompt = project?.negative_prompt ?: ""
+
             confirmTier = tier()
             // Crash recovery: stale keyframe_pending rows have no live job → mark failed, retried below.
             sceneRepository.scenes(projectId)
@@ -102,13 +101,14 @@ class StoryboardState(
         }
     }
 
-    /** Autosaves the negative prompt; KeyframeService reads it fresh per submit. */
-    fun saveNegativePrompt(text: String) {
-        negativePrompt = text
-        scope.launch {
-            projects.updateNegativePrompt(projectId, text)
-            project = projects.get(projectId)
-        }
+    /** Per-scene negative prompt (owner 2026-09-06 rev 2) — applied at every submit. */
+    fun saveSceneNegative(scene: Scene, text: String) {
+        scope.launch { sceneRepository.setNegativePrompt(scene.scene_id, text) }
+    }
+
+    /** Per-scene edited description — authoritative for the image (blank = planner text). */
+    fun saveSceneDescription(scene: Scene, text: String) {
+        scope.launch { sceneRepository.setUserDescription(scene.scene_id, text) }
     }
 
     fun retryKeyframe(scene: Scene) = launchKeyframe(scene.scene_id, isRegen = false)
@@ -182,6 +182,8 @@ class StoryboardState(
                     motion_summary_id = MotionTemplates.buildSummaryId(spec),
                     duration_s = project?.scene_duration_s ?: 5L,
                     regen_count = 0,
+                    negative_prompt = null,
+                    user_description = null,
                     status = SceneStatus.KEYFRAME_READY,
                     order_index = order,
                     local_keyframe_path = target.absolutePath,
@@ -283,6 +285,8 @@ class StoryboardState(
                     motion_summary_id = MotionTemplates.buildSummaryId(spec),
                     duration_s = p.scene_duration_s,
                     regen_count = 0,
+                    negative_prompt = null,
+                    user_description = null,
                     status = SceneStatus.DRAFT, // observe-flow auto-triggers the keyframe
                     order_index = order,
                     local_keyframe_path = null,
@@ -366,6 +370,8 @@ class StoryboardState(
                     motion_summary_id = MotionTemplates.buildSummaryId(spec),
                     duration_s = p.scene_duration_s,
                     regen_count = 0,
+                    negative_prompt = null,
+                    user_description = null,
                     status = SceneStatus.DRAFT, // observe-flow auto-triggers the keyframe
                     order_index = order,
                     local_keyframe_path = null,
