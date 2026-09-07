@@ -435,6 +435,9 @@ object Strings {
     const val UPSCALE_EMPTY = "Belum ada foto. Pilih foto lama yang ingin diperbesar atau diperbaiki."
     const val UPSCALE_NEED_KEY = "Tambahkan API key fal dulu di Pengaturan."
     const val UPSCALE_DROP_HINT = "Atau geser & lepaskan foto ke sini"
+    const val UPSCALE_RATIO_LABEL = "Rasio hasil"
+    const val UPSCALE_RATIO_ORIGINAL = "Asli (tanpa ubah)"
+    const val UPSCALE_RATIO_NOTE = "9:16 / 16:9: foto yang belum sesuai akan DIPERLUAS secara alami (outpainting) mengikuti rasio pilihan — tanpa memotong orang atau objek penting. Hanya untuk model Restorasi (AI)."
     const val UPSCALE_CHANGE_FOLDER = "Ubah folder…"
     const val UPSCALE_FOLDER_RESET = "Bawaan"
 }

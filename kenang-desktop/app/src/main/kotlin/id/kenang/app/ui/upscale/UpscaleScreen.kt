@@ -90,6 +90,8 @@ fun UpscaleScreen(
     var running by remember { mutableStateOf(false) }
     var compare by remember { mutableStateOf<UpscaleItem?>(null) }
     var outputDirText by remember { mutableStateOf(service.outputDir().absolutePath) }
+    /** Target ratio: null = keep original; "9:16"/"16:9" = outpaint to fit. */
+    var targetRatio by remember { mutableStateOf<String?>(null) }
 
     fun addFiles(files: List<File>) {
         val accepted = files.filter {
@@ -158,7 +160,7 @@ fun UpscaleScreen(
                     limiter.withPermit {
                         item.status = ItemStatus.RUNNING
                         item.errorMessage = null
-                        when (val r = service.process(item.source, chosen)) {
+                        when (val r = service.process(item.source, chosen, targetRatio)) {
                             is AppResult.Ok -> {
                                 item.result = r.value
                                 item.status = ItemStatus.DONE
@@ -229,6 +231,41 @@ fun UpscaleScreen(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             )
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ---------- Target ratio (owner 2026-09-07): recompose by outpainting ----------
+        val ratioSupported = option?.let { service.supportsRatio(it) } == true
+        Text(Strings.UPSCALE_RATIO_LABEL, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = targetRatio == null,
+                onClick = { targetRatio = null },
+                enabled = !running,
+                label = { Text(Strings.UPSCALE_RATIO_ORIGINAL) },
+            )
+            FilterChip(
+                selected = targetRatio == "9:16",
+                onClick = { targetRatio = "9:16" },
+                enabled = !running && ratioSupported,
+                label = { Text("9:16") },
+            )
+            FilterChip(
+                selected = targetRatio == "16:9",
+                onClick = { targetRatio = "16:9" },
+                enabled = !running && ratioSupported,
+                label = { Text("16:9") },
+            )
+        }
+        Text(
+            Strings.UPSCALE_RATIO_NOTE,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        )
+        // A ratio choice is meaningless on pure upscalers — reset when the
+        // user switches to one so the estimate/behavior never lies.
+        LaunchedEffect(ratioSupported) { if (!ratioSupported) targetRatio = null }
 
         Spacer(Modifier.height(16.dp))
 

@@ -66,9 +66,24 @@ class UpscaleService(
                 "discolored blobs or paint-like marks anywhere. Correct the color fading and color " +
                 "cast to natural, realistic colors; recover sharp facial features, eyes, hair " +
                 "strands and fabric texture; keep a natural film-photo look, never plastic or " +
-                "airbrushed skin. Keep every person's identity, face, age, expression, pose, " +
-                "clothing and the original composition exactly the same — do not add, remove or " +
-                "reimagine anything."
+                "airbrushed skin. If the photo is black-and-white or heavily faded, colorize it " +
+                "naturally with believable skin tones and period-appropriate colors — no " +
+                "oversaturation, no HDR look. Never beautify, reshape, rejuvenate or symmetrize " +
+                "faces — no beauty-filter look, no generic AI face. Keep every person's identity, " +
+                "face, age, expression, pose, clothing and the original composition exactly the " +
+                "same — do not add, remove or reimagine anything. AVOID: cartoon/painting/CGI " +
+                "look, plastic skin, changed identity, extra or missing fingers and limbs, " +
+                "oversharpening halos, watermarks, text, borders."
+
+        fun ratioClause(targetRatio: String): String {
+            val orientation = if (targetRatio == "9:16") "vertical portrait" else "horizontal landscape"
+            return " Recompose the result onto a $targetRatio $orientation canvas by naturally " +
+                "EXTENDING the scene with seamless outpainting — the generated areas must match " +
+                "the original lighting, perspective, grain, texture and colors with no visible " +
+                "seams. NEVER crop, stretch or squeeze: every person, face, hand and important " +
+                "object stays fully inside the frame, and the original subjects keep their exact " +
+                "size and placement relative to each other."
+        }
 
         /** input_mode: restore (edit_prompt) then feed the result to an upscaler. */
         const val MODE_EDIT_THEN_UPSCALE = "edit_then_upscale"
@@ -96,8 +111,16 @@ class UpscaleService(
      */
     fun outputDir(): File = File(AppDirs.root, "upscale").apply { mkdirs() }
 
-    /** Upscales/restores ONE photo; the screen fans this out in parallel. */
-    suspend fun process(source: File, option: ModelOption): AppResult<File> {
+    /** True when [option] can honor a target ratio (nano-banana edit family). */
+    fun supportsRatio(option: ModelOption): Boolean =
+        option.inputMode == "edit_prompt" || option.inputMode == MODE_EDIT_THEN_UPSCALE
+
+    /**
+     * Upscales/restores ONE photo; the screen fans this out in parallel.
+     * [targetRatio] "9:16"/"16:9" recomposes via outpainting (edit models
+     * only); null keeps the source ratio.
+     */
+    suspend fun process(source: File, option: ModelOption, targetRatio: String? = null): AppResult<File> {
         if (!source.isFile) return AppError.Unknown("file missing: ${source.name}").err()
 
         val uploaded = when (val up = storage.uploadBytes(
@@ -109,12 +132,12 @@ class UpscaleService(
             is AppResult.Err -> return up
         }
 
-        var result = runJob(uploaded, option)
+        var result = runJob(uploaded, option, targetRatio)
         // Troubled provider call → next key, one retry (owner requirement).
         val err = (result as? AppResult.Err)?.error
         if (err is AppError.ProviderFailed || err is AppError.Timeout || err is AppError.RateLimited) {
             falClient.rotateKey()
-            result = runJob(uploaded, option)
+            result = runJob(uploaded, option, targetRatio)
         }
         var imageUrl = when (result) {
             is AppResult.Ok -> result.value
@@ -158,13 +181,19 @@ class UpscaleService(
     }
 
     /** Submits one job and returns the result image URL. */
-    private suspend fun runJob(sourceUrl: String, option: ModelOption): AppResult<String> {
+    private suspend fun runJob(
+        sourceUrl: String,
+        option: ModelOption,
+        targetRatio: String? = null,
+    ): AppResult<String> {
         val body = if (option.inputMode == "edit_prompt" || option.inputMode == MODE_EDIT_THEN_UPSCALE) {
             buildJsonObject {
-                put("prompt", RESTORE_PROMPT)
+                put("prompt", RESTORE_PROMPT + (targetRatio?.let { ratioClause(it) } ?: ""))
                 putJsonArray("image_urls") { add(sourceUrl) }
                 put("num_images", 1)
                 put("output_format", "png")
+                // The canvas itself (D-022): prompt text alone cannot resize.
+                targetRatio?.let { put("aspect_ratio", it) }
             }
         } else {
             buildJsonObject {

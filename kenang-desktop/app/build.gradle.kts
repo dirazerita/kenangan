@@ -161,6 +161,7 @@ tasks.register<JavaExec>("upscaleDoctor") {
     classpath = sourceSets["main"].runtimeClasspath
     providers.gradleProperty("doctorModel").orNull?.let { systemProperty("doctor.model", it) }
     providers.gradleProperty("doctorImage").orNull?.let { systemProperty("doctor.image", it) }
+    providers.gradleProperty("doctorRatio").orNull?.let { systemProperty("doctor.ratio", it) }
 }
 
 // Diagnostic: render the storyboard contact sheet headlessly (free, offline).

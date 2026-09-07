@@ -36,8 +36,12 @@ fun main(): Unit = runBlocking {
     println("== upscaleDoctor: ${option.labelId} (${option.id})")
     println("   source: ${image.name} ${src?.width}x${src?.height} (${image.length() / 1024} KB)")
 
+    // -Ddoctor.ratio=9:16|16:9 verifies the outpaint-to-ratio path (D-042).
+    val ratio = System.getProperty("doctor.ratio")?.takeIf { it == "9:16" || it == "16:9" }
+    ratio?.let { println("   target ratio: $it (outpaint)") }
+
     val t0 = System.currentTimeMillis()
-    when (val r = service.process(image, option)) {
+    when (val r = service.process(image, option, ratio)) {
         is AppResult.Ok -> {
             val out = ImageIO.read(r.value)
             println("OK in ${(System.currentTimeMillis() - t0) / 1000}s")
