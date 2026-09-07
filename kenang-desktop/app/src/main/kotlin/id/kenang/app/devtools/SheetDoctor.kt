@@ -49,17 +49,28 @@ fun main(): Unit = runBlocking {
     )
     println("SHEET OK -> ${out.absolutePath} (${out.length() / 1024} KB)")
 
-    // The ~10s slideshow clip (D-030 extension): verify the ffmpeg path too.
+    // Preview video (D-031/D-039): REAL-motion sample from existing scene
+    // clips when available (free), else the still slideshow fallback.
     val assembler = koin.get<id.kenang.core.data.ffmpeg.VideoAssembler>()
     val runner = assembler.runner()
     if (runner == null) {
         println("CLIP SKIPPED - ffmpeg unavailable")
     } else {
         val clipFile = File(dir, "Storyboard_$safeName.mp4")
-        when (val r = id.kenang.app.ui.storyboard.StoryboardPreviewClip.render(
-            list, project.ratio, clipFile, runner,
-        )) {
-            null -> println("CLIP SKIPPED - no keyframe images")
+        val existingClips = list.sortedBy { it.order_index }
+            .mapNotNull { it.local_clip_path?.let(::File) }.filter { it.isFile }.take(2)
+        val r = if (existingClips.isNotEmpty()) {
+            println("motion preview from ${existingClips.size} existing clip(s)")
+            id.kenang.app.ui.storyboard.StoryboardPreviewClip.renderMotion(
+                existingClips, project.ratio, clipFile, runner,
+            )
+        } else {
+            id.kenang.app.ui.storyboard.StoryboardPreviewClip.render(
+                list, project.ratio, clipFile, runner,
+            )
+        }
+        when (r) {
+            null -> println("CLIP SKIPPED - no source material")
             is id.kenang.core.common.AppResult.Ok -> {
                 val ms = runner.probeDurationMs(clipFile)
                 println("CLIP OK -> ${clipFile.absolutePath} (${clipFile.length() / 1024} KB, ${ms}ms)")

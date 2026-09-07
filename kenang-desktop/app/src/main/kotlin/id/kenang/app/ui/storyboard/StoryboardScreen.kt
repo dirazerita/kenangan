@@ -135,65 +135,138 @@ fun StoryboardScreen(
             Spacer(Modifier.width(16.dp))
             SkeuoOutlinedButton(onClick = onBack) { Text(Strings.BACK) }
             Spacer(Modifier.width(8.dp))
-            // Owner 2026-09-04: the approval package is the PNG contact sheet
-            // PLUS a ~10s slideshow clip of the keyframes. Local render, free.
+            // Owner 2026-09-04 + 2026-09-07: PNG contact sheet (free) and a
+            // 10s REAL-MOTION sample built from the first two scenes' actual
+            // rendered clips — reused free by the final video.
             var makingSheet by remember { mutableStateOf(false) }
+            var sheetPhase by remember { mutableStateOf("") }
+            var showSheetDialog by remember { mutableStateOf(false) }
             val settingsRepo = koinInject<id.kenang.core.data.SettingsRepository>()
             val assembler = koinInject<id.kenang.core.data.ffmpeg.VideoAssembler>()
-            SkeuoOutlinedButton(
-                onClick = {
-                    makingSheet = true
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        var videoMade = false
-                        val hasil = runCatching {
-                            val project = state.project
-                            val safeName = (project?.name ?: "kenang")
-                                .replace(Regex("[^A-Za-z0-9_\\- ]"), "").trim()
-                                .replace(' ', '_').ifBlank { "kenang" }
-                            val folderName = (project?.name ?: "Kenang")
-                                .replace(Regex("[\\\\/:*?\"<>|]"), "").trim().ifBlank { "Kenang" }
-                            // Same destination convention as the final video (AssemblyService)
-                            val customDir = settingsRepo.outputFolder?.trim()?.takeIf { it.isNotBlank() }
-                                ?.let { java.io.File(it, folderName) }
-                                ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
-                            val outDir = customDir ?: id.kenang.core.data.AppDirs.projectOutput(projectId)
-                            val sheet = StoryboardSheetRenderer.render(
-                                projectName = project?.name ?: "Kenang",
-                                ratioLabel = project?.ratio ?: "16:9",
-                                scenes = state.scenes,
-                                outFile = java.io.File(outDir, "Storyboard_${safeName}.png"),
-                            )
-                            // Short slideshow beside the sheet; skipped when no
-                            // keyframe image exists yet. Failure here must not
-                            // lose the sheet — log & fall back to sheet-only.
-                            assembler.runner()?.let { runner ->
-                                val clip = StoryboardPreviewClip.render(
-                                    state.scenes, project?.ratio ?: "16:9",
-                                    java.io.File(outDir, "Storyboard_${safeName}.mp4"), runner,
-                                )
-                                videoMade = clip is id.kenang.core.common.AppResult.Ok
-                                if (clip is id.kenang.core.common.AppResult.Err) {
-                                    io.github.aakira.napier.Napier.w("sheet clip failed: ${clip.error}")
+
+            fun sheetOutDir(): java.io.File {
+                val folderName = (state.project?.name ?: "Kenang")
+                    .replace(Regex("[\\\\/:*?\"<>|]"), "").trim().ifBlank { "Kenang" }
+                val customDir = settingsRepo.outputFolder?.trim()?.takeIf { it.isNotBlank() }
+                    ?.let { java.io.File(it, folderName) }
+                    ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
+                return customDir ?: id.kenang.core.data.AppDirs.projectOutput(projectId)
+            }
+
+            fun sheetSafeName(): String = (state.project?.name ?: "kenang")
+                .replace(Regex("[^A-Za-z0-9_\\- ]"), "").trim()
+                .replace(' ', '_').ifBlank { "kenang" }
+
+            fun runSheetFlow(withMotion: Boolean) {
+                makingSheet = true
+                sheetPhase = Strings.SB_SHEET_RENDERING
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    var motionMade = false
+                    val hasil = runCatching {
+                        val project = state.project
+                        val outDir = sheetOutDir()
+                        val sheet = StoryboardSheetRenderer.render(
+                            projectName = project?.name ?: "Kenang",
+                            ratioLabel = project?.ratio ?: "16:9",
+                            scenes = state.scenes,
+                            outFile = java.io.File(outDir, "Storyboard_${sheetSafeName()}.png"),
+                        )
+                        if (withMotion) {
+                            // Targets: the first two ready scenes. Missing clips
+                            // are rendered for REAL via the per-scene path —
+                            // stored on the row, so the final video reuses them.
+                            val targets = state.scenes.sortedBy { it.order_index }
+                                .filter { it.status == SceneStatus.KEYFRAME_READY }
+                                .take(2)
+                            targets.forEachIndexed { i, target ->
+                                val fresh = sceneRepo.scene(target.scene_id)
+                                val hasClip = fresh?.local_clip_path
+                                    ?.let { java.io.File(it).isFile } == true
+                                if (!hasClip) {
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                        sheetPhase = Strings.SB_SHEET_MAKING_CLIP
+                                            .replace("%1", (i + 1).toString())
+                                            .replace("%2", targets.size.toString())
+                                    }
+                                    val r = orchestrator.generateOne(projectId, state.tier(), target.scene_id)
+                                    if (r is id.kenang.core.common.AppResult.Err) {
+                                        throw IllegalStateException(
+                                            id.kenang.core.common.ErrorTranslator.translate(r.error).message,
+                                        )
+                                    }
                                 }
                             }
-                            sheet
-                        }
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            makingSheet = false
-                            hasil.onSuccess { file ->
-                                runCatching { java.awt.Desktop.getDesktop().open(file.parentFile) }
-                                state.snackMessage = (
-                                    if (videoMade) Strings.SB_SHEET_SAVED else Strings.SB_SHEET_SAVED_NO_VIDEO
-                                    ).replace("%1", file.parentFile.absolutePath)
-                            }.onFailure { e ->
-                                state.snackMessage = Strings.SB_SHEET_FAILED.replace("%1", e.message ?: "error")
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                sheetPhase = Strings.SB_SHEET_ASSEMBLING
+                            }
+                            val clips = targets.mapNotNull { t ->
+                                sceneRepo.scene(t.scene_id)?.local_clip_path?.let { java.io.File(it) }
+                            }.filter { it.isFile }
+                            assembler.runner()?.let { runner ->
+                                val res = StoryboardPreviewClip.renderMotion(
+                                    clips, project?.ratio ?: "16:9",
+                                    java.io.File(outDir, "Storyboard_${sheetSafeName()}.mp4"), runner,
+                                )
+                                motionMade = res is id.kenang.core.common.AppResult.Ok
+                                if (res is id.kenang.core.common.AppResult.Err) {
+                                    io.github.aakira.napier.Napier.w("motion preview failed: ${res.error}")
+                                }
                             }
                         }
+                        sheet
                     }
-                },
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        makingSheet = false
+                        hasil.onSuccess { file ->
+                            runCatching { java.awt.Desktop.getDesktop().open(file.parentFile) }
+                            state.snackMessage = (
+                                if (!withMotion || motionMade) Strings.SB_SHEET_SAVED
+                                else Strings.SB_SHEET_SAVED_NO_VIDEO
+                                ).replace("%1", file.parentFile.absolutePath)
+                        }.onFailure { e ->
+                            state.snackMessage = Strings.SB_SHEET_FAILED.replace("%1", e.message ?: "error")
+                        }
+                    }
+                }
+            }
+
+            SkeuoOutlinedButton(
+                onClick = { showSheetDialog = true },
                 enabled = state.scenes.isNotEmpty() && !makingSheet,
             ) {
-                Text(if (makingSheet) Strings.SB_SHEET_RENDERING else Strings.SB_SHEET_BUTTON)
+                Text(if (makingSheet) sheetPhase.ifBlank { Strings.SB_SHEET_RENDERING } else Strings.SB_SHEET_BUTTON)
+            }
+
+            if (showSheetDialog) {
+                val targets = state.scenes.sortedBy { it.order_index }
+                    .filter { it.status == SceneStatus.KEYFRAME_READY }
+                    .take(2)
+                val missingCost = targets
+                    .filter { it.local_clip_path?.let { p -> java.io.File(p).isFile } != true }
+                    .sumOf { state.sceneVideoUsd(it) }
+                AlertDialog(
+                    onDismissRequest = { showSheetDialog = false },
+                    title = { Text(Strings.SB_SHEET_DIALOG_TITLE) },
+                    text = { Text(Strings.SB_SHEET_DIALOG_BODY) },
+                    confirmButton = {
+                        SkeuoButton(
+                            onClick = { showSheetDialog = false; runSheetFlow(withMotion = true) },
+                            enabled = targets.isNotEmpty(),
+                        ) {
+                            Text(
+                                Strings.SB_SHEET_WITH_MOTION + if (targets.isEmpty()) "" else {
+                                    if (missingCost > 0.0) "  ±$" + "%.2f".format(missingCost)
+                                    else Strings.SB_SHEET_MOTION_FREE
+                                },
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showSheetDialog = false; runSheetFlow(withMotion = false) }) {
+                            Text(Strings.SB_SHEET_ONLY)
+                        }
+                    },
+                )
             }
             Spacer(Modifier.width(8.dp))
             SkeuoButton(onClick = { state.showConfirm = true }, enabled = state.allReady() && !state.confirmed) {
