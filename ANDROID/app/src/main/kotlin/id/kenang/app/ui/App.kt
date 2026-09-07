@@ -158,11 +158,15 @@ fun App() {
                             onBack = { route = Route.Home },
                         )
                     }
-                    is Route.Result -> ResultScreen(
-                        projectId = (route as Route.Result).projectId,
-                        snackbar = snackbar,
-                        onBack = { route = Route.Home },
-                    )
+                    is Route.Result -> {
+                        val id = (route as Route.Result).projectId
+                        ResultScreen(
+                            projectId = id,
+                            snackbar = snackbar,
+                            onBack = { route = Route.Home },
+                            onEditStoryboard = { route = Route.Storyboard(id) },
+                        )
+                    }
                     Route.Settings -> SettingsScreen(
                         snackbar = snackbar,
                         online = online,

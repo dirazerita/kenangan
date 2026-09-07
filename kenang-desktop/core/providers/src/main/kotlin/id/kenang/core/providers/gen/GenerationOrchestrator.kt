@@ -111,6 +111,17 @@ class GenerationOrchestrator(
                 async {
                     semaphore.withPermit {
                         if (fatal.get() != null) return@withPermit false
+                        // Revision flow (owner 2026-09-07): a scene whose clip
+                        // survived its edits needs no regeneration — reuse it,
+                        // zero cost. Edits that invalidate a clip clear
+                        // local_clip_path (motion change, new image).
+                        val existingClip = scene.local_clip_path?.let(::File)?.takeIf { it.isFile }
+                        if (existingClip != null && scene.status == SceneStatus.CONFIRMED) {
+                            Napier.i("scene ${scene.scene_id}: clip reused (revision), no cost")
+                            sceneRepository.transition(scene.scene_id, SceneStatus.GENERATING)
+                            sceneRepository.transition(scene.scene_id, SceneStatus.DONE)
+                            return@withPermit true
+                        }
                         val ok = generateScene(project.id, project.ratio, scene, i2vSlug, i2vParams)
                         if (!ok) {
                             val latest = jobRepository.latestForScene(scene.scene_id)

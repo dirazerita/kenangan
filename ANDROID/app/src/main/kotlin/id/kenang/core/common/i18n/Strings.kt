@@ -51,6 +51,8 @@ object Strings {
     const val MOTION_MODEL_LABEL = "Model"
     const val MOTION_MODEL_NOTE = "Opsi bertanda ◦ belum teruji penuh — hasil dan biaya bisa berbeda. Pilihan diingat untuk pemakaian berikutnya."
     const val SB_DROP_REPLACE_HINT = "Geser foto ke kartu adegan untuk mengganti gambarnya."
+    const val RESULT_EDIT_STORYBOARD = "Revisi Storyboard"
+    const val RESULT_EDIT_STORYBOARD_NOTE = "Kembali ke storyboard untuk mengubah adegan — hanya adegan yang diubah yang dibuat ulang (berbayar); sisanya memakai klip yang sudah ada, gratis."
     const val SB_SCENE_NEGATIVE_LABEL = "Larangan gambar (negative)"
     const val SB_SCENE_NEGATIVE_HINT = "mis. anak berbaju hitam"
     const val SB_EDIT_DESC_TITLE = "Ubah deskripsi adegan"

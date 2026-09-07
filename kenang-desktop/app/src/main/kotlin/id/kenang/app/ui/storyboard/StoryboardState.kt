@@ -59,6 +59,15 @@ class StoryboardState(
             project = projects.get(projectId)
 
             confirmTier = tier()
+            // Revision (owner 2026-09-07): opening a FINISHED project's
+            // storyboard reopens it — done scenes become editable again with
+            // images and clips retained; unchanged clips are reused for free
+            // at the next "Buat Video".
+            if (sceneRepository.scenes(projectId).any { it.status == SceneStatus.DONE }) {
+                sceneRepository.reopenAll(projectId)
+                projects.updateStatus(projectId, "storyboard")
+                project = projects.get(projectId)
+            }
             // Crash recovery: stale keyframe_pending rows have no live job → mark failed, retried below.
             sceneRepository.scenes(projectId)
                 .filter { it.status == SceneStatus.KEYFRAME_PENDING }

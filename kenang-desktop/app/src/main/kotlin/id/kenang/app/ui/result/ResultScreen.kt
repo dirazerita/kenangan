@@ -68,6 +68,7 @@ fun ResultScreen(
     projectId: String,
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
+    onEditStoryboard: () -> Unit = {},
 ) {
     val outputs = koinInject<OutputRepository>()
     val projects = koinInject<ProjectRepository>()
@@ -160,6 +161,17 @@ fun ResultScreen(
                 enabled = file != null,
             ) { Text(Strings.RESULT_COPY_PATH) }
         }
+        Spacer(Modifier.height(10.dp))
+        // Revision (owner 2026-09-07): reopen the storyboard to edit scenes —
+        // only changed scenes are regenerated (paid); the rest reuse clips.
+        SkeuoOutlinedButton(onClick = onEditStoryboard) {
+            Text("✏  " + Strings.RESULT_EDIT_STORYBOARD)
+        }
+        Text(
+            Strings.RESULT_EDIT_STORYBOARD_NOTE,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+        )
 
         Spacer(Modifier.height(20.dp))
         SkeuoCard(Modifier.widthIn(max = 480.dp).fillMaxWidth()) {

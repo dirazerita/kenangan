@@ -200,7 +200,9 @@ updateSceneUserDescription:
 UPDATE scene SET user_description = ? WHERE scene_id = ?;
 
 updateSceneMotion:
-UPDATE scene SET motion_prompt_en = ?, motion_summary_id = ? WHERE scene_id = ?;
+-- Motion changed = the old clip no longer matches; clear it so a revision
+-- regenerates ONLY this scene's video (owner 2026-09-07).
+UPDATE scene SET motion_prompt_en = ?, motion_summary_id = ?, local_clip_path = NULL WHERE scene_id = ?;
 
 updateSceneOrder:
 UPDATE scene SET order_index = ? WHERE scene_id = ?;

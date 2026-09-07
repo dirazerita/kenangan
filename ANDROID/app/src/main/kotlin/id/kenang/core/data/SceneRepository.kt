@@ -31,6 +31,9 @@ object SceneStatus {
         CONFIRMED to setOf(GENERATING, KEYFRAME_PENDING),     // Phase 04 start, or back to edit
         GENERATING to setOf(DONE, FAILED),
         FAILED to setOf(GENERATING, KEYFRAME_PENDING),
+        // Revision (owner 2026-09-07): a finished project reopens into the
+        // storyboard — done scenes become editable again, clips retained.
+        DONE to setOf(KEYFRAME_READY),
     )
 
     fun canTransition(from: String, to: String): Boolean = to in (allowed[from] ?: emptySet())
@@ -83,6 +86,8 @@ class SceneRepository(
                     if (url != null) SceneStatus.KEYFRAME_READY else SceneStatus.KEYFRAME_FAILED,
                     url, localPath, if (countRegen) 1L else 0L, sceneId,
                 )
+                // New image = the old clip no longer matches (revision flow).
+                if (url != null) db.kenangQueries.updateSceneClipPath(null, sceneId)
             }
         }
 
@@ -102,6 +107,22 @@ class SceneRepository(
             db.kenangQueries.updateSceneKeyframe(
                 SceneStatus.KEYFRAME_READY, null, localPath, 0L, sceneId,
             )
+            // New image = the old clip no longer matches (revision flow).
+            db.kenangQueries.updateSceneClipPath(null, sceneId)
+        }
+    }
+
+    /**
+     * Reopens a FINISHED project for revision (owner 2026-09-07): done scenes
+     * return to keyframe_ready with their images AND clips retained — at the
+     * next "Buat Video" only scenes whose clip was invalidated by an edit are
+     * regenerated (paid); untouched ones reuse their clip for free.
+     */
+    suspend fun reopenAll(projectId: String) = withContext(dispatchers.io) {
+        db.kenangQueries.transaction {
+            db.kenangQueries.selectScenesByProject(projectId).executeAsList()
+                .filter { it.status == SceneStatus.DONE }
+                .forEach { db.kenangQueries.updateSceneStatus(SceneStatus.KEYFRAME_READY, it.scene_id) }
         }
     }
 

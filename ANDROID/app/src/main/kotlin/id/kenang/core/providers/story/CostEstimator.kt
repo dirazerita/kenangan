@@ -41,9 +41,15 @@ class CostEstimator(
 
         // Formula per MASTER_PROMPT_03 §Cost estimator: upcoming I2V spend plus
         // keyframe REGENS only (first keyframes are already-spent, tracked by CostTracker).
+        // Revision flow (owner 2026-09-07): scenes whose clip file survived
+        // their edits are reused free — exclude them from the upcoming spend
+        // (the displayed total duration still covers every scene).
+        val billableDuration = scenes
+            .filter { scene -> scene.local_clip_path?.let { java.io.File(it).isFile } != true }
+            .sumOf { it.duration_s }
         val totalDuration = scenes.sumOf { it.duration_s }
         val totalRegens = scenes.sumOf { it.regen_count }
-        val i2vUsd = totalDuration * perSecond
+        val i2vUsd = billableDuration * perSecond
         val keyframeUsd = totalRegens * perImage
         val usd = i2vUsd + keyframeUsd
         return StoryboardEstimate(
