@@ -472,7 +472,7 @@ private fun pickImage(): java.io.File? {
         isMultiSelectionEnabled = false
         fileSelectionMode = javax.swing.JFileChooser.FILES_ONLY
         fileFilter = javax.swing.filechooser.FileNameExtensionFilter(
-            "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp",
+            "Foto (JPG, PNG, WebP, HEIC, AVIF)", *IMAGE_DROP_EXTENSIONS.toTypedArray(),
         )
     }
     return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {

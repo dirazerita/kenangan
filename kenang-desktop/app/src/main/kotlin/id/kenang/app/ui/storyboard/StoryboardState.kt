@@ -184,6 +184,10 @@ class StoryboardState(
         description: String,
     ) {
         scope.launch {
+            @Suppress("NAME_SHADOWING")
+            val file = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.app.ui.components.PhotoImport.normalize(file)
+            }
             val check = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 id.kenang.core.data.story.ImageQuality.check(file)
             }
@@ -362,6 +366,10 @@ class StoryboardState(
     ) {
         scope.launch {
             val p = project ?: return@launch
+            @Suppress("NAME_SHADOWING")
+            val file = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.app.ui.components.PhotoImport.normalize(file)
+            }
             val check = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 id.kenang.core.data.story.ImageQuality.check(file)
             }
@@ -420,6 +428,10 @@ class StoryboardState(
     /** Replaces a scene's keyframe with the user's own image (free, no API). */
     fun replaceKeyframe(scene: Scene, file: java.io.File) {
         scope.launch {
+            @Suppress("NAME_SHADOWING")
+            val file = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.app.ui.components.PhotoImport.normalize(file)
+            }
             val check = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 id.kenang.core.data.story.ImageQuality.check(file)
             }

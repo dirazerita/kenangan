@@ -54,5 +54,8 @@ fun Modifier.filesDropTarget(
     return this.dragAndDropTarget(shouldStartDragAndDrop = { true }, target = target)
 }
 
-/** Common image extensions accepted by the photo inputs. */
-val IMAGE_DROP_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp")
+/**
+ * Image extensions accepted by every photo input — incl. phone formats
+ * (HEIC/HEIF/AVIF, owner 2026-09-07) that PhotoImport converts to JPEG.
+ */
+val IMAGE_DROP_EXTENSIONS = id.kenang.core.data.story.ImageImport.ACCEPTED.toSet()

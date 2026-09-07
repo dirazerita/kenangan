@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import id.kenang.app.ui.components.PhotoImport
 import id.kenang.core.common.AppResult
 import id.kenang.core.common.ErrorTranslator
 import id.kenang.core.common.i18n.Strings
@@ -171,7 +172,10 @@ class WizardState(
                 rejectionMessage = Strings.WIZARD_PHOTO_LIMIT
                     .replace("%1", config.limits.maxPhotos.toString())
             }
-            for (file in toAdd) {
+            for (raw in toAdd) {
+                // Phone formats (HEIC/AVIF/WebP/TIFF) become JPEG on the way
+                // in (owner 2026-09-07) — ffmpeg-backed, no-op for JPG/PNG.
+                val file = withContext(Dispatchers.IO) { PhotoImport.normalize(raw) }
                 val check = withContext(Dispatchers.IO) { ImageQuality.check(file) }
                 if (!check.ok) {
                     rejectionMessage = "${file.name}: ${check.rejectReasonId}"

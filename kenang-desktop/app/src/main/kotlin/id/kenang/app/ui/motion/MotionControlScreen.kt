@@ -92,7 +92,8 @@ fun MotionControlScreen(
     // Drop anywhere (owner 2026-09-02): images become the character photo,
     // videos become the motion reference — both in one drop if mixed.
     fun acceptDropped(files: List<File>) {
-        files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }?.let { photo = it }
+        files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
+            ?.let { photo = id.kenang.app.ui.components.PhotoImport.normalize(it) }
         files.firstOrNull { it.extension.lowercase() in MotionControlService.VIDEO_EXTENSIONS }
             ?.let { setVideo(it) }
     }
@@ -141,8 +142,8 @@ fun MotionControlScreen(
             SkeuoCard(Modifier.weight(1f).then(dropBorder)) {
                 Column(
                     Modifier.fillMaxWidth().clickable(enabled = !running) {
-                        pickFile(Strings.MOTION_PICK_PHOTO, "Foto (JPG, PNG, WebP)",
-                            "jpg", "jpeg", "png", "webp")?.let { photo = it }
+                        pickFile(Strings.MOTION_PICK_PHOTO, "Foto (JPG, PNG, WebP, HEIC, AVIF)",
+                            *IMAGE_DROP_EXTENSIONS.toTypedArray())?.let { photo = id.kenang.app.ui.components.PhotoImport.normalize(it) }
                     }.padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

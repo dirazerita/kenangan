@@ -23,7 +23,7 @@ object ImageQuality {
 
     const val MAX_BYTES = 20L * 1024 * 1024
     const val MIN_SIDE = 512
-    private val ALLOWED_EXT = setOf("jpg", "jpeg", "png", "webp", "bmp")
+    private val ALLOWED_EXT = setOf("jpg", "jpeg", "png", "webp", "bmp", "jfif", "heic", "heif", "avif", "tif", "tiff")
 
     // Variance-of-Laplacian thresholds, tuned on downscaled (max 512px) grayscale.
     private const val BLUR_KURANG = 60.0
@@ -31,7 +31,7 @@ object ImageQuality {
 
     fun check(file: File): PhotoCheck {
         if (file.extension.lowercase() !in ALLOWED_EXT) {
-            return reject("Format tidak didukung. Gunakan JPG, PNG, atau WebP.")
+            return reject("Format tidak didukung. Gunakan JPG, PNG, WebP, HEIC, atau AVIF.")
         }
         if (file.length() > MAX_BYTES) {
             return reject("Ukuran file melebihi 20MB. Kecilkan dulu fotonya.")

@@ -172,7 +172,7 @@ private fun StepPhotos(state: WizardState) {
     // anywhere on step 1 adds them like the picker would (same limit and
     // quality checks in addPhotos).
     var dragOver by remember { mutableStateOf(false) }
-    val photoExtensions = setOf("jpg", "jpeg", "png", "webp")
+    val photoExtensions = id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
     val dropTarget = remember(state) {
         object : DragAndDropTarget {
             override fun onEntered(event: DragAndDropEvent) { dragOver = true }
@@ -209,7 +209,7 @@ private fun StepPhotos(state: WizardState) {
         )
         Spacer(Modifier.height(16.dp))
         SkeuoButton(onClick = {
-            val files = pickFiles("Pilih foto", "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp")
+            val files = pickFiles("Pilih foto", "Foto (JPG, PNG, WebP, HEIC, AVIF)", *id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS.toTypedArray())
             if (files.isNotEmpty()) state.addPhotos(files)
         }) {
             Icon(Icons.Default.Add, contentDescription = null)
@@ -231,7 +231,7 @@ private fun StepPhotos(state: WizardState) {
                     RoundedCornerShape(19.dp),
                 )
                 .clickable {
-                    val files = pickFiles("Pilih foto", "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp")
+                    val files = pickFiles("Pilih foto", "Foto (JPG, PNG, WebP, HEIC, AVIF)", *id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS.toTypedArray())
                     if (files.isNotEmpty()) state.addPhotos(files)
                 },
             contentAlignment = Alignment.Center,

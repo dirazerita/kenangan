@@ -92,12 +92,22 @@ fun UpscaleScreen(
     var outputDirText by remember { mutableStateOf(service.outputDir().absolutePath) }
 
     fun addFiles(files: List<File>) {
-        files.filter { it.isFile && it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp", "bmp") }
-            .forEach { file ->
+        val accepted = files.filter {
+            it.isFile && it.extension.lowercase() in id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
+        }
+        if (accepted.isEmpty()) return
+        scope.launch {
+            // HEIC/AVIF/WebP/TIFF → JPEG at import (owner 2026-09-07), so
+            // thumbnails render and the upload path stays JPEG.
+            val normalized = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                id.kenang.app.ui.components.PhotoImport.normalizeAll(accepted)
+            }
+            normalized.forEach { file ->
                 if (items.none { it.source.absolutePath == file.absolutePath }) {
                     items.add(UpscaleItem(file))
                 }
             }
+        }
     }
 
     // Drag-and-drop photos anywhere on the screen (owner 2026-09-01) — same
@@ -430,7 +440,7 @@ private fun pickImages(): List<File> {
         isMultiSelectionEnabled = true
         fileSelectionMode = javax.swing.JFileChooser.FILES_ONLY
         fileFilter = javax.swing.filechooser.FileNameExtensionFilter(
-            "Foto (JPG, PNG, WebP)", "jpg", "jpeg", "png", "webp", "bmp",
+            "Foto (JPG, PNG, WebP, HEIC, AVIF)", *id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS.toTypedArray(),
         )
     }
     return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
