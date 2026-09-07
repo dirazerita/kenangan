@@ -145,9 +145,28 @@ class AnalysisService(
         // the planner translates it into the English keyframe hints).
         val ambienceForPlan =
             if (vibeId == "custom" && !customVibe.isNullOrBlank()) customVibe.trim() else vibeId
-        val plan = when (val res = storyPlan(projectId, analyses, ambienceForPlan, narration, config.limits.maxScenes, targetScenes, sceneGuidance, useOriginalPhotos)) {
+        var plan = when (val res = storyPlan(projectId, analyses, ambienceForPlan, narration, config.limits.maxScenes, targetScenes, sceneGuidance, useOriginalPhotos)) {
             is AppResult.Ok -> res.value
             is AppResult.Err -> return AnalysisOutcome.Failed(res.error)
+        }
+        // Top-up (owner 2026-09-07: asked 10, got 7 — the router's output
+        // ceiling truncated the plan and the salvage kept only complete
+        // elements). Ask for JUST the missing scenes, up to two extra rounds;
+        // small responses always fit under the ceiling.
+        val wantedScenes = targetScenes?.toInt()?.coerceIn(1, config.limits.maxScenes)
+            ?: minOf(config.limits.maxScenes, maxOf(2, analyses.size))
+        var topUpRound = 0
+        while (plan.size < wantedScenes && topUpRound < 2) {
+            topUpRound++
+            Napier.w("plan short: ${plan.size}/$wantedScenes — top-up round $topUpRound")
+            val more = storyPlan(
+                projectId, analyses, ambienceForPlan, narration, config.limits.maxScenes,
+                targetScenes, sceneGuidance, useOriginalPhotos, alreadyPlanned = plan,
+            )
+            when (more) {
+                is AppResult.Ok -> plan = plan + more.value.take(wantedScenes - plan.size)
+                is AppResult.Err -> break // keep what we have — partial beats failure
+            }
         }
 
         // 5. Persist Scene rows (status=draft).
@@ -274,12 +293,19 @@ over- or under-count corrupts every generated image."""
         targetScenes: Long? = null,
         sceneGuidance: String? = null,
         useOriginalPhotos: Boolean = false,
+        /**
+         * Top-up round (owner 2026-09-07: asked 10, got 7): scenes already
+         * planned — the call requests ONLY the missing count, small enough to
+         * always fit under the router's ~2K-token output ceiling.
+         */
+        alreadyPlanned: List<ScenePlanItem> = emptyList(),
     ): AppResult<List<ScenePlanItem>> {
         val categories = id.kenang.core.common.story.MotionCategory.entries.joinToString("|") { it.key }
         val cameras = id.kenang.core.common.story.CameraMove.entries.joinToString("|") { it.key }
         val analysesJson = analyses.joinToString(",\n") { json.encodeToString(PhotoAnalysis.serializer(), it) }
-        val sceneTarget = targetScenes?.toInt()?.coerceIn(1, maxScenes)
+        val fullTarget = targetScenes?.toInt()?.coerceIn(1, maxScenes)
             ?: minOf(maxScenes, maxOf(2, analyses.size))
+        val sceneTarget = (fullTarget - alreadyPlanned.size).coerceAtLeast(1)
         // Multi-scene variety (dogfood 2026-08-27): when the user asks for
         // more scenes than photos, several scenes derive from one photo —
         // each must be a DISTINCT ACTIVITY, or the storyboard comes out as
@@ -322,9 +348,15 @@ of that photo's person(s) — like different pages of one photo album. $activity
 $varietyBullets"""
             else -> ""
         }
+        val alreadySection = if (alreadyPlanned.isEmpty()) "" else """
+ALREADY PLANNED (${alreadyPlanned.size} earlier scenes — do NOT repeat their activities, spots or
+framings; your NEW scenes continue the story after them):
+${alreadyPlanned.mapIndexed { i, it -> "${i + 1}. ${it.keyframeHint.take(90)}" }.joinToString("\n")}
+"""
         val prompt = """You plan scenes for a gentle memorial video from old family photos.
 PHOTO ANALYSES:
 [$analysesJson]
+$alreadySection
 ${if (!narration.isNullOrBlank()) "NARRATION (Indonesian): $narration" else ""}
 Ambience preset: $vibeId.
 ${if (useOriginalPhotos) """
