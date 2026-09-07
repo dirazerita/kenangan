@@ -161,6 +161,47 @@ class GenerationOrchestrator(
     // ------------------------------------------------------------------ scene
 
     /** Returns true when the scene reached DONE. */
+    /**
+     * Per-scene video (owner 2026-09-07): renders ONE scene's clip straight
+     * from the storyboard. The scene ends back at KEYFRAME_READY — still
+     * fully editable — with its clip stored, so the final "Buat Video"
+     * reuses it for free (revision economics, D-037).
+     */
+    suspend fun generateOne(projectId: String, tier: String, sceneId: String): AppResult<Unit> {
+        val project = projects.get(projectId)
+            ?: return AppError.Unknown("project $projectId missing").err()
+        var scene = sceneRepository.scene(sceneId)
+            ?: return AppError.Unknown("scene $sceneId missing").err()
+        val tierCfg = configRepository.current().tierRouting.resolve(tier)
+        val (i2vSlug, i2vParams) = resolveI2v(tierCfg)
+
+        if (scene.status == SceneStatus.KEYFRAME_READY) {
+            sceneRepository.transition(sceneId, SceneStatus.CONFIRMED)
+            scene = sceneRepository.scene(sceneId) ?: return AppError.Unknown("scene lost").err()
+        }
+        val ok = generateScene(project.id, project.ratio, scene, i2vSlug, i2vParams)
+
+        // Whatever happened, return to the editable storyboard state (clip,
+        // when produced, stays on the row).
+        sceneRepository.scene(sceneId)?.let { after ->
+            if (after.status == SceneStatus.DONE || after.status == SceneStatus.FAILED) {
+                runCatching { sceneRepository.transition(sceneId, SceneStatus.KEYFRAME_READY) }
+            }
+        }
+        return if (ok) {
+            Unit.ok()
+        } else {
+            val code = jobRepository.latestForScene(sceneId)?.error_code
+            when (code) {
+                ErrorCodes.CONTENT_BLOCKED -> AppError.ContentBlocked("scene $sceneId").err()
+                ErrorCodes.INVALID_KEY -> AppError.InvalidKey(Provider.FAL).err()
+                ErrorCodes.PROVIDER_BALANCE -> AppError.ProviderBalance(Provider.FAL).err()
+                ErrorCodes.TIMEOUT -> AppError.Timeout().err()
+                else -> AppError.ProviderFailed(Provider.FAL, "scene video failed").err()
+            }
+        }
+    }
+
     private suspend fun generateScene(
         projectId: String,
         ratio: String,

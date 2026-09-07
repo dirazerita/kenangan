@@ -34,6 +34,7 @@ class StoryboardState(
     private val estimator: CostEstimator,
     private val configRepository: ConfigRepository,
     private val generationEvents: GenerationEvents,
+    private val orchestrator: id.kenang.core.providers.gen.GenerationOrchestrator,
     private val scope: CoroutineScope,
 ) {
     var project by mutableStateOf<Project?>(null)
@@ -118,6 +119,32 @@ class StoryboardState(
     /** Per-scene edited description — authoritative for the image (blank = planner text). */
     fun saveSceneDescription(scene: Scene, text: String) {
         scope.launch { sceneRepository.setUserDescription(scene.scene_id, text) }
+    }
+
+    /** Scenes whose single-video render is in flight (per-scene busy UI). */
+    var videoInFlight by mutableStateOf(setOf<String>())
+        private set
+
+    /** Per-scene video price for the card button. */
+    fun sceneVideoUsd(scene: Scene): Double = estimator.sceneVideoUsd(scene, tier())
+
+    /**
+     * Renders ONE scene's clip (owner 2026-09-07): the scene stays editable
+     * afterwards and its stored clip is reused for free at "Buat Video".
+     */
+    fun generateSceneVideo(scene: Scene) {
+        if (scene.scene_id in videoInFlight) return
+        videoInFlight = videoInFlight + scene.scene_id
+        scope.launch {
+            try {
+                when (val r = orchestrator.generateOne(projectId, tier(), scene.scene_id)) {
+                    is AppResult.Ok -> snackMessage = Strings.SB_SCENE_VIDEO_DONE
+                    is AppResult.Err -> snackMessage = ErrorTranslator.translate(r.error).message
+                }
+            } finally {
+                videoInFlight = videoInFlight - scene.scene_id
+            }
+        }
     }
 
     fun retryKeyframe(scene: Scene) = launchKeyframe(scene.scene_id, isRegen = false)

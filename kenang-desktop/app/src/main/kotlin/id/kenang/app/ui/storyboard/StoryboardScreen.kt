@@ -92,8 +92,9 @@ fun StoryboardScreen(
     val events = koinInject<GenerationEvents>()
 
     val photosRepo = koinInject<id.kenang.core.data.PhotoRepository>()
+    val orchestrator = koinInject<id.kenang.core.providers.gen.GenerationOrchestrator>()
     val state = remember {
-        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, scope)
+        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, orchestrator, scope)
     }
     LaunchedEffect(Unit) { state.start() }
     LaunchedEffect(state.snackMessage) {
@@ -255,6 +256,9 @@ fun StoryboardScreen(
                     onReplaceFile = { file -> state.replaceKeyframe(scene, file) },
                     onEditDescription = { editingDesc = scene },
                     onSaveNegative = { text -> state.saveSceneNegative(scene, text) },
+                    sceneVideoUsd = state.sceneVideoUsd(scene),
+                    videoBusy = scene.scene_id in state.videoInFlight,
+                    onMakeVideo = { state.generateSceneVideo(scene) },
                 )
             }
             // Owner feature 2026-09-02: AI continues the story with one more
@@ -422,6 +426,9 @@ private fun SceneCard(
     onReplaceFile: (java.io.File) -> Unit = {},
     onEditDescription: () -> Unit = {},
     onSaveNegative: (String) -> Unit = {},
+    sceneVideoUsd: Double = 0.0,
+    videoBusy: Boolean = false,
+    onMakeVideo: () -> Unit = {},
 ) {
     // Drop a photo straight onto the card to replace its keyframe
     // (owner 2026-09-02: every image input accepts drag-and-drop).
@@ -547,6 +554,30 @@ private fun SceneCard(
                     Icon(Icons.Default.Edit, null, Modifier.width(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(Strings.SB_REPLACE_IMAGE)
+                }
+                // Per-scene video (owner 2026-09-07): render just this scene's
+                // clip; it is stored and reused free at the final "Buat Video".
+                val hasClip = scene.local_clip_path?.let { java.io.File(it).isFile } == true
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = onMakeVideo,
+                        enabled = !videoBusy && scene.status == SceneStatus.KEYFRAME_READY,
+                    ) {
+                        Text(
+                            when {
+                                videoBusy -> Strings.SB_SCENE_VIDEO_RUNNING
+                                hasClip -> Strings.SB_REMAKE_SCENE_VIDEO + " ±$" + "%.2f".format(sceneVideoUsd)
+                                else -> Strings.SB_MAKE_SCENE_VIDEO + " ±$" + "%.2f".format(sceneVideoUsd)
+                            },
+                        )
+                    }
+                    if (videoBusy) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            Modifier.width(16.dp).height(16.dp),
+                        )
+                    } else if (hasClip) {
+                        StatusChip(Strings.SB_CLIP_READY, MaterialTheme.colorScheme.secondary)
+                    }
                 }
                 // Per-scene negative prompt (owner 2026-09-06 rev 2): ban list
                 // for THIS scene's image — type it, then "Buat ulang gambar".

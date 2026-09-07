@@ -27,6 +27,17 @@ class CostEstimator(
     private val priceBook: PriceBook,
     private val settings: id.kenang.core.data.SettingsRepository,
 ) {
+    /** Price of rendering ONE scene's video (per-scene button, owner 2026-09-07). */
+    fun sceneVideoUsd(scene: Scene, tier: String): Double {
+        val config = configRepository.current()
+        val routed = config.tierRouting.resolve(tier)
+        val i2vSlug = settings.modelI2v
+            ?.let { key -> config.modelCatalog.i2v.firstOrNull { it.selectionKey() == key }?.id }
+            ?: routed.i2v
+        val perSecond = priceBook.estimate(i2vSlug, 1.0)?.usd ?: 0.0
+        return scene.duration_s * perSecond
+    }
+
     fun estimate(scenes: List<Scene>, tier: String): StoryboardEstimate {
         val config = configRepository.current()
         val routed = config.tierRouting.resolve(tier)

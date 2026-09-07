@@ -30,7 +30,9 @@ object SceneStatus {
         KEYFRAME_READY to setOf(KEYFRAME_PENDING, CONFIRMED), // re-gen or confirm
         CONFIRMED to setOf(GENERATING, KEYFRAME_PENDING),     // Phase 04 start, or back to edit
         GENERATING to setOf(DONE, FAILED),
-        FAILED to setOf(GENERATING, KEYFRAME_PENDING),
+        // KEYFRAME_READY added for the per-scene video flow: a failed single
+        // render returns the scene to the editable storyboard state.
+        FAILED to setOf(GENERATING, KEYFRAME_PENDING, KEYFRAME_READY),
         // Revision (owner 2026-09-07): a finished project reopens into the
         // storyboard — done scenes become editable again, clips retained.
         DONE to setOf(KEYFRAME_READY),
