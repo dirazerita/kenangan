@@ -649,7 +649,15 @@ private fun SceneCard(
                             Modifier.width(16.dp).height(16.dp),
                         )
                     } else if (hasClip) {
-                        StatusChip(Strings.SB_CLIP_READY, MaterialTheme.colorScheme.secondary)
+                        // Owner 2026-09-07 "hasilnya ada dimana?": the clip is
+                        // app-internal until the final video — click plays it.
+                        Box(
+                            Modifier.clickable {
+                                scene.local_clip_path?.let { p ->
+                                    runCatching { java.awt.Desktop.getDesktop().open(java.io.File(p)) }
+                                }
+                            },
+                        ) { StatusChip(Strings.SB_CLIP_READY, MaterialTheme.colorScheme.secondary) }
                     }
                 }
                 // Per-scene negative prompt (owner 2026-09-06 rev 2): ban list
