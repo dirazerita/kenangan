@@ -62,7 +62,7 @@ object Strings {
     const val SB_REMAKE_SCENE_VIDEO = "🎬 Buat ulang video"
     const val SB_SCENE_VIDEO_RUNNING = "Membuat video adegan…"
     const val SB_SCENE_VIDEO_DONE = "Video adegan selesai — klip tersimpan dan dipakai ulang gratis saat Buat Video."
-    const val SB_CLIP_READY = "🎞 klip siap — tonton ▶"
+    const val SB_WATCH_CLIP = "▶ Tonton klip adegan ini"
     const val RESULT_EDIT_STORYBOARD = "Revisi Storyboard"
     const val RESULT_EDIT_STORYBOARD_NOTE = "Kembali ke storyboard untuk mengubah adegan — hanya adegan yang diubah yang dibuat ulang (berbayar); sisanya memakai klip yang sudah ada, gratis."
     const val SB_SCENE_NEGATIVE_LABEL = "Larangan gambar (negative)"

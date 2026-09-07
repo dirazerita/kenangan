@@ -170,3 +170,40 @@ fun openInBrowser(url: String) {
         }
     }
 }
+
+/**
+ * Plays a video reliably. Windows trap (owner's PC, 2026-09-07): when the
+ * video type is associated to a UWP app whose install is broken (here the
+ * UWP Media Player, ShellExecute error 0x87b20c15), Desktop.open() fails
+ * SILENTLY — no exception, no window — and so does every ShellExecute
+ * route (explorer.exe, cmd start). The failure is undetectable from Java,
+ * so choose the route up front: a Win32 default player (VLC, MPC…) is
+ * honored via Desktop.open; a UWP or unknown association goes straight to
+ * legacy wmplayer.exe, which ships with Windows and always launches.
+ */
+fun openVideoFile(file: java.io.File) {
+    val progId = runCatching {
+        ProcessBuilder(
+            "reg", "query",
+            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\" +
+                ".${file.extension.lowercase()}\\UserChoice",
+            "/v", "ProgId",
+        ).redirectErrorStream(true).start().inputStream.bufferedReader().readText()
+            .lineSequence().firstOrNull { it.trim().startsWith("ProgId") }
+            ?.trim()?.split(Regex("\\s+"))?.lastOrNull()
+    }.getOrNull()
+
+    if (progId != null && !progId.startsWith("AppX", ignoreCase = true)) {
+        runCatching { java.awt.Desktop.getDesktop().open(file) }
+        return
+    }
+    val wmp = sequenceOf(System.getenv("ProgramFiles(x86)"), System.getenv("ProgramFiles"))
+        .filterNotNull()
+        .map { java.io.File(it, "Windows Media Player/wmplayer.exe") }
+        .firstOrNull { it.isFile }
+    if (wmp != null) {
+        runCatching { ProcessBuilder(wmp.absolutePath, file.absolutePath).start() }
+    } else {
+        runCatching { java.awt.Desktop.getDesktop().open(file) }
+    }
+}

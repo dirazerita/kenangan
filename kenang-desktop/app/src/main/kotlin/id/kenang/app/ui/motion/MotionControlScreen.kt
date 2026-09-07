@@ -41,6 +41,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
 import id.kenang.app.ui.components.filesDropTarget
+import id.kenang.app.ui.components.openVideoFile
 import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.app.ui.theme.SkeuoButton
 import id.kenang.app.ui.theme.SkeuoCard
@@ -343,7 +344,7 @@ fun MotionControlScreen(
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SkeuoButton(onClick = {
-                            runCatching { java.awt.Desktop.getDesktop().open(file) }
+                            openVideoFile(file)
                         }) { Text("▶  " + Strings.MOTION_PLAY) }
                         SkeuoOutlinedButton(onClick = {
                             runCatching { java.awt.Desktop.getDesktop().open(file.parentFile) }

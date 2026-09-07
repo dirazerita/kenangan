@@ -59,6 +59,7 @@ import androidx.compose.foundation.border
 import id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
 import id.kenang.app.ui.components.StatusChip
 import id.kenang.app.ui.components.filesDropTarget
+import id.kenang.app.ui.components.openVideoFile
 import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.core.common.events.GenerationEvents
 import id.kenang.core.common.i18n.Strings
@@ -648,17 +649,15 @@ private fun SceneCard(
                         androidx.compose.material3.CircularProgressIndicator(
                             Modifier.width(16.dp).height(16.dp),
                         )
-                    } else if (hasClip) {
-                        // Owner 2026-09-07 "hasilnya ada dimana?": the clip is
-                        // app-internal until the final video — click plays it.
-                        Box(
-                            Modifier.clickable {
-                                scene.local_clip_path?.let { p ->
-                                    runCatching { java.awt.Desktop.getDesktop().open(java.io.File(p)) }
-                                }
-                            },
-                        ) { StatusChip(Strings.SB_CLIP_READY, MaterialTheme.colorScheme.secondary) }
                     }
+                }
+                // Owner 2026-09-07 "hasilnya ada dimana?": the clip lives in
+                // app data until the final video — this plays it (own row so
+                // the label never truncates, placed above the negative input).
+                if (hasClip && !videoBusy) {
+                    TextButton(onClick = {
+                        scene.local_clip_path?.let { p -> openVideoFile(java.io.File(p)) }
+                    }) { Text(Strings.SB_WATCH_CLIP) }
                 }
                 // Per-scene negative prompt (owner 2026-09-06 rev 2): ban list
                 // for THIS scene's image — type it, then "Buat ulang gambar".

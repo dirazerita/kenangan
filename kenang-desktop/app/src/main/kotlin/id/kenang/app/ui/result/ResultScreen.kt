@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import id.kenang.app.ui.components.openVideoFile
 import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.core.common.i18n.Strings
 import id.kenang.core.data.OutputRepository
@@ -126,7 +127,7 @@ fun ResultScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SkeuoButton(
-                onClick = { file?.let { runCatching { Desktop.getDesktop().open(it) } } },
+                onClick = { file?.let { openVideoFile(it) } },
                 enabled = file?.isFile == true,
             ) { Text("▶  " + Strings.RESULT_PLAY) }
             SkeuoOutlinedButton(
