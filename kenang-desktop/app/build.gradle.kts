@@ -173,6 +173,17 @@ tasks.register<JavaExec>("sheetDoctor") {
     providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
 }
 
+// Diagnostic: one reference-photo scene idea, printed (~$0.002).
+tasks.register<JavaExec>("ideaDoctor") {
+    group = "verification"
+    description = "Asks for a photo-aware scene idea and prints it"
+    mainClass.set("id.kenang.app.devtools.IdeaDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
+    providers.gradleProperty("doctorImage").orNull?.let { systemProperty("doctor.image", it) }
+    providers.gradleProperty("doctorAvoid").orNull?.let { systemProperty("doctor.avoid", it) }
+}
+
 // Repair (D-045): re-download paid renders whose clip file stayed stale.
 tasks.register<JavaExec>("clipDoctor") {
     group = "verification"

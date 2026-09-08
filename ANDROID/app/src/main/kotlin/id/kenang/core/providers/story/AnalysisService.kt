@@ -3,6 +3,8 @@ package id.kenang.core.providers.story
 import id.kenang.core.common.AppError
 import id.kenang.core.common.AppResult
 import id.kenang.core.common.Provider
+import id.kenang.core.common.story.CameraMove
+import id.kenang.core.common.story.MotionCategory
 import id.kenang.core.common.story.MotionTemplateValidator
 import id.kenang.core.common.story.MotionTemplates
 import id.kenang.core.data.PhotoRepository
@@ -11,6 +13,7 @@ import id.kenang.core.data.SceneStatus
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.story.ModerationResult
 import id.kenang.core.data.story.PhotoAnalysis
+import id.kenang.core.data.story.SceneIdeaSuggestion
 import id.kenang.core.data.story.ScenePlanItem
 import id.kenang.core.data.story.UploadPrep
 import id.kenang.core.db.Photo
@@ -252,6 +255,83 @@ class AnalysisService(
             sceneRepository.upsert(scene)
         }
         return AnalysisOutcome.Ok(validItems.size)
+    }
+
+    /**
+     * Reads a reference photo and proposes ONE next scene for it (owner
+     * 2026-09-08). The old suggestion came from a fixed list that never saw
+     * the photo — it offered "admiring blooming plants" for a photo with no
+     * plants. This looks at who and what is actually in the frame, continues
+     * the story already on the storyboard, and writes a description long
+     * enough to be useful rather than a four-word label.
+     *
+     * [alreadyOnBoard] Indonesian descriptions of existing scenes, [avoid]
+     * suggestions the user just rejected. Falls back to [SceneIdeas] at the
+     * call site when the provider is unavailable — a suggestion is never
+     * worth blocking the dialog for.
+     */
+    suspend fun suggestSceneIdea(
+        projectId: String,
+        photo: File,
+        alreadyOnBoard: List<String> = emptyList(),
+        avoid: List<String> = emptyList(),
+    ): AppResult<SceneIdea> {
+        val uploaded = when (
+            val up = storage.uploadBytes(
+                UploadPrep.prepareJpeg(photo),
+                "idea_${photo.nameWithoutExtension}.jpg",
+                "image/jpeg",
+            )
+        ) {
+            is AppResult.Ok -> up.value
+            is AppResult.Err -> return up
+        }
+
+        val existing = alreadyOnBoard.filter { it.isNotBlank() }
+            .take(14).mapIndexed { i, s -> "${i + 1}. ${s.take(110)}" }
+            .joinToString("\n").ifBlank { "(belum ada adegan lain)" }
+        val rejected = avoid.filter { it.isNotBlank() }
+            .joinToString("; ").ifBlank { "(none)" }
+
+        val prompt = """You are helping build a family memory video. Look at THIS photo and propose ONE new scene for it.
+
+SCENES ALREADY ON THE STORYBOARD — never repeat one of these:
+$existing
+
+The user just rejected these suggestions, propose something different: $rejected
+
+RULES
+- The scene must fit what is ACTUALLY VISIBLE in this photo: the same people (never add or remove
+  anyone), their clothing, the place, the light, the objects around them. Never invent a location,
+  a prop or a companion that is not there.
+- It must read as the NEXT natural moment of that same day in that same place — one small, filmable
+  action, not a jump elsewhere and not a repeat of the pose already in the photo.
+- It will become a single continuous 10-second clip: one simple action, no cuts, nothing acrobatic.
+- "description_id" is shown to an Indonesian user. TWO sentences, 18-32 words total, warm and
+  concrete: name what is really in the photo (clothing, place, light) and what the person does next.
+  Never a bare four-word label.
+- "activity_en" is for an image model: 15-30 words describing the same action and setting, worded so
+  it works for however many people are in the photo, and never adding a person.
+- "category" is exactly one of: smile, blink, slight_head_turn, wave, hug, hold_hands, walk_slowly,
+  look_at_camera, laugh_softly, pet_animal — and must be physically possible for the people in THIS
+  photo (never hug or hold_hands when only one person is visible, never pet_animal with no animal).
+- "camera" is exactly one of: slow_push_in, gentle_pan, static.
+- "keyword" is 1-3 lowercase English words naming the distinctive element of the scene.
+
+Return ONLY valid JSON, no markdown:
+{"activity_en":"...","description_id":"...","keyword":"...","category":"...","camera":"..."}"""
+
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 400, imageFile = photo) { raw ->
+            val dto = json.decodeFromString(SceneIdeaSuggestion.serializer(), raw)
+            require(dto.description_id.isNotBlank() && dto.activity_en.isNotBlank()) { "empty idea" }
+            SceneIdea(
+                activityEn = dto.activity_en.trim(),
+                descriptionId = dto.description_id.trim(),
+                keyword = dto.keyword.trim().lowercase().ifBlank { "scene" },
+                category = MotionCategory.fromKey(dto.category) ?: MotionCategory.SMILE,
+                camera = CameraMove.fromKey(dto.camera) ?: CameraMove.SLOW_PUSH_IN,
+            )
+        }
     }
 
     // ------------------------------------------------------------------

@@ -98,8 +98,9 @@ fun StoryboardScreen(
 
     val photosRepo = koinInject<id.kenang.core.data.PhotoRepository>()
     val orchestrator = koinInject<id.kenang.core.providers.gen.GenerationOrchestrator>()
+    val analysis = koinInject<id.kenang.core.providers.story.AnalysisService>()
     val state = remember {
-        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, orchestrator, scope)
+        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, orchestrator, analysis, scope)
     }
     LaunchedEffect(Unit) { state.start() }
     LaunchedEffect(state.snackMessage) {
@@ -468,7 +469,9 @@ fun StoryboardScreen(
     if (showAddRefScene) {
         AddRefSceneDialog(
             initialFile = refSceneFile,
-            suggestIdea = { prev -> state.suggestIdea(prev) },
+            ideaLoading = state.ideaLoading,
+            offlineIdea = { state.suggestIdea(null) },
+            suggestIdea = { photo, prev, onResult -> state.suggestIdeaFromPhoto(photo, prev, onResult) },
             onAdd = { file, category, camera, description, idea ->
                 state.addAiSceneFromPhoto(file, description, category, camera, idea)
                 refSceneFile = null
@@ -1034,7 +1037,13 @@ private fun AddSceneDialog(
 @Composable
 private fun AddRefSceneDialog(
     initialFile: java.io.File?,
-    suggestIdea: (id.kenang.core.providers.story.SceneIdea?) -> id.kenang.core.providers.story.SceneIdea,
+    ideaLoading: Boolean,
+    offlineIdea: () -> id.kenang.core.providers.story.SceneIdea,
+    suggestIdea: (
+        java.io.File?,
+        id.kenang.core.providers.story.SceneIdea?,
+        (id.kenang.core.providers.story.SceneIdea) -> Unit,
+    ) -> Unit,
     onAdd: (java.io.File, MotionCategory, CameraMove, String, id.kenang.core.providers.story.SceneIdea) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1042,7 +1051,8 @@ private fun AddRefSceneDialog(
     var description by remember { mutableStateOf("") }
     // Prefilled from a story-connected suggestion (owner 2026-09-03): the
     // activity, motion and camera all arrive varied instead of smile/push-in.
-    var idea by remember { mutableStateOf(suggestIdea(null)) }
+    // Replaced by a photo-aware one as soon as there is a photo to read.
+    var idea by remember { mutableStateOf(offlineIdea()) }
     var category by remember { mutableStateOf(idea.category) }
     var camera by remember { mutableStateOf(idea.camera) }
     var dropHover by remember { mutableStateOf(false) }
@@ -1082,17 +1092,28 @@ private fun AddRefSceneDialog(
                     Text(Strings.SB_ADD_SCENE_PICK)
                 }
                 Spacer(Modifier.height(12.dp))
-                // Story-connected suggestion + one-click re-roll.
+                // Suggestion read FROM the photo, story-connected (owner
+                // 2026-09-08): asked as soon as a photo is here, re-asked on
+                // demand, and it falls back to the offline list on failure.
+                val applyIdea: (id.kenang.core.providers.story.SceneIdea) -> Unit = {
+                    idea = it
+                    category = it.category
+                    camera = it.camera
+                }
+                LaunchedEffect(file) { file?.let { suggestIdea(it, null, applyIdea) } }
                 Text(
-                    Strings.SB_ADD_AIREF_SUGGEST_PREFIX + idea.descriptionId,
+                    if (ideaLoading) {
+                        Strings.SB_ADD_AIREF_SUGGEST_LOADING
+                    } else {
+                        Strings.SB_ADD_AIREF_SUGGEST_PREFIX + idea.descriptionId
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = {
-                        idea = suggestIdea(idea)
-                        category = idea.category
-                        camera = idea.camera
-                    }) { Text("🎲  " + Strings.SB_ADD_AIREF_SUGGEST_SWAP) }
+                    TextButton(
+                        onClick = { suggestIdea(file, idea, applyIdea) },
+                        enabled = !ideaLoading,
+                    ) { Text("🎲  " + Strings.SB_ADD_AIREF_SUGGEST_SWAP) }
                     Text(
                         Strings.SB_ADD_AIREF_SUGGEST_NOTE,
                         style = MaterialTheme.typography.labelSmall,

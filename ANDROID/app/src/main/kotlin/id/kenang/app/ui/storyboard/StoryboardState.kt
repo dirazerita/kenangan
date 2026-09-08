@@ -38,6 +38,7 @@ class StoryboardState(
     private val configRepository: ConfigRepository,
     private val generationEvents: GenerationEvents,
     private val orchestrator: id.kenang.core.providers.gen.GenerationOrchestrator,
+    private val analysisService: id.kenang.core.providers.story.AnalysisService,
     parentScope: CoroutineScope,
 ) {
     /**
@@ -366,6 +367,41 @@ class StoryboardState(
         // soloOnly: reference photos may show ONE person - group-worded
         // ideas would instruct the model to invent companions.
         return id.kenang.core.providers.story.SceneIdeas.pick(used, soloOnly = true)
+    }
+
+    /** True while a photo-aware suggestion is being read from the provider. */
+    var ideaLoading by mutableStateOf(false)
+
+    /**
+     * Suggestion that actually LOOKS at the reference photo (owner
+     * 2026-09-08). The offline list stays as the fallback: a suggestion is
+     * never worth blocking the dialog for.
+     */
+    fun suggestIdeaFromPhoto(
+        photo: java.io.File?,
+        previous: id.kenang.core.providers.story.SceneIdea? = null,
+        onResult: (id.kenang.core.providers.story.SceneIdea) -> Unit,
+    ) {
+        if (photo == null || !photo.isFile) {
+            onResult(suggestIdea(previous))
+            return
+        }
+        ideaLoading = true
+        scope.launch {
+            val onBoard = scenes.sortedBy { it.order_index }
+                .mapNotNull { it.user_description ?: it.motion_summary_id }
+            val result = analysisService.suggestSceneIdea(
+                projectId, photo, onBoard, listOfNotNull(previous?.descriptionId),
+            )
+            ideaLoading = false
+            when (result) {
+                is AppResult.Ok -> onResult(result.value)
+                is AppResult.Err -> {
+                    Napier.w("photo-aware idea failed (${result.error}) — using the offline list")
+                    onResult(suggestIdea(previous))
+                }
+            }
+        }
     }
 
     fun addAiSceneFromPhoto(

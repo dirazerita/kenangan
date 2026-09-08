@@ -47,6 +47,26 @@ data class ScenePlanItem(
     @SerialName("motion_detail_id") val motionDetailId: String = "",
 )
 
+/**
+ * One scene idea read FROM a reference photo (owner 2026-09-08): the
+ * suggestion in the reference-scene dialog used to come from a fixed list
+ * that never looked at the photo, so it proposed blooming plants for a
+ * photo with no plants in it.
+ */
+@Serializable
+data class SceneIdeaSuggestion(
+    /** English activity clause for the keyframe prompt. */
+    val activity_en: String = "",
+    /** Indonesian description shown to the user — two sentences, not a label. */
+    val description_id: String = "",
+    /** 1-3 lowercase English words naming the distinctive element. */
+    val keyword: String = "",
+    /** MotionCategory key. */
+    val category: String = "",
+    /** CameraMove key. */
+    val camera: String = "",
+)
+
 /** Moderation pre-check result per photo (client-side, before paid calls). */
 @Serializable
 data class ModerationResult(

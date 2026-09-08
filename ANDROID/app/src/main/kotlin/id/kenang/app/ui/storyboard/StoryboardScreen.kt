@@ -93,8 +93,9 @@ fun StoryboardScreen(
 
     val photosRepo = koinInject<id.kenang.core.data.PhotoRepository>()
     val orchestrator = koinInject<id.kenang.core.providers.gen.GenerationOrchestrator>()
+    val analysis = koinInject<id.kenang.core.providers.story.AnalysisService>()
     val state = remember {
-        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, orchestrator, scope)
+        StoryboardState(projectId, projects, sceneRepo, photosRepo, keyframes, estimator, configRepo, events, orchestrator, analysis, scope)
     }
     LaunchedEffect(Unit) { state.start() }
     LaunchedEffect(state.snackMessage) {
@@ -321,7 +322,9 @@ fun StoryboardScreen(
         AddRefSceneDialog(
             photo = refScenePhoto,
             onPickPhoto = { replaceTarget = null; pickForRef = true; launchPicker() },
-            suggestIdea = { prev -> state.suggestIdea(prev) },
+            ideaLoading = state.ideaLoading,
+            offlineIdea = { state.suggestIdea(null) },
+            suggestIdea = { p, prev, onResult -> state.suggestIdeaFromPhoto(p, prev, onResult) },
             onAdd = { file, category, camera, description, idea ->
                 state.addAiSceneFromPhoto(file, description, category, camera, idea)
                 refScenePhoto = null
@@ -838,14 +841,21 @@ private fun AddSceneDialog(
 private fun AddRefSceneDialog(
     photo: java.io.File?,
     onPickPhoto: () -> Unit,
-    suggestIdea: (id.kenang.core.providers.story.SceneIdea?) -> id.kenang.core.providers.story.SceneIdea,
+    ideaLoading: Boolean,
+    offlineIdea: () -> id.kenang.core.providers.story.SceneIdea,
+    suggestIdea: (
+        java.io.File?,
+        id.kenang.core.providers.story.SceneIdea?,
+        (id.kenang.core.providers.story.SceneIdea) -> Unit,
+    ) -> Unit,
     onAdd: (java.io.File, MotionCategory, CameraMove, String, id.kenang.core.providers.story.SceneIdea) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val file = photo
     var description by remember { mutableStateOf("") }
-    // Prefilled from a story-connected suggestion (owner 2026-09-03).
-    var idea by remember { mutableStateOf(suggestIdea(null)) }
+    // Prefilled from the offline list, replaced by a photo-aware suggestion
+    // as soon as there is a photo to read (owner 2026-09-08).
+    var idea by remember { mutableStateOf(offlineIdea()) }
     var category by remember { mutableStateOf(idea.category) }
     var camera by remember { mutableStateOf(idea.camera) }
 
@@ -878,16 +888,31 @@ private fun AddRefSceneDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
-                // Story-connected suggestion + one-click re-roll.
+                // Suggestion read FROM the photo, story-connected (owner
+                // 2026-09-08); falls back to the offline list on failure.
+                val applyIdea: (id.kenang.core.providers.story.SceneIdea) -> Unit = {
+                    idea = it
+                    category = it.category
+                    camera = it.camera
+                }
+                LaunchedEffect(file) { file?.let { suggestIdea(it, null, applyIdea) } }
                 Text(
-                    Strings.SB_ADD_AIREF_SUGGEST_PREFIX + idea.descriptionId,
+                    if (ideaLoading) {
+                        Strings.SB_ADD_AIREF_SUGGEST_LOADING
+                    } else {
+                        Strings.SB_ADD_AIREF_SUGGEST_PREFIX + idea.descriptionId
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                TextButton(onClick = {
-                    idea = suggestIdea(idea)
-                    category = idea.category
-                    camera = idea.camera
-                }) { Text("🎲  " + Strings.SB_ADD_AIREF_SUGGEST_SWAP) }
+                Text(
+                    Strings.SB_ADD_AIREF_SUGGEST_NOTE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                )
+                TextButton(
+                    onClick = { suggestIdea(file, idea, applyIdea) },
+                    enabled = !ideaLoading,
+                ) { Text("🎲  " + Strings.SB_ADD_AIREF_SUGGEST_SWAP) }
                 Spacer(Modifier.height(4.dp))
                 EnumDropdown(
                     Strings.SB_MOTION_CATEGORY,
