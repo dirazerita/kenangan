@@ -80,7 +80,9 @@ class KeyframeService(
                 sceneRepository.scene(sceneId)!!.ok()
             }
             is AppResult.Err -> {
-                sceneRepository.setKeyframeResult(sceneId, null, null, false)
+                // A failed regen must NOT throw away the image the scene
+                // already had, nor its still-valid clip (D-045).
+                sceneRepository.setKeyframeFailed(sceneId)
                 result
             }
         }
@@ -156,15 +158,31 @@ class KeyframeService(
             payload["images"]!!.jsonArray[0].jsonObject["url"]!!.jsonPrimitive.content
         }.getOrNull() ?: return AppError.ProviderFailed(Provider.FAL, "no image in keyframe result").err()
 
+        // Unique per attempt (D-045): `_r<regen_count>` was read BEFORE the
+        // counter increments, so a regen overwrote the previous image at an
+        // identical path — path-keyed image caches then kept showing the old
+        // pixels, and a half-written file replaced a good one. A fresh name
+        // also keeps the previous image on disk as a fallback.
         val outFile = File(
             AppDirs.projectKeyframes(scene.project_id),
-            "${scene.scene_id}_r${scene.regen_count}.jpg",
+            "${scene.scene_id}_r${scene.regen_count}_${System.currentTimeMillis()}.jpg",
         )
-        runCatching {
+        val written = runCatching {
             val bytes = http.get(imageUrl).readRawBytes()
-            outFile.writeBytes(bytes)
+            val tmp = File(outFile.parentFile, outFile.name + ".part")
+            tmp.writeBytes(bytes)
+            check(tmp.length() > 0) { "empty image" }
+            if (!tmp.renameTo(outFile)) { tmp.copyTo(outFile, overwrite = true); tmp.delete() }
+            outFile
         }.onFailure {
-            Napier.w("keyframe download failed, keeping remote URL only: ${it.message}")
+            Napier.w("keyframe image write failed: ${it.message}")
+        }.getOrNull()
+
+        // The local file is part of the success contract: without it the scene
+        // would go KEYFRAME_READY pointing at a missing or PREVIOUS image
+        // while still being billed (D-045).
+        if (written == null || !written.isFile || written.length() == 0L) {
+            return AppError.ProviderFailed(Provider.FAL, "gambar gagal disimpan").err()
         }
 
         val est = priceBook.estimate(model, 1.0)?.usd ?: 0.0

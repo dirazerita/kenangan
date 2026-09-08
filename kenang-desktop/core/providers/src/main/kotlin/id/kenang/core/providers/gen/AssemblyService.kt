@@ -176,6 +176,13 @@ class AssemblyService(
                 runCatching {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         val sceneDir = File(result.value.parentFile, "Adegan").apply { mkdirs() }
+                        // Clear the previous export first (D-045): a revision
+                        // with fewer scenes otherwise leaves the old highest
+                        // numbered clips behind, so the folder ships a scene
+                        // that is not in the final video.
+                        sceneDir.listFiles { f: File ->
+                            f.name.startsWith("Adegan_") && f.extension == "mp4"
+                        }?.forEach { it.delete() }
                         done.forEachIndexed { index, scene ->
                             scene.local_clip_path?.let(::File)?.takeIf { it.isFile }?.copyTo(
                                 File(sceneDir, "Adegan_%02d.mp4".format(index + 1)),

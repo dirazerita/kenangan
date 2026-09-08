@@ -284,7 +284,9 @@ class GenerationOrchestrator(
         val actualDurationS = video["duration"]?.jsonPrimitive?.doubleOrNull ?: scene.duration_s.toDouble()
 
         val clipFile = File(AppDirs.projectClips(projectId), "${scene.scene_id}.mp4")
-        when (val dl = downloader.download(videoUrl, clipFile)) {
+        // overwrite: this render was just paid for — it MUST replace any clip
+        // the scene had before (owner 2026-09-08, D-045).
+        when (val dl = downloader.download(videoUrl, clipFile, overwrite = true)) {
             is AppResult.Ok -> Unit
             is AppResult.Err -> {
                 Napier.w("clip download failed for ${scene.scene_id}: ${dl.error}")

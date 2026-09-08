@@ -37,7 +37,8 @@ class ClipDownloaderTest {
         val dir = tempDir()
         try {
             val target = File(dir, "scene.mp4")
-            File(dir, "scene.mp4.part").writeBytes(payload.copyOfRange(0, 400))
+            ClipDownloader.partFile(target, "https://cdn.example/clip.mp4")
+                .writeBytes(payload.copyOfRange(0, 400))
 
             val result = ClipDownloader(HttpClient(engine)).download("https://cdn.example/clip.mp4", target)
 
@@ -55,7 +56,8 @@ class ClipDownloaderTest {
         val dir = tempDir()
         try {
             val target = File(dir, "scene.mp4")
-            File(dir, "scene.mp4.part").writeBytes(ByteArray(400) { 1 }) // stale garbage
+            ClipDownloader.partFile(target, "https://cdn.example/clip.mp4")
+                .writeBytes(ByteArray(400) { 1 }) // stale garbage
 
             val result = ClipDownloader(HttpClient(engine)).download("https://cdn.example/clip.mp4", target)
 
@@ -91,6 +93,61 @@ class ClipDownloaderTest {
             val result = ClipDownloader(HttpClient(engine)).download("https://cdn.example/clip.mp4", target)
             assertTrue(result is AppResult.Ok)
             assertEquals(0, hits)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    /**
+     * Regression (owner 2026-09-08): a regenerated scene downloads onto the
+     * path of its previous clip. Without overwrite the paid render was
+     * discarded and the stale clip kept.
+     */
+    @Test
+    fun `overwrite replaces an existing clip`() = runBlocking {
+        var hits = 0
+        val engine = MockEngine { hits++; respond(payload, HttpStatusCode.OK) }
+        val dir = tempDir()
+        try {
+            val stale = ByteArray(600) { 7 }
+            val target = File(dir, "scene.mp4").apply { writeBytes(stale) }
+
+            val result = ClipDownloader(HttpClient(engine))
+                .download("https://cdn.example/clip.mp4", target, overwrite = true)
+
+            assertTrue(result is AppResult.Ok)
+            assertEquals(1, hits)
+            assertTrue(payload.contentEquals(target.readBytes()), "stale clip was kept")
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    /** A partial from the PREVIOUS video must never be spliced into a new one. */
+    @Test
+    fun `a partial from another video is never resumed`() = runBlocking {
+        var sawRange: String? = null
+        val engine = MockEngine { request ->
+            sawRange = request.headers[HttpHeaders.Range]
+            respond(payload, HttpStatusCode.OK)
+        }
+        val dir = tempDir()
+        try {
+            val target = File(dir, "scene.mp4")
+            // Half of the scene's PREVIOUS render, left behind by a crash.
+            ClipDownloader.partFile(target, "https://cdn.example/old.mp4")
+                .writeBytes(ByteArray(400) { 9 })
+
+            val result = ClipDownloader(HttpClient(engine))
+                .download("https://cdn.example/new.mp4", target, overwrite = true)
+
+            assertTrue(result is AppResult.Ok)
+            assertEquals(null, sawRange, "resumed a partial belonging to a different video")
+            assertTrue(payload.contentEquals(target.readBytes()))
+            assertTrue(
+                dir.listFiles()?.none { it.name.endsWith(".part") } == true,
+                "stale partial of the previous render was left behind",
+            )
         } finally {
             dir.deleteRecursively()
         }

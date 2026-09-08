@@ -173,6 +173,16 @@ tasks.register<JavaExec>("sheetDoctor") {
     providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
 }
 
+// Repair (D-045): re-download paid renders whose clip file stayed stale.
+tasks.register<JavaExec>("clipDoctor") {
+    group = "verification"
+    description = "Recovers scene clips whose paid render was never written to disk"
+    mainClass.set("id.kenang.app.devtools.ClipDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
+    providers.gradleProperty("doctorDry").orNull?.let { systemProperty("doctor.dry", it) }
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

@@ -161,6 +161,9 @@ class AssemblyService(
                 val folder = project.name
                 gallery.export(result.value, folder, result.value.name)
                 withContext(Dispatchers.IO) {
+                    // Clear the previous export first (D-045): a revision with
+                    // fewer scenes would otherwise leave orphan scene clips.
+                    gallery.clearFolder(folder, subFolder = "Adegan")
                     done.forEachIndexed { index, scene ->
                         scene.local_clip_path?.let(::File)?.takeIf { it.isFile }?.let { clip ->
                             gallery.export(clip, folder, "Adegan_%02d.mp4".format(index + 1), subFolder = "Adegan")

@@ -23,10 +23,31 @@ import java.security.MessageDigest
  */
 class ClipDownloader(private val http: HttpClient) {
 
-    suspend fun download(url: String, target: File, expectedSha256: String? = null): AppResult<File> {
+    /**
+     * [overwrite] = this download produces a FRESH artifact and must replace
+     * whatever sits at [target]. Clip files are named `<sceneId>.mp4`, so a
+     * regenerated scene downloads onto the path its previous clip occupies —
+     * without this the reuse short-circuit below kept the OLD file and the
+     * paid render was silently discarded (owner 2026-09-08: replaced two
+     * photos, paid for two Kling renders, still saw the old clips).
+     */
+    suspend fun download(
+        url: String,
+        target: File,
+        expectedSha256: String? = null,
+        overwrite: Boolean = false,
+    ): AppResult<File> {
         target.parentFile?.mkdirs()
-        if (target.isFile && target.length() > 0) return target.ok()
-        val part = File(target.parentFile, target.name + ".part")
+        // The partial is bound to the URL: resuming one video's bytes into a
+        // DIFFERENT video would splice two clips into one corrupt file, and
+        // the scene's clip path is reused across renders.
+        val part = partFile(target, url)
+        if (overwrite) {
+            target.delete()
+            staleParts(target, keep = part).forEach { it.delete() }
+        } else if (target.isFile && target.length() > 0) {
+            return target.ok()
+        }
 
         try {
             val existing = if (part.isFile) part.length() else 0L
@@ -61,6 +82,12 @@ class ClipDownloader(private val http: HttpClient) {
         return target.ok()
     }
 
+    /** Partials of EARLIER renders of this same clip. */
+    private fun staleParts(target: File, keep: File): List<File> =
+        target.parentFile?.listFiles()?.filter {
+            it.name.startsWith("${target.name}.") && it.name.endsWith(".part") && it != keep
+        } ?: emptyList()
+
     private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { ins ->
@@ -71,5 +98,18 @@ class ClipDownloader(private val http: HttpClient) {
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    companion object {
+        /**
+         * `<clip>.<url fingerprint>.part` — one partial per source video, so a
+         * half-downloaded clip is only ever resumed against the URL it came
+         * from (a cross-URL resume would splice two videos together).
+         */
+        internal fun partFile(target: File, url: String): File {
+            val tag = MessageDigest.getInstance("SHA-1").digest(url.toByteArray())
+                .joinToString("") { "%02x".format(it) }.take(12)
+            return File(target.parentFile, "${target.name}.$tag.part")
+        }
     }
 }

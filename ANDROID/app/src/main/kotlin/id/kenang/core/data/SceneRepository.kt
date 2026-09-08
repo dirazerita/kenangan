@@ -83,6 +83,7 @@ class SceneRepository(
 
     suspend fun setKeyframeResult(sceneId: String, url: String?, localPath: String?, countRegen: Boolean) =
         withContext(dispatchers.io) {
+            if (url != null) deleteClipFile(sceneId)
             db.kenangQueries.transaction {
                 db.kenangQueries.updateSceneKeyframe(
                     if (url != null) SceneStatus.KEYFRAME_READY else SceneStatus.KEYFRAME_FAILED,
@@ -92,6 +93,38 @@ class SceneRepository(
                 if (url != null) db.kenangQueries.updateSceneClipPath(null, sceneId)
             }
         }
+
+    /**
+     * A failed (re)generation must not destroy what the scene already had
+     * (D-045). A scene with an approved image returns to KEYFRAME_READY with
+     * that image AND its clip intact — nothing changed, so nothing is
+     * invalidated; only a scene that never had an image ends up FAILED.
+     */
+    suspend fun setKeyframeFailed(sceneId: String) = withContext(dispatchers.io) {
+        db.kenangQueries.transaction {
+            val scene = db.kenangQueries.selectSceneById(sceneId).executeAsOneOrNull()
+                ?: return@transaction
+            val hasImage = scene.keyframe_url != null || scene.local_keyframe_path != null
+            db.kenangQueries.updateSceneStatus(
+                if (hasImage) SceneStatus.KEYFRAME_READY else SceneStatus.KEYFRAME_FAILED,
+                sceneId,
+            )
+        }
+    }
+
+    /**
+     * Clip invalidation must reach the DISK, not just the column (D-045):
+     * the reuse gate in GenerationOrchestrator and the cost estimator both
+     * decide "this scene is already rendered" from file existence, so a
+     * NULLed column with the file left behind lets a stale clip come back.
+     */
+    private fun deleteClipFile(sceneId: String) {
+        val scene = db.kenangQueries.selectSceneById(sceneId).executeAsOneOrNull() ?: return
+        val conventional = java.io.File(AppDirs.projectClips(scene.project_id), "$sceneId.mp4")
+        listOfNotNull(scene.local_clip_path?.let { java.io.File(it) }, conventional)
+            .distinct()
+            .forEach { runCatching { it.delete() } }
+    }
 
     /** Records the downloaded clip file for a generated scene (Phase 04). */
     suspend fun setClipPath(sceneId: String, path: String?) = withContext(dispatchers.io) {
@@ -105,6 +138,7 @@ class SceneRepository(
      * counted (replacement is free).
      */
     suspend fun setCustomKeyframe(sceneId: String, localPath: String) = withContext(dispatchers.io) {
+        deleteClipFile(sceneId)
         db.kenangQueries.transaction {
             db.kenangQueries.updateSceneKeyframe(
                 SceneStatus.KEYFRAME_READY, null, localPath, 0L, sceneId,
@@ -140,6 +174,8 @@ class SceneRepository(
 
     suspend fun updateMotion(sceneId: String, promptEn: String, summaryId: String) =
         withContext(dispatchers.io) {
+            // New motion = the rendered clip no longer matches it.
+            deleteClipFile(sceneId)
             db.kenangQueries.updateSceneMotion(promptEn, summaryId, sceneId)
         }
 
