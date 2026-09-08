@@ -56,9 +56,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import id.kenang.app.ui.components.IMAGE_DROP_EXTENSIONS
 import id.kenang.app.ui.components.StatusChip
 import id.kenang.app.ui.components.filesDropTarget
+import id.kenang.app.ui.components.firstImageOrExplain
 import id.kenang.app.ui.components.openVideoFile
 import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.core.common.events.GenerationEvents
@@ -107,6 +111,7 @@ fun StoryboardScreen(
     var showAddScene by remember { mutableStateOf(false) }
     var showAddRefScene by remember { mutableStateOf(false) }
     var refSceneFile by remember { mutableStateOf<java.io.File?>(null) }
+    var userSceneFile by remember { mutableStateOf<java.io.File?>(null) }
 
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         // ---------- Header ----------
@@ -330,6 +335,7 @@ fun StoryboardScreen(
                     onReplaceFile = { file -> state.replaceKeyframe(scene, file) },
                     onEditDescription = { editingDesc = scene },
                     onSaveNegative = { text -> state.saveSceneNegative(scene, text) },
+                    onReject = { message -> state.snackMessage = message },
                     sceneVideoUsd = state.sceneVideoUsd(scene),
                     videoBusy = scene.scene_id in state.videoInFlight,
                     onMakeVideo = { state.generateSceneVideo(scene) },
@@ -366,11 +372,21 @@ fun StoryboardScreen(
             // Owner feature 2026-09-02: a NEW reference photo becomes the
             // source of an AI-generated scene (cut-off faces omitted).
             item(key = "add-airef-scene") {
+                // Hover feedback like every other drop zone (owner 2026-09-08):
+                // the border lighting up is how the user knows the drag landed.
+                var refDropHover by remember { mutableStateOf(false) }
                 SkeuoCard(
                     Modifier.height(180.dp).fillMaxWidth()
+                        .then(
+                            if (refDropHover) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary)
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clickable { showAddRefScene = true }
-                        .filesDropTarget { files ->
-                            files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
+                        .filesDropTarget(onHover = { refDropHover = it }) { files ->
+                            files.firstImageOrExplain { state.snackMessage = it }
                                 ?.let { refSceneFile = it; showAddRefScene = true }
                         },
                 ) {
@@ -398,8 +414,23 @@ fun StoryboardScreen(
             }
             // Owner feature 2026-08-28: append your own photo as a new scene.
             item(key = "add-user-scene") {
+                // This was the one photo input with no drop target at all
+                // (owner 2026-09-08) — the tile that literally invites a photo.
+                var userDropHover by remember { mutableStateOf(false) }
                 SkeuoCard(
-                    Modifier.height(180.dp).fillMaxWidth().clickable { showAddScene = true },
+                    Modifier.height(180.dp).fillMaxWidth()
+                        .then(
+                            if (userDropHover) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .clickable { showAddScene = true }
+                        .filesDropTarget(onHover = { userDropHover = it }) { files ->
+                            files.firstImageOrExplain { state.snackMessage = it }
+                                ?.let { userSceneFile = it; showAddScene = true }
+                        },
                 ) {
                     Column(
                         Modifier.fillMaxSize().padding(16.dp),
@@ -424,11 +455,13 @@ fun StoryboardScreen(
 
     if (showAddScene) {
         AddSceneDialog(
+            initialFile = userSceneFile,
             onAdd = { file, category, camera, description ->
                 state.addUserScene(file, category, camera, description)
+                userSceneFile = null
                 showAddScene = false
             },
-            onDismiss = { showAddScene = false },
+            onDismiss = { userSceneFile = null; showAddScene = false },
         )
     }
 
@@ -500,6 +533,7 @@ private fun SceneCard(
     onReplaceFile: (java.io.File) -> Unit = {},
     onEditDescription: () -> Unit = {},
     onSaveNegative: (String) -> Unit = {},
+    onReject: (String) -> Unit = {},
     sceneVideoUsd: Double = 0.0,
     videoBusy: Boolean = false,
     onMakeVideo: () -> Unit = {},
@@ -507,6 +541,12 @@ private fun SceneCard(
     // Drop a photo straight onto the card to replace its keyframe
     // (owner 2026-09-02: every image input accepts drag-and-drop).
     var dropHover by remember(scene.scene_id) { mutableStateOf(false) }
+    // Only when the scene is idle (owner 2026-09-08): swapping the image while
+    // its keyframe or its video is still running let the finishing job either
+    // overwrite the photo or take an illegal state transition that killed the
+    // whole screen's coroutine scope — after which nothing responded at all.
+    val canReplace = !videoBusy &&
+        scene.status in setOf(SceneStatus.KEYFRAME_READY, SceneStatus.KEYFRAME_FAILED)
     Card(
         Modifier
             .then(
@@ -516,9 +556,8 @@ private fun SceneCard(
                     Modifier
                 },
             )
-            .filesDropTarget(onHover = { dropHover = it }) { files ->
-                files.firstOrNull { it.extension.lowercase() in IMAGE_DROP_EXTENSIONS }
-                    ?.let(onReplaceFile)
+            .filesDropTarget(enabled = canReplace, onHover = { dropHover = it }) { files ->
+                files.firstImageOrExplain(onReject)?.let(onReplaceFile)
             },
     ) {
         Column {
@@ -621,13 +660,57 @@ private fun SceneCard(
                 }
                 // Owner feature 2026-08-27: swap the generated image for the
                 // user's own photo — free, uploaded at video-submit time.
-                TextButton(
-                    onClick = onReplace,
-                    enabled = scene.status in setOf(SceneStatus.KEYFRAME_READY, SceneStatus.KEYFRAME_FAILED),
+                // Owner 2026-09-08: dropping a photo on the card already did
+                // this, but nothing said so — the affordance now sits on the
+                // control the user actually aims at, and reacts while dragging.
+                var replaceHover by remember(scene.scene_id) { mutableStateOf(false) }
+                val accent = if (canReplace) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (replaceHover) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+                    },
+                    border = BorderStroke(
+                        1.dp,
+                        if (replaceHover) accent else accent.copy(alpha = 0.40f),
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                        // The card behind this control is a drop target too, so
+                        // this zone must stay INTERESTED whenever the card is:
+                        // an inner zone that opts out would swallow the drop.
+                        .filesDropTarget(
+                            enabled = canReplace,
+                            onHover = { replaceHover = it },
+                        ) { files ->
+                            files.firstImageOrExplain(onReject)?.let(onReplaceFile)
+                        }
+                        .clickable(enabled = canReplace, onClick = onReplace),
                 ) {
-                    Icon(Icons.Default.Edit, null, Modifier.width(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(Strings.SB_REPLACE_IMAGE)
+                    Row(
+                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Edit, null, Modifier.width(16.dp), tint = accent)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                if (replaceHover) Strings.SB_REPLACE_IMAGE_DROP else Strings.SB_REPLACE_IMAGE,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = accent,
+                            )
+                            Text(
+                                if (canReplace) Strings.SB_REPLACE_IMAGE_HINT else Strings.SB_REPLACE_IMAGE_WAIT,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            )
+                        }
+                    }
                 }
                 // Per-scene video (owner 2026-09-07): render just this scene's
                 // clip; it is stored and reused free at the final "Buat Video".
@@ -859,10 +942,11 @@ private fun MotionEditorDialog(
  */
 @Composable
 private fun AddSceneDialog(
+    initialFile: java.io.File? = null,
     onAdd: (java.io.File, MotionCategory, CameraMove, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var file by remember { mutableStateOf<java.io.File?>(null) }
+    var file by remember { mutableStateOf(initialFile) }
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(MotionCategory.SMILE) }
     var camera by remember { mutableStateOf(CameraMove.SLOW_PUSH_IN) }

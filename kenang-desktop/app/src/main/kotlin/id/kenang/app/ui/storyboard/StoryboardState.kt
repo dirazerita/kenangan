@@ -20,7 +20,10 @@ import id.kenang.core.providers.story.CostEstimator
 import id.kenang.core.providers.story.KeyframeService
 import id.kenang.core.providers.story.StoryboardEstimate
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -35,8 +38,23 @@ class StoryboardState(
     private val configRepository: ConfigRepository,
     private val generationEvents: GenerationEvents,
     private val orchestrator: id.kenang.core.providers.gen.GenerationOrchestrator,
-    private val scope: CoroutineScope,
+    parentScope: CoroutineScope,
 ) {
+    /**
+     * Supervisor scope (owner 2026-09-08): with a plain rememberCoroutineScope
+     * ONE failing operation cancelled the scope, after which every later action
+     * — every drop, every button — did nothing at all until the app restarted,
+     * with no error on screen. Failures are now contained and reported.
+     */
+    private val scope: CoroutineScope = CoroutineScope(
+        parentScope.coroutineContext +
+            SupervisorJob(parentScope.coroutineContext[Job]) +
+            CoroutineExceptionHandler { _, t ->
+                Napier.e("storyboard operation failed", t)
+                snackMessage = Strings.SB_OPERATION_FAILED
+            },
+    )
+
     var project by mutableStateOf<Project?>(null)
     var scenes by mutableStateOf<List<Scene>>(emptyList())
     var estimate by mutableStateOf<StoryboardEstimate?>(null)

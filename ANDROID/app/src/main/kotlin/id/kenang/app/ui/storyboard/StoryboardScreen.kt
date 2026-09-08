@@ -10,7 +10,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -485,13 +488,45 @@ private fun SceneCard(
                 }
                 // Owner feature 2026-08-27: swap the generated image for the
                 // user's own photo — free, uploaded at video-submit time.
-                TextButton(
-                    onClick = onReplace,
-                    enabled = scene.status in setOf(SceneStatus.KEYFRAME_READY, SceneStatus.KEYFRAME_FAILED),
+                // Same full-width target as desktop (owner 2026-09-08) — on a
+                // phone it opens the picker; there is nothing to drag from.
+                // Idle only (owner 2026-09-08): swapping the image mid-job let
+                // the finishing job overwrite the photo or take an illegal
+                // transition that killed the screen's coroutine scope.
+                val canReplace = !videoBusy && scene.status in
+                    setOf(SceneStatus.KEYFRAME_READY, SceneStatus.KEYFRAME_FAILED)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.40f),
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable(enabled = canReplace, onClick = onReplace),
                 ) {
-                    Icon(Icons.Default.Edit, null, Modifier.width(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(Strings.SB_REPLACE_IMAGE)
+                    Row(
+                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.Edit, null, Modifier.width(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                Strings.SB_REPLACE_IMAGE,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                if (canReplace) Strings.SB_REPLACE_IMAGE_HINT else Strings.SB_REPLACE_IMAGE_WAIT,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            )
+                        }
+                    }
                 }
                 // Per-scene video (owner 2026-09-07): render just this scene's
                 // clip; it is stored and reused free at the final "Buat Video".

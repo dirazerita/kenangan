@@ -101,6 +101,11 @@ object AndroidActions {
             mime.contains("png") -> "png"
             mime.contains("webp") -> "webp"
             mime.contains("bmp") -> "bmp"
+            // Phone-native formats must not be renamed .jpg (owner 2026-09-08):
+            // the file was then uploaded raw under a lying Content-Type and the
+            // scene failed at "Buat Video" with a generic provider error.
+            mime.contains("heic") || mime.contains("heif") -> "heic"
+            mime.contains("avif") -> "avif"
             mime.contains("mpeg") || mime.contains("mp3") -> "mp3"
             mime.contains("wav") -> "wav"
             mime.contains("aac") || mime.contains("m4a") || mime.contains("mp4") -> "m4a"

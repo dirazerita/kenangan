@@ -76,8 +76,22 @@ class KeyframeService(
         }
         return when (result) {
             is AppResult.Ok -> {
-                sceneRepository.setKeyframeResult(sceneId, result.value.first, result.value.second, isRegen)
-                sceneRepository.scene(sceneId)!!.ok()
+                // The user's own photo WINS (owner 2026-09-08): dropping one on
+                // a scene whose job was queued or running used to look like it
+                // worked, then the AI image silently replaced it minutes later.
+                val now = sceneRepository.scene(sceneId)
+                val userReplaced = now != null && now.keyframe_url == null &&
+                    now.local_keyframe_path != null &&
+                    now.local_keyframe_path != scene.local_keyframe_path
+                if (userReplaced) {
+                    Napier.i("scene $sceneId: user photo arrived while the job ran — AI image discarded")
+                    now.ok()
+                } else {
+                    sceneRepository.setKeyframeResult(
+                        sceneId, result.value.first, result.value.second, isRegen,
+                    )
+                    sceneRepository.scene(sceneId)!!.ok()
+                }
             }
             is AppResult.Err -> {
                 // A failed regen must NOT throw away the image the scene

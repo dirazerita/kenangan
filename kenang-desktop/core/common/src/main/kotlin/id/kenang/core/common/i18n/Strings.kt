@@ -305,6 +305,12 @@ object Strings {
     const val SB_EDIT_PROMPT = "Ubah gerakan"
     const val SB_REGEN_KEYFRAME = "Buat ulang gambar"
     const val SB_REPLACE_IMAGE = "Ganti dengan foto sendiri (gratis)"
+    const val SB_REPLACE_IMAGE_HINT = "Klik untuk memilih, atau geser foto ke sini"
+    const val SB_REPLACE_IMAGE_DROP = "Lepaskan foto di sini"
+    const val SB_REPLACE_IMAGE_WAIT = "Tunggu proses adegan ini selesai dulu"
+    const val SB_OPERATION_FAILED = "Langkah itu gagal — silakan coba lagi."
+    const val DROP_UNSUPPORTED =
+        "Format file itu tidak didukung. Gunakan JPG, PNG, WebP, HEIC, atau AVIF."
     const val SB_ADD_SCENE = "Tambah adegan sendiri"
     const val SB_ADD_SCENE_TITLE = "Tambah adegan dari foto sendiri"
     const val SB_ADD_SCENE_PICK = "Pilih foto"
