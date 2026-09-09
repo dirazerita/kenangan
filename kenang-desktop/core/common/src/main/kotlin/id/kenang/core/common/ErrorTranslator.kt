@@ -57,11 +57,22 @@ object ErrorTranslator {
             title = "Tidak ada koneksi",
             message = "Anda sedang offline. Proyek tetap bisa dibuka, tetapi fitur AI membutuhkan koneksi internet.",
         )
-        is AppError.AssemblyFailed -> UiError(
-            title = "Perakitan video terkendala",
-            message = "Terjadi kendala saat merangkai video di perangkat ini. Tidak ada biaya API untuk langkah ini. " +
-                "Coba lagi; jika berlanjut, pastikan ruang penyimpanan cukup lalu mulai ulang aplikasi.",
-        )
+        is AppError.AssemblyFailed -> if (error.detail?.contains("locked") == true) {
+            // Windows keeps an exclusive handle on a video that is open in a
+            // player, so the finished file cannot replace the previous export.
+            UiError(
+                title = "Video hasil sebelumnya sedang dibuka",
+                message = "Video hasil yang lama masih terbuka di program lain (mis. pemutar video), " +
+                    "jadi file barunya tidak bisa menimpanya. Tutup dulu video itu, lalu Coba lagi. " +
+                    "Tidak ada biaya API untuk langkah ini.",
+            )
+        } else {
+            UiError(
+                title = "Perakitan video terkendala",
+                message = "Terjadi kendala saat merangkai video di perangkat ini. Tidak ada biaya API untuk langkah ini. " +
+                    "Coba lagi; jika berlanjut, pastikan ruang penyimpanan cukup lalu mulai ulang aplikasi.",
+            )
+        }
         is AppError.Unknown -> UiError(
             title = "Terjadi kesalahan",
             message = "Terjadi kesalahan yang tidak terduga. Coba lagi; jika berlanjut, mulai ulang aplikasi.",

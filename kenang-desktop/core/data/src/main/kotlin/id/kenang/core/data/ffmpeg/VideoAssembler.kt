@@ -41,24 +41,72 @@ class VideoAssembler(
         val expectedMs = (FfmpegGraphBuilder.totalDurationS(tempSpec) * 1000).toLong()
         val result = runner.run(FfmpegGraphBuilder.build(tempSpec), expectedMs, onProgress)
         return when (result) {
-            is AppResult.Ok -> runCatching {
-                try {
-                    Files.move(
-                        tempFile.toPath(), finalFile.toPath(),
-                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING,
-                    )
-                } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-                    Files.move(tempFile.toPath(), finalFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
-                }
-                finalFile
-            }.fold(
-                onSuccess = { it.ok() },
-                onFailure = { AppError.AssemblyFailed("move failed: ${it.message}", it).err() },
-            )
+            is AppResult.Ok -> moveIntoPlace(tempFile, finalFile)
             is AppResult.Err -> {
+                Napier.e("assembly failed: ${(result.error as? AppError.AssemblyFailed)?.detail ?: result.error}")
                 tempFile.delete()
                 result
             }
+        }
+    }
+
+    /**
+     * Windows trap (owner 2026-09-09, "selalu gagal di langkah ini"): a video
+     * player keeps an exclusive handle on the PREVIOUS export, so replacing it
+     * throws AccessDenied — and a finished, expensive render was deleted with a
+     * message that blamed disk space. The render is never thrown away again:
+     * the replace is retried briefly, then the video is kept under a free name
+     * beside the locked one.
+     */
+    internal suspend fun moveIntoPlace(temp: File, target: File): AppResult<File> {
+        var lastError: Throwable? = null
+        repeat(3) { attempt ->
+            val moved = runCatching {
+                try {
+                    Files.move(
+                        temp.toPath(), target.toPath(),
+                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING,
+                    )
+                } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                    Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+                target
+            }
+            moved.getOrNull()?.let { return it.ok() }
+            lastError = moved.exceptionOrNull()
+            Napier.w("assembly move attempt ${attempt + 1} failed: ${lastError?.message}")
+            if (attempt < 2) kotlinx.coroutines.delay(800)
+        }
+
+        // Still locked — keep the finished video rather than lose it.
+        val alternative = freeSibling(target)
+        return runCatching {
+            Files.move(temp.toPath(), alternative.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            alternative
+        }.fold(
+            onSuccess = {
+                Napier.w("previous export is locked by another program — saved as ${it.name}")
+                it.ok()
+            },
+            onFailure = {
+                temp.delete()
+                AppError.AssemblyFailed(
+                    "target locked and no alternative name worked: ${lastError?.message}",
+                    lastError,
+                ).err()
+            },
+        )
+    }
+
+    /** `<name>_2.mp4`, `_3`… — the first name nothing occupies. */
+    private fun freeSibling(target: File): File {
+        val base = target.nameWithoutExtension
+        val ext = target.extension.ifBlank { "mp4" }
+        var n = 2
+        while (true) {
+            val candidate = File(target.parentFile, "${base}_$n.$ext")
+            if (!candidate.exists()) return candidate
+            n++
         }
     }
 

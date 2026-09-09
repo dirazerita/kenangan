@@ -64,6 +64,10 @@ class FfmpegRunner(
                 Unit.ok()
             } else {
                 val tail = synchronized(stderr) { stderr.toString().takeLast(600) }
+                // Logged, not just returned (owner 2026-09-09): the UI shows a
+                // generic Indonesian message, so without this line a repeated
+                // failure leaves no trace of WHY anywhere.
+                Napier.e("ffmpeg exit $exit: $tail")
                 AppError.AssemblyFailed("ffmpeg exit $exit: $tail").err()
             }
         } catch (ce: CancellationException) {

@@ -32,7 +32,7 @@ class DbFlowNotificationTest {
             )
             db.kenangQueries.upsertScene(
                 "sc0", "p1", "[]", "single", "taman", null, null, null, null,
-                5L, 0L, SceneStatus.DRAFT, 0L, null, null,
+                5L, 0L, SceneStatus.DRAFT, 0L, null, null, null, null,
             )
 
             // Collector waiting for the scene to become ready (what the UI does).

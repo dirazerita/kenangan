@@ -34,7 +34,7 @@ class DbConcurrencyTest {
             repeat(6) { i ->
                 db.kenangQueries.upsertScene(
                     "sc$i", "p1", "[]", "single", "taman", null, null, null, null,
-                    5L, 0L, SceneStatus.CONFIRMED, i.toLong(), null, null,
+                    5L, 0L, SceneStatus.CONFIRMED, i.toLong(), null, null, null, null,
                 )
             }
 
