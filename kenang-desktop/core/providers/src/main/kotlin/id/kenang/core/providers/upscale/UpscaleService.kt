@@ -124,7 +124,7 @@ class UpscaleService(
         if (own != null) return own
         val fromOutput = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
             ?.let { usable(File(it, "Upscale")) }
-        return fromOutput ?: File(AppDirs.root, "upscale").apply { mkdirs() }
+        return fromOutput ?: AppDirs.upscale
     }
 
     /** Persists the tool's own results folder (null/blank = back to default). */

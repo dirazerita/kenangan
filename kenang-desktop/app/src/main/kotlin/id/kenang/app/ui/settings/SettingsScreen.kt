@@ -49,6 +49,10 @@ import androidx.compose.ui.unit.dp
 import id.kenang.app.ui.components.StatusChip
 import id.kenang.app.ui.components.openInBrowser
 import id.kenang.core.common.i18n.Strings
+import id.kenang.core.common.AppError
+import id.kenang.core.common.AppResult
+import id.kenang.core.data.AppDirs
+import id.kenang.core.data.DataFolderMover
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.providers.CostTracker
@@ -234,12 +238,12 @@ fun SettingsScreen(
                                     cloneScope.launch {
                                         cloning = true
                                         when (val r = voiceCloneService.clone(file, cloneLabel)) {
-                                            is id.kenang.core.common.AppResult.Ok -> {
+                                            is AppResult.Ok -> {
                                                 clonedList = voiceCloneService.cloned()
                                                 cloneLabel = ""
                                                 snackbar.showSnackbar(Strings.SETTINGS_CLONE_DONE + r.value.label)
                                             }
-                                            is id.kenang.core.common.AppResult.Err ->
+                                            is AppResult.Err ->
                                                 snackbar.showSnackbar(
                                                     id.kenang.core.common.ErrorTranslator.translate(r.error).message,
                                                 )
@@ -356,7 +360,15 @@ fun SettingsScreen(
                 }
             }) { Text(Strings.SETTINGS_BROWSE_FOLDER) }
         }
-        Spacer(Modifier.height(12.dp))
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
+        DataFolderSection(snackbar)
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(Strings.SETTINGS_LANGUAGE, Modifier.width(200.dp))
             Text(Strings.SETTINGS_LANGUAGE_ID) // ID only for now
@@ -631,4 +643,167 @@ fun TestResultView(state: TestState) {
         TestState.Ok -> StatusChip(Strings.KEYS_TEST_OK, color = Color(0xFF2E7D32))
         is TestState.Fail -> StatusChip(Strings.KEYS_TEST_FAIL, color = MaterialTheme.colorScheme.error)
     }
+}
+
+/**
+ * Data folder (owner 2026-09-10: "aplikasi ini menghabiskan banyak space di
+ * drive C"). Shows where the heavy data lives, how big it is, and moves it to
+ * another drive — copy-verify-then-delete, so a failure costs nothing.
+ */
+@Composable
+private fun DataFolderSection(snackbar: SnackbarHostState) {
+    val mover = koinInject<DataFolderMover>()
+    val scope = rememberCoroutineScope()
+
+    var current by remember { mutableStateOf(AppDirs.mediaRoot) }
+    var sizeBytes by remember { mutableStateOf<Long?>(null) }
+    var plan by remember { mutableStateOf<DataFolderMover.Plan?>(null) }
+    var moving by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(0) }
+    var progressDetail by remember { mutableStateOf("") }
+
+    LaunchedEffect(current) { sizeBytes = mover.currentSizeBytes() }
+
+    Text(Strings.SETTINGS_DATA_TITLE, style = MaterialTheme.typography.titleLarge)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        Strings.SETTINGS_DATA_NOTE,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+    )
+    Spacer(Modifier.height(12.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(Strings.SETTINGS_DATA_CURRENT, Modifier.width(160.dp))
+        Text(current.absolutePath, style = MaterialTheme.typography.bodyMedium)
+    }
+    Spacer(Modifier.height(4.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(Strings.SETTINGS_DATA_SIZE, Modifier.width(160.dp))
+        Text(
+            sizeBytes?.let { humanSize(it) } ?: Strings.SETTINGS_DATA_MEASURING,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            "(" + humanSize(current.usableSpace) + " " + Strings.SETTINGS_DATA_FREE + ")",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
+    }
+    Spacer(Modifier.height(12.dp))
+    SkeuoOutlinedButton(
+        onClick = {
+            val chooser = javax.swing.JFileChooser().apply {
+                fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+                dialogTitle = Strings.SETTINGS_DATA_MOVE_TITLE
+            }
+            if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                val chosen = chooser.selectedFile
+                scope.launch {
+                    when (val p = mover.plan(chosen)) {
+                        is AppResult.Ok -> plan = p.value
+                        is AppResult.Err ->
+                            snackbar.showSnackbar(
+                                (p.error as? AppError.Unknown)?.detail
+                                    ?: Strings.SETTINGS_DATA_MOVE_TITLE,
+                            )
+                    }
+                }
+            }
+        },
+        enabled = !moving,
+    ) { Text(Strings.SETTINGS_DATA_MOVE) }
+
+    // ---- confirmation ----
+    val pending = plan
+    if (pending != null && !moving) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { plan = null },
+            title = { Text(Strings.SETTINGS_DATA_MOVE_TITLE) },
+            text = {
+                Column {
+                    Text(pending.from.absolutePath + "  →  " + pending.to.absolutePath)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        humanSize(pending.bytes) + " · " + pending.files + " berkas · " +
+                            humanSize(pending.freeAtTarget) + " " + Strings.SETTINGS_DATA_FREE,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (!pending.fits) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            Strings.SETTINGS_DATA_NO_SPACE,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        Strings.SETTINGS_DATA_SAFE_NOTE,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
+            },
+            confirmButton = {
+                SkeuoButton(
+                    onClick = {
+                        moving = true
+                        progress = 0
+                        scope.launch {
+                            val result = mover.move(pending) { pct, detail ->
+                                progress = pct
+                                progressDetail = detail
+                            }
+                            moving = false
+                            plan = null
+                            when (result) {
+                                is AppResult.Ok -> {
+                                    current = result.value
+                                    snackbar.showSnackbar(
+                                        Strings.SETTINGS_DATA_MOVED + result.value.absolutePath,
+                                    )
+                                }
+                                is AppResult.Err ->
+                                    snackbar.showSnackbar(
+                                        (result.error as? AppError.Unknown)?.detail
+                                            ?: Strings.SETTINGS_DATA_BUSY,
+                                    )
+                            }
+                        }
+                    },
+                    enabled = pending.fits,
+                ) { Text(Strings.SETTINGS_DATA_MOVE_CONFIRM) }
+            },
+            dismissButton = {
+                TextButton(onClick = { plan = null }) { Text(Strings.CANCEL) }
+            },
+        )
+    }
+
+    // ---- progress (not dismissable: the copy is running) ----
+    if (moving) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {},
+            title = { Text(Strings.SETTINGS_DATA_MOVING) },
+            text = {
+                Column {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { progress / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("$progress% — $progressDetail", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {},
+        )
+    }
+}
+
+/** Bytes as GB/MB for the settings screen. */
+private fun humanSize(bytes: Long): String = when {
+    bytes >= 1024L * 1024 * 1024 -> "%.1f GB".format(java.util.Locale.US, bytes / 1024.0 / 1024 / 1024)
+    bytes >= 1024L * 1024 -> "%.0f MB".format(java.util.Locale.US, bytes / 1024.0 / 1024)
+    else -> "%.0f KB".format(java.util.Locale.US, bytes / 1024.0)
 }

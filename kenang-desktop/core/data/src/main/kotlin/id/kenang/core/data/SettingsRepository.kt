@@ -25,6 +25,8 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_LAST_NARRATION_TEMPLATE = "last_narration_template"
         /** Upscale tool: user-chosen results folder (blank = <output_folder>/Upscale). */
         const val KEY_UPSCALE_OUTPUT_FOLDER = "upscale_output_folder"
+        /** Where the heavy data lives (blank = %APPDATA%/Kenang) - owner 2026-09-10. */
+        const val KEY_DATA_FOLDER = "data_folder"
         // TODO(D-002): "license_state" + "trial_exports_used" reserved for Phase 05.
     }
 
@@ -74,6 +76,11 @@ class SettingsRepository(private val db: KenangDb) {
     var upscaleOutputFolder: String?
         get() = getOverride(KEY_UPSCALE_OUTPUT_FOLDER)
         set(v) = set(KEY_UPSCALE_OUTPUT_FOLDER, v ?: "")
+
+    /** Applied to AppDirs at startup; the DB itself always stays in %APPDATA%. */
+    var dataFolder: String?
+        get() = getOverride(KEY_DATA_FOLDER)
+        set(v) = set(KEY_DATA_FOLDER, v ?: "")
 
     var lastNarrationTemplate: Int
         get() = get(KEY_LAST_NARRATION_TEMPLATE)?.toIntOrNull() ?: -1

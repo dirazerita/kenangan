@@ -112,7 +112,7 @@ class MotionControlService(
         val custom = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
             ?.let { File(it, "MotionControl") }
             ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
-        return custom ?: File(AppDirs.root, "motion").apply { mkdirs() }
+        return custom ?: AppDirs.motion
     }
 
     suspend fun run(

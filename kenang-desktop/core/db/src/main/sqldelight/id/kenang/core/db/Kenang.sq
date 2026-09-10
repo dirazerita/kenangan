@@ -177,6 +177,23 @@ INSERT OR REPLACE INTO scene(scene_id, project_id, source_photos_json, type, vib
   local_keyframe_path, local_clip_path)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+-- Data-folder move (owner 2026-09-10): every stored path is absolute, so
+-- relocating the heavy folders to another drive must rewrite the prefixes.
+-- replace() leaves NULL columns NULL, and rows outside the old root untouched.
+rebaseScenePaths:
+UPDATE scene SET
+  local_keyframe_path = replace(local_keyframe_path, ?, ?),
+  local_clip_path = replace(local_clip_path, ?, ?);
+
+rebasePhotoPaths:
+UPDATE photo SET local_path = replace(local_path, ?, ?);
+
+rebaseProjectMusicPaths:
+UPDATE project SET music_path = replace(music_path, ?, ?);
+
+countScenesByStatus:
+SELECT count(*) FROM scene WHERE status = ?;
+
 deleteScene:
 DELETE FROM scene WHERE scene_id = ?;
 

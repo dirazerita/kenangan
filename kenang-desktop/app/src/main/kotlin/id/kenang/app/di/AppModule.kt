@@ -47,6 +47,7 @@ import id.kenang.core.providers.vault.KeyVault
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
+import id.kenang.core.data.DataFolderMover
 import org.koin.dsl.module
 import java.io.File
 
@@ -59,6 +60,7 @@ val appModule = module {
     single<KenangDb> { DatabaseFactory.create(AppDirs.dbFile) }
     single { ConfigRepository() }
     single { SettingsRepository(get()) }
+    single { DataFolderMover(get(), get(), get()) }
     single { ProjectRepository(get(), get()) }
     single { PhotoRepository(get(), get()) }
     single { SceneRepository(get(), get()) }

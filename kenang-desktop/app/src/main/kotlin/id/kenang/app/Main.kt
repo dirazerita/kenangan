@@ -9,6 +9,8 @@ import id.kenang.app.ui.App
 import id.kenang.core.common.Logging
 import id.kenang.core.common.i18n.Strings
 import id.kenang.core.data.AppDirs
+import id.kenang.core.data.SettingsRepository
+import java.io.File
 import io.github.aakira.napier.Napier
 import org.koin.core.context.startKoin
 
@@ -16,8 +18,18 @@ fun main() {
     Logging.init(AppDirs.logs)
     Napier.i("Kenang starting — data dir: ${AppDirs.root.absolutePath}")
 
-    startKoin {
+    val koin = startKoin {
         modules(appModule)
+    }.koin
+
+    // The heavy folders may live on another drive (owner 2026-09-10). Applied
+    // BEFORE any screen, so nothing ever resolves a path under the old root.
+    val dataFolder = runCatching {
+        koin.get<SettingsRepository>().dataFolder
+    }.getOrNull()
+    if (!dataFolder.isNullOrBlank()) {
+        AppDirs.useMediaRoot(File(dataFolder))
+        Napier.i("data folder override: ${AppDirs.mediaRoot.absolutePath}")
     }
 
     application {

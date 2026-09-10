@@ -20,7 +20,7 @@ class MusicLibrary(private val configRepository: ConfigRepository) {
         }
 
     private fun stage(meta: BundledMusic): File? = runCatching {
-        val target = File(File(AppDirs.root, "music").apply { mkdirs() }, meta.file)
+        val target = File(AppDirs.music, meta.file)
         if (!target.isFile || target.length() == 0L) {
             val res = MusicLibrary::class.java.getResourceAsStream("/music/${meta.file}")
             if (res == null) {

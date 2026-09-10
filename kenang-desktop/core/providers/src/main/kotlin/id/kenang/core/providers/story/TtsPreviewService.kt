@@ -34,7 +34,7 @@ class TtsPreviewService(
     private val configRepository: ConfigRepository,
     private val costTracker: CostTracker,
 ) {
-    private val cacheDir: File get() = File(AppDirs.root, "cache/tts").apply { mkdirs() }
+    private val cacheDir: File get() = File(AppDirs.cache, "tts").apply { mkdirs() }
 
     /** Fetches (or reuses) the preview MP3 for [text] with [voiceId]. */
     suspend fun preview(text: String, voiceId: String? = null): AppResult<File> {
