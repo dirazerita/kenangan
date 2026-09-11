@@ -27,6 +27,8 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_UPSCALE_OUTPUT_FOLDER = "upscale_output_folder"
         /** Where the heavy data lives (blank = %APPDATA%/Kenang) - owner 2026-09-10. */
         const val KEY_DATA_FOLDER = "data_folder"
+        /** Also export a watermarked copy for pre-payment previews - owner 2026-09-11. */
+        const val KEY_WATERMARK_COPY = "watermark_copy"
         // TODO(D-002): "license_state" + "trial_exports_used" reserved for Phase 05.
     }
 
@@ -81,6 +83,11 @@ class SettingsRepository(private val db: KenangDb) {
     var dataFolder: String?
         get() = getOverride(KEY_DATA_FOLDER)
         set(v) = set(KEY_DATA_FOLDER, v ?: "")
+
+    /** Storyboard toggle: export a second, watermarked video alongside the clean one. */
+    var watermarkCopy: Boolean
+        get() = getBool(KEY_WATERMARK_COPY)
+        set(v) = setBool(KEY_WATERMARK_COPY, v)
 
     var lastNarrationTemplate: Int
         get() = get(KEY_LAST_NARRATION_TEMPLATE)?.toIntOrNull() ?: -1

@@ -51,6 +51,51 @@ class VideoAssembler(
     }
 
     /**
+     * Writes a watermarked twin of [source] next to it (owner 2026-09-11: the
+     * copy sent to a customer before payment). One overlay pass over the
+     * finished video - the clips are never re-assembled, and the audio is
+     * copied untouched, so the two files differ only by the mark.
+     */
+    suspend fun watermarkedCopy(
+        source: File,
+        watermark: File,
+        target: File,
+        expectedDurationMs: Long? = null,
+        onProgress: (Int) -> Unit = {},
+    ): AppResult<File> {
+        val exe = locator.locate()
+            ?: return AppError.AssemblyFailed("ffmpeg unavailable").err()
+        val runner = FfmpegRunner(exe, dispatchers)
+
+        target.parentFile?.mkdirs()
+        val tempFile = File(target.parentFile, ".${target.name}.tmp.mp4")
+        tempFile.delete()
+
+        val args = listOf(
+            "-y",
+            "-i", source.absolutePath,
+            "-i", watermark.absolutePath,
+            // The PNG is rendered at the frame size, so it lands at 0:0 as-is.
+            "-filter_complex", "[0:v][1:v]overlay=0:0[v]",
+            "-map", "[v]",
+            // Audio is optional (a project without narration or music has none).
+            "-map", "0:a?",
+            "-c:v", "libx264", "-crf", "20", "-preset", "medium", "-pix_fmt", "yuv420p",
+            "-c:a", "copy",
+            "-movflags", "+faststart",
+            "-metadata", "comment=AI-generated (Kenang) - watermarked preview",
+            tempFile.absolutePath,
+        )
+        return when (val result = runner.run(args, expectedDurationMs, onProgress)) {
+            is AppResult.Ok -> moveIntoPlace(tempFile, target)
+            is AppResult.Err -> {
+                tempFile.delete()
+                result
+            }
+        }
+    }
+
+    /**
      * Windows trap (owner 2026-09-09, "selalu gagal di langkah ini"): a video
      * player keeps an exclusive handle on the PREVIOUS export, so replacing it
      * throws AccessDenied — and a finished, expensive render was deleted with a

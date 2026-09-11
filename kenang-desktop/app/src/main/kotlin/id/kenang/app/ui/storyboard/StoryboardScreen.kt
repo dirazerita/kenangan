@@ -149,6 +149,7 @@ fun StoryboardScreen(
             var sheetPhase by remember { mutableStateOf("") }
             var showSheetDialog by remember { mutableStateOf(false) }
             val settingsRepo = koinInject<id.kenang.core.data.SettingsRepository>()
+            var watermarkCopy by remember { mutableStateOf(settingsRepo.watermarkCopy) }
             val assembler = koinInject<id.kenang.core.data.ffmpeg.VideoAssembler>()
 
             fun sheetOutDir(): java.io.File {
@@ -274,6 +275,29 @@ fun StoryboardScreen(
                         }
                     },
                 )
+            }
+            Spacer(Modifier.width(12.dp))
+            // Watermark twin (owner 2026-09-11): the marked copy goes to the
+            // customer before payment, the clean one after. Remembered, since
+            // whoever sells this way sells this way every time.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Switch(
+                    checked = watermarkCopy,
+                    onCheckedChange = {
+                        watermarkCopy = it
+                        settingsRepo.watermarkCopy = it
+                    },
+                )
+                Spacer(Modifier.width(6.dp))
+                Column {
+                    Text(Strings.SB_WATERMARK_TOGGLE, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        Strings.SB_WATERMARK_TOOLTIP,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                        modifier = Modifier.width(150.dp),
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
             SkeuoButton(onClick = { state.showConfirm = true }, enabled = state.allReady() && !state.confirmed) {

@@ -80,6 +80,8 @@ fun GenerationScreen(
     var phase by remember { mutableStateOf("scenes") } // scenes|audio|assembly
     var elapsed by remember { mutableStateOf(0L) }
     var assemblyProgress by remember { mutableStateOf(0) }
+    // Second local pass when the watermarked twin is requested (owner 2026-09-11).
+    var watermarkPass by remember { mutableStateOf(false) }
     var fatal by remember { mutableStateOf<ErrorTranslator.UiError?>(null) }
     var fatalIsKey by remember { mutableStateOf(false) }
     var showPartialDialog by remember { mutableStateOf(false) }
@@ -94,7 +96,13 @@ fun GenerationScreen(
         scope.launch {
             phase = "assembly"
             genError = null
-            when (val r = assembly.assemble(projectId, narration, includeSubtitles, tempo) { p -> assemblyProgress = p }) {
+            val r = assembly.assemble(
+                projectId, narration, includeSubtitles, tempo,
+                onProgress = { p -> assemblyProgress = p },
+                onStage = { stage -> watermarkPass = stage == AssemblyService.Stage.WATERMARK },
+            )
+            watermarkPass = false
+            when (r) {
                 is id.kenang.core.common.AppResult.Ok -> onDone()
                 is id.kenang.core.common.AppResult.Err -> genError = ErrorTranslator.translate(r.error)
             }
@@ -207,7 +215,7 @@ fun GenerationScreen(
                 Text(Strings.GEN_TTS_RUNNING + " " + Strings.GEN_SUBS_BUILDING)
             }
             "assembly" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(Strings.GEN_ASSEMBLING)
+                Text(if (watermarkPass) Strings.GEN_ASSEMBLY_WATERMARK else Strings.GEN_ASSEMBLING)
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { assemblyProgress / 100f },

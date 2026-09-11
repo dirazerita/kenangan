@@ -163,6 +163,27 @@ fun ResultScreen(
             ) { Text(Strings.RESULT_COPY_PATH) }
         }
         Spacer(Modifier.height(10.dp))
+        // Watermarked twin (owner 2026-09-11): shown only when the storyboard
+        // toggle produced one, so the seller can send THIS file before payment.
+        val watermarked = file?.let { File(it.parentFile, it.nameWithoutExtension + "_WATERMARK.mp4") }
+            ?.takeIf { it.isFile }
+        if (watermarked != null) {
+            SkeuoCard(Modifier.widthIn(max = 420.dp).fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(Strings.RESULT_WATERMARK_TITLE, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        Strings.RESULT_WATERMARK_NOTE,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SkeuoOutlinedButton(onClick = { openVideoFile(watermarked) }) {
+                        Text("▶  " + Strings.RESULT_WATERMARK_PLAY)
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
         // Revision (owner 2026-09-07): reopen the storyboard to edit scenes —
         // only changed scenes are regenerated (paid); the rest reuse clips.
         SkeuoOutlinedButton(onClick = onEditStoryboard) {
@@ -216,7 +237,8 @@ fun ResultScreen(
                         val r = assembly.assemble(
                             projectId, narr, includeSubtitles = true,
                             narrationTempo = tempo, ratioOverride = otherRatio,
-                        ) { p -> exportProgress = p }
+                            onProgress = { p -> exportProgress = p },
+                        )
                         exporting = false
                         when (r) {
                             is id.kenang.core.common.AppResult.Ok -> {

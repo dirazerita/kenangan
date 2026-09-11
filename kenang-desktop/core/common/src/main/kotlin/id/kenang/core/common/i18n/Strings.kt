@@ -63,6 +63,13 @@ object Strings {
     const val SB_SCENE_VIDEO_RUNNING = "Membuat video adegan…"
     const val SB_SCENE_VIDEO_DONE = "Video adegan selesai — klip tersimpan dan dipakai ulang gratis saat Buat Video."
     const val SB_WATCH_CLIP = "▶ Tonton klip adegan ini"
+    // Watermark twin (owner 2026-09-11): preview copy for a customer who has not paid yet.
+    const val SB_WATERMARK_TOGGLE = "Watermark"
+    const val SB_WATERMARK_TOOLTIP = "Buat juga salinan bertanda air untuk calon pemesan"
+    const val GEN_ASSEMBLY_WATERMARK = "Membuat salinan bertanda air…"
+    const val RESULT_WATERMARK_TITLE = "Versi bertanda air"
+    const val RESULT_WATERMARK_NOTE = "Untuk dikirim ke pemesan sebelum membayar. Video bersih di atas untuk setelah pembayaran."
+    const val RESULT_WATERMARK_PLAY = "Putar versi watermark"
     const val RESULT_EDIT_STORYBOARD = "Revisi Storyboard"
     const val RESULT_EDIT_STORYBOARD_NOTE = "Kembali ke storyboard untuk mengubah adegan — hanya adegan yang diubah yang dibuat ulang (berbayar); sisanya memakai klip yang sudah ada, gratis."
     const val SB_SCENE_NEGATIVE_LABEL = "Larangan gambar (negative)"

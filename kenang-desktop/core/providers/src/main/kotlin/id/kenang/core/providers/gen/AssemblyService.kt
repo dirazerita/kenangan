@@ -12,6 +12,7 @@ import id.kenang.core.data.SceneStatus
 import id.kenang.core.data.ffmpeg.AssBuilder
 import id.kenang.core.data.ffmpeg.FfmpegGraphBuilder
 import id.kenang.core.data.ffmpeg.VideoAssembler
+import id.kenang.core.data.ffmpeg.WatermarkImage
 import id.kenang.core.providers.CostTracker
 import io.github.aakira.napier.Napier
 import java.io.File
@@ -32,6 +33,9 @@ class AssemblyService(
     private val settings: id.kenang.core.data.SettingsRepository,
 ) {
     data class Narration(val file: File, val durationMs: Long, val text: String)
+
+    /** Which local pass the progress bar is currently showing. */
+    enum class Stage { MAIN, WATERMARK }
 
     sealed class AudioPrep {
         /** No narration, or narration fits the video — go assemble. */
@@ -103,7 +107,10 @@ class AssemblyService(
         narrationTempo: Double? = null,
         /** PRD F6.5: re-export in another ratio from the SAME clips (no API cost). */
         ratioOverride: String? = null,
+        /** Owner 2026-09-11: also write a watermarked twin for pre-payment previews. */
+        watermarkCopy: Boolean = settings.watermarkCopy,
         onProgress: (Int) -> Unit = {},
+        onStage: (Stage) -> Unit = {},
     ): AppResult<File> {
         val project = projects.get(projectId)
             ?: return AppError.Unknown("project missing").err()
@@ -165,8 +172,13 @@ class AssemblyService(
             watermarkFile = watermarkFile,
             narrationTempo = narrationTempo,
         )
+        onStage(Stage.MAIN)
         return when (val result = assembler.assemble(spec, onProgress)) {
             is AppResult.Ok -> {
+                if (watermarkCopy) {
+                    onStage(Stage.WATERMARK)
+                    writeWatermarkedCopy(result.value, ratio, onProgress)
+                }
                 outputs.record(
                     projectId, result.value.absolutePath, ratioLabel, project.tier,
                     costTracker.projectTotalUsd(projectId),
@@ -210,4 +222,30 @@ class AssemblyService(
         sceneRepository.scenes(projectId)
             .filter { it.status == SceneStatus.DONE }
             .sortedBy { it.order_index }
+
+    /**
+     * Watermarked twin for the customer preview (owner 2026-09-11: "video
+     * watermark ini akan digunakan untuk diberikan ke pemesan sebelum
+     * membayar"). Written as `<nama>_WATERMARK.mp4` beside the clean file.
+     *
+     * A failure here never fails the export: the clean video is the one that
+     * matters, and it is already finished and recorded by this point.
+     */
+    private suspend fun writeWatermarkedCopy(
+        clean: File,
+        ratio: FfmpegGraphBuilder.Ratio,
+        onProgress: (Int) -> Unit,
+    ) {
+        val stamp = WatermarkImage.render(ratio.w, ratio.h, File(AppDirs.tools, "watermark"))
+        if (stamp == null) {
+            Napier.w("watermark image unavailable — skipping the watermarked copy")
+            return
+        }
+        val target = File(clean.parentFile, clean.nameWithoutExtension + "_WATERMARK.mp4")
+        val durationMs = assembler.runner()?.probeDurationMs(clean)
+        when (val r = assembler.watermarkedCopy(clean, stamp, target, durationMs, onProgress)) {
+            is AppResult.Ok -> Napier.i("watermarked copy: ${r.value.name}")
+            is AppResult.Err -> Napier.w("watermarked copy failed: ${r.error}")
+        }
+    }
 }
