@@ -16,6 +16,7 @@ android {
         // permission, which keeps the lay-user flow permission-free.
         minSdk = 29
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = 1
         versionName = providers.gradleProperty("appVersion").getOrElse("0.1.0")
     }
@@ -101,5 +102,8 @@ dependencies {
     implementation(libs.media3.ui)
 
     testImplementation(libs.kotlin.test)
+    // On-device check for the Android-only face-crop decoder (owner 2026-09-12).
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation(libs.kotlinx.coroutines.test)
 }

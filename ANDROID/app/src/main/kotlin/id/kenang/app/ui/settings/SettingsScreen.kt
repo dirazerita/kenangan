@@ -343,6 +343,27 @@ fun SettingsScreen(
         // ------------------- General -------------------
         // Android has no user-chosen output folder: finished videos go to the
         // gallery (Movies/Kenang/<project>) via MediaStore.
+        // Face lock (owner 2026-09-12). ON by default; here so it can be
+        // switched off if a provider ever misbehaves with extra references.
+        var faceLock by remember { mutableStateOf(settings.faceLock) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Switch(
+                checked = faceLock,
+                onCheckedChange = { faceLock = it; settings.faceLock = it },
+            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(Strings.SETTINGS_FACE_LOCK, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    Strings.SETTINGS_FACE_LOCK_NOTE,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
         Text(Strings.SETTINGS_OUTPUT_FOLDER, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         Text(

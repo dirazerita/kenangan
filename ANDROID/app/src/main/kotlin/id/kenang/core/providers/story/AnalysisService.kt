@@ -3,6 +3,7 @@ package id.kenang.core.providers.story
 import id.kenang.core.common.AppError
 import id.kenang.core.common.AppResult
 import id.kenang.core.common.Provider
+import id.kenang.core.common.err
 import id.kenang.core.common.story.CameraMove
 import id.kenang.core.common.story.MotionCategory
 import id.kenang.core.common.story.MotionTemplateValidator
@@ -336,6 +337,50 @@ Return ONLY valid JSON, no markdown:
 
     // ------------------------------------------------------------------
 
+    /**
+     * Face boxes for a photo analysed before [PhotoAnalysis.Subject.faceBox]
+     * existed (owner 2026-09-12): one small vision call, merged into the
+     * stored analysis so every later keyframe and video of the project
+     * carries the face references. Subjects are matched by id, so the
+     * people count the storyboard was built on never changes here.
+     */
+    suspend fun backfillFaceBoxes(projectId: String, photo: Photo, current: PhotoAnalysis): AppResult<PhotoAnalysis> {
+        val file = File(photo.local_path)
+        if (!file.isFile) return AppError.Unknown("photo file missing").err()
+        val uploaded = photo.upload_id ?: when (
+            val up = storage.uploadBytes(UploadPrep.prepareJpeg(file), "${photo.id}.jpg", "image/jpeg")
+        ) {
+            is AppResult.Ok -> up.value.also { photoRepository.setUploadUrl(photo.id, it) }
+            is AppResult.Err -> return up
+        }
+        val listing = current.subjects.mapIndexed { i, sub -> "${i + 1}. id=${sub.id}: ${sub.desc}" }
+            .joinToString("\n")
+        val prompt = """Locate the face of each listed person in this photo.
+People (keep these ids, same order):
+$listing
+Return ONLY valid JSON: {"subjects":[{"id":"s1","face_box":[x0,y0,x1,y1]}]}
+face_box values are FRACTIONS of the image width/height (0-1), tightly around the face from the
+top of the forehead to the chin. Use null for a person whose face is not visible. No markdown."""
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 300, imageFile = file) { raw ->
+            val boxes = json.decodeFromString(FaceBoxReply.serializer(), raw).subjects.associateBy { it.id }
+            current.copy(
+                subjects = current.subjects.map { sub ->
+                    boxes[sub.id]?.face_box?.let { sub.copy(faceBox = it) } ?: sub
+                },
+            )
+        }.also { result ->
+            if (result is AppResult.Ok) {
+                photoRepository.setAnalysisJson(photo.id, json.encodeToString(PhotoAnalysis.serializer(), result.value))
+            }
+        }
+    }
+
+    @kotlinx.serialization.Serializable
+    private data class FaceBoxReply(val subjects: List<Entry> = emptyList()) {
+        @kotlinx.serialization.Serializable
+        data class Entry(val id: String = "", val face_box: List<Double>? = null)
+    }
+
     private suspend fun moderatePhoto(projectId: String, imageUrl: String): AppResult<ModerationResult> {
         val prompt = """Safety pre-check for a family memorial video app. Look at this photo and classify it.
 Return ONLY valid JSON: {"category":"none|nsfw|violence|public_figure","reason":"<short>"}
@@ -349,13 +394,15 @@ Use "none" for normal family photos (including old, damaged, black-and-white pho
         // Schema prompt proven in Phase 00 (POC/04_tts.py — 3/3 valid).
         val prompt = """Analyze this old family photo. Return ONLY valid JSON exactly matching:
 {"photo_id": "${photo.id}",
- "subjects": [{"id":"s1","desc":"<person desc: age, clothing>","face_quality":0.0}],
+ "subjects": [{"id":"s1","desc":"<person desc: age, clothing>","face_quality":0.0,"face_box":[0.0,0.0,0.0,0.0]}],
  "setting": "<scene description>",
  "era_style": "<photo era/style e.g. 'faded color print', 'BW 1960s'>",
  "mood": "<mood>",
  "quality_score": 0.0,
  "issues": ["<defects: blur, fading, damage>"]}
 face_quality and quality_score are 0-1 floats. No markdown, no extra text.
+face_box is [x0, y0, x1, y1] as FRACTIONS of the image width/height (0-1), tightly around the face
+from the top of the forehead to the chin; null when the face is not visible.
 IMPORTANT — count the people carefully: create exactly ONE subjects entry per real person visible
 in the photo, no duplicates, no guesses. Downstream scenes are locked to this count, so an
 over- or under-count corrupts every generated image."""

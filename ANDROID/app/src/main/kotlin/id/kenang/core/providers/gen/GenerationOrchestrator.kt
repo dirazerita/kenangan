@@ -59,6 +59,7 @@ class GenerationOrchestrator(
     private val jobRepository: GenJobRepository,
     private val projects: ProjectRepository,
     private val settings: id.kenang.core.data.SettingsRepository,
+    private val faceLock: id.kenang.core.providers.story.FaceLock,
 ) {
     /** Settings → Model AI override; falls back to the tier's routed model. */
     private fun resolveI2v(tierCfg: id.kenang.core.data.config.TierConfig): Pair<String, JsonObject?> {
@@ -246,7 +247,17 @@ class GenerationOrchestrator(
         val jobId = jobRepository.create(scene.scene_id, i2vSlug, estUsd)
 
         val submitSlug = submitSlug(i2vSlug, i2vParams)
-        val body = buildI2vBody(submitSlug, imageUrl, scene.motion_prompt_en ?: "", scene.duration_s, ratio, i2vParams)
+        // Face lock (owner 2026-09-12): the same face crops become Kling
+        // "elements", so the identity holds while the frame is animated.
+        val elements = if (submitSlug.contains("kling")) {
+            faceLock.refs(projectId, faceLock.photoIdsOf(scene.source_photos_json)).map { ref ->
+                ElementRef(ref.description, ref.url, listOfNotNull(ref.photoUrl).ifEmpty { listOf(ref.url) })
+            }
+        } else emptyList()
+        if (elements.isNotEmpty()) Napier.i("face lock: ${elements.size} element(s) for scene ${scene.scene_id}")
+        val body = buildI2vBody(
+            submitSlug, imageUrl, scene.motion_prompt_en ?: "", scene.duration_s, ratio, i2vParams, elements,
+        )
 
         val submitted = when (val s = falClient.submit(submitSlug, body)) {
             is AppResult.Ok -> s.value
@@ -393,6 +404,9 @@ class GenerationOrchestrator(
         return AppError.Timeout().err()
     }
 
+    /** One Kling element: a person's face crop plus the photo it came from. */
+    data class ElementRef(val description: String, val frontalUrl: String, val referenceUrls: List<String>)
+
     companion object {
         /**
          * fal exposes model variants as slug sub-paths (e.g. Wan 2.6 `/flash`);
@@ -412,11 +426,36 @@ class GenerationOrchestrator(
             durationS: Long,
             ratioLabel: String,
             extraParams: JsonObject?,
+            elements: List<ElementRef> = emptyList(),
         ): JsonObject = buildJsonObject {
-            put("prompt", if (slug.contains("seedance")) "@Image1 $motionPrompt" else motionPrompt)
+            val kling = slug.contains("kling")
+            // Kling binds "@ElementN" in the prompt to each element (fal
+            // schema); this mapping sentence is what turns crops into a lock.
+            val elementPrefix = if (kling && elements.isNotEmpty()) {
+                elements.mapIndexed { i, e -> "@Element${i + 1} is ${e.description.trim().trimEnd('.')}" }
+                    .joinToString("; ") + ". Keep every face exactly as in its element for the whole " +
+                    "clip - the same person, never a look-alike. "
+            } else ""
+            put("prompt", if (slug.contains("seedance")) "@Image1 $motionPrompt" else elementPrefix + motionPrompt)
             put("duration", durationS.toString())
             when {
-                slug.contains("kling") -> put("start_image_url", imageUrl)
+                kling -> {
+                    put("start_image_url", imageUrl)
+                    if (elements.isNotEmpty()) {
+                        putJsonArray("elements") {
+                            elements.forEach { e ->
+                                add(
+                                    buildJsonObject {
+                                        put("frontal_image_url", e.frontalUrl)
+                                        putJsonArray("reference_image_urls") {
+                                            e.referenceUrls.take(3).forEach { add(it) }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 slug.contains("seedance") -> {
                     putJsonArray("image_urls") { add(imageUrl) }
                     put("aspect_ratio", ratioLabel)

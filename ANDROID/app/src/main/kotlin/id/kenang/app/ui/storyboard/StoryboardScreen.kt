@@ -390,6 +390,15 @@ private fun SceneCard(
     videoBusy: Boolean = false,
     onMakeVideo: () -> Unit = {},
 ) {
+    // Face lock indicator (owner 2026-09-12): every source photo of this
+    // scene has a stored face box, so its faces ride along as references.
+    val faceLock = koinInject<id.kenang.core.providers.story.FaceLock>()
+    var faceLocked by remember(scene.scene_id) { mutableStateOf(false) }
+    LaunchedEffect(scene.source_photos_json, faceLock.enabled) {
+        val ids = faceLock.photoIdsOf(scene.source_photos_json)
+        faceLocked = faceLock.enabled && ids.isNotEmpty() &&
+            ids.all { faceLock.hasBoxes(scene.project_id, it) }
+    }
     Card {
         Column {
             Box(
@@ -450,6 +459,10 @@ private fun SceneCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Adegan ${index + 1}", style = MaterialTheme.typography.titleSmall)
                     StatusChip("${scene.duration_s}s")
+                    if (faceLocked) {
+                        Spacer(Modifier.width(6.dp))
+                        StatusChip(Strings.SB_FACE_LOCKED, MaterialTheme.colorScheme.tertiary)
+                    }
                     if (scene.type == "fusion") StatusChip(Strings.SB_FUSION_BADGE, MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { onMove(-1) }, enabled = index > 0) {

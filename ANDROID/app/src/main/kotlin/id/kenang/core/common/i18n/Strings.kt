@@ -56,6 +56,10 @@ object Strings {
     const val SB_SCENE_VIDEO_RUNNING = "Membuat video adegan…"
     const val SB_SCENE_VIDEO_DONE = "Video adegan selesai — klip tersimpan dan dipakai ulang gratis saat Buat Video."
     const val SB_WATCH_CLIP = "▶ Tonton klip adegan ini"
+    // Face lock (owner 2026-09-12): customers returned videos because faces drifted.
+    const val SETTINGS_FACE_LOCK = "Kunci wajah"
+    const val SETTINGS_FACE_LOCK_NOTE = "Potongan wajah asli beresolusi penuh dikirim bersama SETIAP permintaan gambar adegan dan video, supaya wajah tetap orang yang sama di semua adegan. Proyek lama ikut terkunci saat gambar atau videonya dibuat ulang."
+    const val SB_FACE_LOCKED = "🔒 wajah terkunci"
     const val RESULT_EDIT_STORYBOARD = "Revisi Storyboard"
     const val RESULT_EDIT_STORYBOARD_NOTE = "Kembali ke storyboard untuk mengubah adegan — hanya adegan yang diubah yang dibuat ulang (berbayar); sisanya memakai klip yang sudah ada, gratis."
     const val SB_SCENE_NEGATIVE_LABEL = "Larangan gambar (negative)"

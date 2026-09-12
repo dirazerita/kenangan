@@ -134,4 +134,22 @@ object KeyframePrompts {
         return restoration + base + fusion + preservation + focus + NO_DUPLICATE_CLAUSE +
             " Photorealistic, warm natural light, $ratioPhrase."
     }
+
+    /**
+     * Face references (owner 2026-09-12, "kunci wajah"): the crops are sent
+     * AFTER the source photo(s), so the clause names them by position and
+     * ties each to the person it belongs to. Without this the model treats
+     * extra images as loose inspiration instead of an identity contract.
+     */
+    fun faceReferenceClause(firstIndex: Int, descriptions: List<String>): String {
+        if (descriptions.isEmpty()) return ""
+        val lines = descriptions.mapIndexed { i, desc ->
+            "image ${firstIndex + i} is the close-up face of ${desc.trim().trimEnd('.')}"
+        }
+        return " FACE LOCK: ${lines.joinToString("; ")} — these are the SAME people as in image 1. " +
+            "Reproduce each face EXACTLY as in its close-up: the same bone structure, eye shape, " +
+            "nose, mouth, skin tone, wrinkles, age and hairline, so a family member would " +
+            "recognise them instantly. Never substitute a similar-looking person, never idealise " +
+            "or rejuvenate the face."
+    }
 }
