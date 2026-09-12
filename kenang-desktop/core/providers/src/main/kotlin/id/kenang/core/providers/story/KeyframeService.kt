@@ -45,6 +45,7 @@ class KeyframeService(
     private val sceneRepository: SceneRepository,
     private val photoRepository: PhotoRepository,
     private val projectRepository: id.kenang.core.data.ProjectRepository,
+    private val faceLock: FaceLock,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -130,6 +131,14 @@ class KeyframeService(
         }
         if (urls.isEmpty()) return AppError.Unknown("no source photos for scene ${scene.scene_id}").err()
 
+        // Face lock (owner 2026-09-12): full-resolution face crops ride along
+        // as extra references, named in the prompt by position.
+        val faceRefs = faceLock.refs(scene.project_id, sourceIds)
+        if (faceRefs.isNotEmpty()) {
+            Napier.i("face lock: ${faceRefs.size} face reference(s) for scene ${scene.scene_id}")
+        }
+        val faceClause = KeyframePrompts.faceReferenceClause(urls.size + 1, faceRefs.map { it.description })
+
         // The video's ratio is decided in the wizard, so the KEYFRAME must be
         // generated at that ratio too (owner 2026-09-02): nano-banana defaults
         // to aspect_ratio=auto (follows the source photo), and the mismatched
@@ -152,9 +161,9 @@ class KeyframeService(
                     KeyframePrompts.descriptionOverrideClause(scene.user_description) +
                     KeyframePrompts.negativeClause(
                         scene.negative_prompt ?: project?.negative_prompt,
-                    ),
+                    ) + faceClause,
             )
-            putJsonArray("image_urls") { urls.forEach { add(it) } }
+            putJsonArray("image_urls") { (urls + faceRefs.map { it.url }).forEach { add(it) } }
             put("num_images", 1)
             put("output_format", "jpeg")
             put("aspect_ratio", aspectRatio)

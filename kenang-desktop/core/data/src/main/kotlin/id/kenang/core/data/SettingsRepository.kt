@@ -29,6 +29,8 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_DATA_FOLDER = "data_folder"
         /** Also export a watermarked copy for pre-payment previews - owner 2026-09-11. */
         const val KEY_WATERMARK_COPY = "watermark_copy"
+        /** Face lock: face crops ride every keyframe and video request - owner 2026-09-12. */
+        const val KEY_FACE_LOCK = "face_lock"
         // TODO(D-002): "license_state" + "trial_exports_used" reserved for Phase 05.
     }
 
@@ -88,6 +90,11 @@ class SettingsRepository(private val db: KenangDb) {
     var watermarkCopy: Boolean
         get() = getBool(KEY_WATERMARK_COPY)
         set(v) = setBool(KEY_WATERMARK_COPY, v)
+
+    /** Default ON: customers were returning videos because faces drifted. */
+    var faceLock: Boolean
+        get() = getBool(KEY_FACE_LOCK, default = true)
+        set(v) = setBool(KEY_FACE_LOCK, v)
 
     var lastNarrationTemplate: Int
         get() = get(KEY_LAST_NARRATION_TEMPLATE)?.toIntOrNull() ?: -1

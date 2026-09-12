@@ -364,6 +364,29 @@ fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
         Spacer(Modifier.height(24.dp))
+
+        // Face lock (owner 2026-09-12). ON by default; here so it can be
+        // switched off if a provider ever misbehaves with extra references.
+        var faceLock by remember { mutableStateOf(settings.faceLock) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Switch(
+                checked = faceLock,
+                onCheckedChange = { faceLock = it; settings.faceLock = it },
+            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(Strings.SETTINGS_FACE_LOCK, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    Strings.SETTINGS_FACE_LOCK_NOTE,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
         DataFolderSection(snackbar)
 
         Spacer(Modifier.height(24.dp))

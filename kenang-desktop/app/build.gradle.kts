@@ -194,6 +194,18 @@ tasks.register<JavaExec>("clipDoctor") {
     providers.gradleProperty("doctorDry").orNull?.let { systemProperty("doctor.dry", it) }
 }
 
+// Diagnostic: face lock — draws boxes + writes crops for a project; optional
+// real keyframe / clip run. gradlew :app:faceLockDoctor -PdoctorProject=<id>
+tasks.register<JavaExec>("faceLockDoctor") {
+    group = "verification"
+    description = "Face lock: boxes, crops, and optionally one real keyframe/video"
+    mainClass.set("id.kenang.app.devtools.FaceLockDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
+    providers.gradleProperty("doctorKeyframe").orNull?.let { systemProperty("doctor.keyframe", it) }
+    providers.gradleProperty("doctorVideo").orNull?.let { systemProperty("doctor.video", it) }
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

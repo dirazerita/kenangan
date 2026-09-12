@@ -19,6 +19,12 @@ data class PhotoAnalysis(
         val id: String,
         val desc: String,
         @SerialName("face_quality") val faceQuality: Double = 0.0,
+        /**
+         * Face location as fractions of the photo: [x0, y0, x1, y1] (owner
+         * 2026-09-12, "kunci wajah"). Null on analyses stored before the
+         * field existed and when the face is not visible; FaceLock backfills.
+         */
+        @SerialName("face_box") val faceBox: List<Double>? = null,
     )
 }
 

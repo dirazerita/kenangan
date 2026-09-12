@@ -48,6 +48,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import id.kenang.core.data.DataFolderMover
+import id.kenang.core.providers.story.FaceLock
 import org.koin.dsl.module
 import java.io.File
 
@@ -94,7 +95,8 @@ val appModule = module {
     single<RatioCropper> { AwtRatioCropper() }
     single { FalStorage(get(), get()) }
     single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { FaceLock(get(), get(), get(), get()) }
+    single { KeyframeService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }
     single { MotionControlService(get(), get(), get(), get(), get(), get(), get()) }
@@ -107,7 +109,7 @@ val appModule = module {
     single { VideoAssembler(get(), get()) }
     single { ClipDownloader(get()) }
     single { TtsService(get(), get(), get(), get(), get(), get()) }
-    single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { GenerationOrchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { AssemblyService(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     // Standalone photo tool (owner 2026-09-01)

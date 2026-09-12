@@ -109,6 +109,10 @@ object Strings {
     const val SETTINGS_API_KEYS = "API Key"
     const val SETTINGS_OUTPUT_FOLDER = "Folder output"
     // Data folder (owner 2026-09-10): the app had grown to 7 GB on drive C.
+    // Face lock (owner 2026-09-12): customers returned videos because faces drifted.
+    const val SETTINGS_FACE_LOCK = "Kunci wajah"
+    const val SETTINGS_FACE_LOCK_NOTE = "Potongan wajah asli beresolusi penuh dikirim bersama SETIAP permintaan gambar adegan dan video, supaya wajah tetap orang yang sama di semua adegan. Proyek lama ikut terkunci saat gambar atau videonya dibuat ulang."
+    const val SB_FACE_LOCKED = "🔒 wajah terkunci"
     const val SETTINGS_DATA_TITLE = "Folder data aplikasi"
     const val SETTINGS_DATA_NOTE = "Semua foto, gambar adegan, klip video dan berkas pendukung disimpan di sini. Anda bisa memindahkannya ke drive lain jika drive C mulai penuh. Database kecil (beberapa MB) tetap di drive C agar aplikasi selalu bisa dibuka."
     const val SETTINGS_DATA_CURRENT = "Lokasi sekarang"
