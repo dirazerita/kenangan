@@ -15,6 +15,7 @@ import id.kenang.core.providers.PriceBook
 import id.kenang.core.providers.fal.FalQueueClient
 import id.kenang.core.providers.fal.FalStorage
 import id.kenang.core.providers.gen.TtsService
+import id.kenang.core.providers.story.AnalysisService
 import id.kenang.core.providers.voice.ClonedVoice
 import id.kenang.core.providers.voice.VoiceCloneService
 import io.github.aakira.napier.Napier
@@ -50,6 +51,7 @@ class TalkingVideoService(
     private val settings: SettingsRepository,
     private val tts: TtsService,
     private val voiceClone: VoiceCloneService,
+    private val analysis: AnalysisService,
 ) {
     companion object {
         /** Pseudo project id for gen_cost rows and the TTS scratch folder. */
@@ -68,6 +70,8 @@ class TalkingVideoService(
         const val MAX_CHARS = 800
         /** Label prefix for clones this tool makes, so the same file is reused. */
         private const val CLONE_LABEL_PREFIX = "Video Berbicara: "
+        /** Script lengths offered in the UI, in seconds of speech. */
+        val SCRIPT_LENGTHS = listOf(15, 30, 45)
         val AUDIO_EXTENSIONS: List<String> get() = VoiceCloneService.AUDIO_EXTENSIONS
     }
 
@@ -143,6 +147,20 @@ class TalkingVideoService(
             ?.let { usable(File(it, "VideoBerbicara")) }
         return fromOutput ?: AppDirs.talking
     }
+
+    /**
+     * Writes the script from the user's theme (owner 2026-09-13: manual OR
+     * automatic). [photo] is optional — with it the words fit the person who
+     * will speak them. The user edits the result freely afterwards.
+     */
+    suspend fun writeScript(theme: String, photo: File?, targetSeconds: Int): AppResult<String> =
+        analysis.writeTalkingScript(
+            projectId = COST_PROJECT,
+            theme = theme,
+            photo = photo,
+            targetSeconds = targetSeconds.coerceIn(5, MAX_AUDIO_S.toInt()),
+            maxChars = MAX_CHARS,
+        )
 
     /** Remembers the tool's own results folder; null restores the default. */
     fun setOutputFolder(path: String?) {

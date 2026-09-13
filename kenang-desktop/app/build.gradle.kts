@@ -219,6 +219,17 @@ tasks.register<JavaExec>("talkingDoctor") {
     providers.gradleProperty("doctorBalanceOnly").orNull?.let { systemProperty("doctor.balanceOnly", it) }
 }
 
+// Diagnostic: the Video Berbicara script writer — real LLM calls, cents.
+tasks.register<JavaExec>("scriptDoctor") {
+    group = "verification"
+    description = "Writes talking scripts from themes and checks the prompt's rules"
+    mainClass.set("id.kenang.app.devtools.ScriptDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorThemes").orNull?.let { systemProperty("doctor.themes", it) }
+    providers.gradleProperty("doctorImage").orNull?.let { systemProperty("doctor.image", it) }
+    providers.gradleProperty("doctorSeconds").orNull?.let { systemProperty("doctor.seconds", it) }
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

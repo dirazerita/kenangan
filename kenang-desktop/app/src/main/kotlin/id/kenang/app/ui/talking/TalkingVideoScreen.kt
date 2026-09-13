@@ -80,6 +80,11 @@ fun TalkingVideoScreen(
     var result by remember { mutableStateOf<TalkingVideoService.TalkingResult?>(null) }
     var dragOver by remember { mutableStateOf(false) }
     var outputDirText by remember { mutableStateOf(service.outputDir().absolutePath) }
+    // Script: written by hand, or by the AI from a theme (owner 2026-09-13).
+    var aiScript by remember { mutableStateOf(false) }
+    var theme by remember { mutableStateOf("") }
+    var scriptSeconds by remember { mutableStateOf(TalkingVideoService.SCRIPT_LENGTHS[1]) }
+    var writing by remember { mutableStateOf(false) }
 
     // Drop anywhere: images become the photo, audio becomes the voice sample.
     fun acceptDropped(files: List<File>) {
@@ -228,14 +233,80 @@ fun TalkingVideoScreen(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ---------- Script ----------
+        // ---------- Script: manual or written by the AI ----------
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = !aiScript,
+                onClick = { aiScript = false },
+                label = { Text(Strings.TALK_SCRIPT_TAB_MANUAL) },
+                enabled = !running && !writing,
+            )
+            FilterChip(
+                selected = aiScript,
+                onClick = { aiScript = true },
+                label = { Text(Strings.TALK_SCRIPT_TAB_AI) },
+                enabled = !running && !writing,
+            )
+        }
+        if (aiScript) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = theme,
+                onValueChange = { theme = it.take(300) },
+                label = { Text(Strings.TALK_THEME_LABEL) },
+                placeholder = { Text(Strings.TALK_THEME_HINT) },
+                minLines = 2,
+                enabled = !running && !writing,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(Strings.TALK_THEME_LENGTH, style = MaterialTheme.typography.labelLarge)
+                TalkingVideoService.SCRIPT_LENGTHS.forEach { secs ->
+                    FilterChip(
+                        selected = scriptSeconds == secs,
+                        onClick = { scriptSeconds = secs },
+                        label = { Text("±$secs dtk") },
+                        enabled = !running && !writing,
+                    )
+                }
+                SkeuoOutlinedButton(
+                    onClick = {
+                        if (theme.isBlank()) {
+                            scope.launch { snackbar.showSnackbar(Strings.TALK_NEED_THEME) }
+                        } else {
+                            scope.launch {
+                                writing = true
+                                when (val r = service.writeScript(theme, photo, scriptSeconds)) {
+                                    is AppResult.Ok -> script = r.value
+                                    is AppResult.Err ->
+                                        snackbar.showSnackbar(ErrorTranslator.translate(r.error).message)
+                                }
+                                writing = false
+                            }
+                        }
+                    },
+                    enabled = !running && !writing,
+                ) { Text(if (script.isBlank()) Strings.TALK_WRITE else Strings.TALK_REWRITE) }
+                if (writing) {
+                    CircularProgressIndicator(Modifier.width(18.dp).height(18.dp))
+                    Text(Strings.TALK_WRITING, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            Text(
+                Strings.TALK_AI_NOTE,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = script,
             onValueChange = { script = it.take(TalkingVideoService.MAX_CHARS) },
             label = { Text(Strings.TALK_SCRIPT_LABEL) },
             placeholder = { Text(Strings.TALK_SCRIPT_HINT.replace("%1", TalkingVideoService.MAX_CHARS.toString())) },
             minLines = 4,
-            enabled = !running,
+            enabled = !running && !writing,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(

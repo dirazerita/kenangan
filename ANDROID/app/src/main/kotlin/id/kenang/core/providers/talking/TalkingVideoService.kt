@@ -16,6 +16,7 @@ import id.kenang.core.providers.PriceBook
 import id.kenang.core.providers.fal.FalQueueClient
 import id.kenang.core.providers.fal.FalStorage
 import id.kenang.core.providers.gen.TtsService
+import id.kenang.core.providers.story.AnalysisService
 import id.kenang.core.providers.voice.ClonedVoice
 import id.kenang.core.providers.voice.VoiceCloneService
 import io.github.aakira.napier.Napier
@@ -51,6 +52,7 @@ class TalkingVideoService(
     private val tts: TtsService,
     private val voiceClone: VoiceCloneService,
     private val gallery: GalleryExporter,
+    private val analysis: AnalysisService,
 ) {
     companion object {
         const val COST_PROJECT = "talking"
@@ -61,6 +63,8 @@ class TalkingVideoService(
         const val CHARS_PER_SECOND = 14.0
         const val MAX_CHARS = 800
         private const val CLONE_LABEL_PREFIX = "Video Berbicara: "
+        /** Script lengths offered in the UI, in seconds of speech. */
+        val SCRIPT_LENGTHS = listOf(15, 30, 45)
         val AUDIO_EXTENSIONS: List<String> get() = VoiceCloneService.AUDIO_EXTENSIONS
     }
 
@@ -113,6 +117,20 @@ class TalkingVideoService(
 
     fun existingClone(sample: File): ClonedVoice? =
         voiceClone.cloned().firstOrNull { it.label == cloneLabel(sample) }
+
+    /**
+     * Writes the script from the user's theme (owner 2026-09-13: manual OR
+     * automatic). [photo] is optional — with it the words fit the person who
+     * will speak them. The user edits the result freely afterwards.
+     */
+    suspend fun writeScript(theme: String, photo: File?, targetSeconds: Int): AppResult<String> =
+        analysis.writeTalkingScript(
+            projectId = COST_PROJECT,
+            theme = theme,
+            photo = photo,
+            targetSeconds = targetSeconds.coerceIn(5, MAX_AUDIO_S.toInt()),
+            maxChars = MAX_CHARS,
+        )
 
     /** App-private results folder; the gallery copy is what the user opens. */
     fun outputDir(): File = File(AppDirs.root, "talking").apply { mkdirs() }

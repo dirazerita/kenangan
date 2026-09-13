@@ -73,6 +73,13 @@ data class SceneIdeaSuggestion(
     val camera: String = "",
 )
 
+/**
+ * Script written by the LLM for Video Berbicara (owner 2026-09-13): the user
+ * gives a theme, the model writes the spoken words.
+ */
+@Serializable
+data class TalkingScriptReply(val script: String = "")
+
 /** Moderation pre-check result per photo (client-side, before paid calls). */
 @Serializable
 data class ModerationResult(

@@ -99,7 +99,7 @@ val appModule = module {
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }
     single { MotionControlService(get(), get(), get(), get(), get(), get(), get()) }
-    single { TalkingVideoService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { TalkingVideoService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { CostEstimator(get(), get(), get()) }
 
     // Phase 04 — video pipeline (generate → audio → assemble)
