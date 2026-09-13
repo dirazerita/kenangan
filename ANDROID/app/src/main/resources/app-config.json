@@ -108,6 +108,9 @@
     { "model_slug": "bytedance/seedance-2.0/mini/reference-to-video", "unit": "per_second", "usd": 0.0721 },
     { "model_slug": "fal-ai/minimax/voice-clone", "unit": "per_call", "usd": 1.5 },
     { "model_slug": "fal-ai/kling-video/v3/pro/motion-control", "unit": "per_second", "usd": 0.168 },
+    { "model_slug": "fal-ai/bytedance/omnihuman/v1.5", "unit": "per_second", "usd": 0.16 },
+    { "model_slug": "fal-ai/bytedance/omnihuman", "unit": "per_second", "usd": 0.14 },
+    { "model_slug": "fal-ai/kling-video/v1/pro/ai-avatar", "unit": "per_second", "usd": 0.115 },
     { "model_slug": "fal-ai/kling-video/v3/standard/motion-control", "unit": "per_second", "usd": 0.126 },
     { "model_slug": "fal-ai/kling-video/v2.6/pro/motion-control", "unit": "per_second", "usd": 0.112 },
     { "model_slug": "fal-ai/kling-video/v2.6/standard/motion-control", "unit": "per_second", "usd": 0.07 },
@@ -197,6 +200,11 @@
       { "id": "fal-ai/kling-video/v2.6/pro/motion-control", "label_id": "Kling 2.6 Pro — generasi sebelumnya", "input_mode": "kling", "tested": false },
       { "id": "fal-ai/kling-video/v2.6/standard/motion-control", "label_id": "Kling 2.6 Standard — paling hemat", "input_mode": "kling", "tested": false },
       { "id": "fal-ai/wan/v2.2-14b/animate/move", "label_id": "Wan 2.2 Animate 720p — alternatif ekspresi & gerak", "input_mode": "plain", "params": { "resolution": "720p" }, "tested": false }
+    ],
+    "talking": [
+      { "id": "fal-ai/bytedance/omnihuman/v1.5", "label_id": "OmniHuman 1.5 — premium, paling natural (bawaan)", "desc_id": "ByteDance OmniHuman 1.5: ekspresi, gerak kepala dan tangan mengikuti isi ucapan. 1080p sampai 30 detik suara, 720p sampai 60 detik." },
+      { "id": "fal-ai/kling-video/v1/pro/ai-avatar", "label_id": "Kling AI Avatar Pro — alternatif", "desc_id": "Kling AI Avatar: sinkron bibir kuat, gerak lebih kalem.", "params": { "prompt": "." }, "tested": false },
+      { "id": "fal-ai/bytedance/omnihuman", "label_id": "OmniHuman 1.0 — generasi sebelumnya", "desc_id": "Versi sebelumnya, maksimal 30 detik suara.", "tested": false }
     ],
     "upscale": [
       { "id": "fal-ai/nano-banana-pro/edit", "key": "resto-max", "label_id": "Restorasi Maksimal — 2 tahap", "desc_id": "Terbaik untuk foto rusak parah: tahap 1 membersihkan seluruh kerusakan, tahap 2 menajamkan detail hingga resolusi tinggi", "input_mode": "edit_then_upscale", "params": { "stage2": "fal-ai/clarity-upscaler", "upscale_factor": 2, "creativity": 0.2, "resemblance": 0.8 }, "tested": false },

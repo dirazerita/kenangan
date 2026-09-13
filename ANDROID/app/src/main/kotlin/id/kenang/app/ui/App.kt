@@ -43,6 +43,7 @@ sealed class Route {
     data object About : Route()
     data object Upscale : Route()
     data object MotionControl : Route()
+    data object TalkingVideo : Route()
 }
 
 @Composable
@@ -129,6 +130,7 @@ fun App() {
                         onAbout = { route = Route.About },
                         onUpscale = { route = Route.Upscale },
                         onMotionControl = { route = Route.MotionControl },
+                        onTalkingVideo = { route = Route.TalkingVideo },
                     )
                     is Route.Wizard -> WizardScreen(
                         existingProjectId = (route as Route.Wizard).projectId,
@@ -175,6 +177,10 @@ fun App() {
                     )
                     Route.About -> AboutScreen(onBack = { route = Route.Home })
                     Route.MotionControl -> id.kenang.app.ui.motion.MotionControlScreen(
+                        snackbar = snackbar,
+                        onBack = { route = Route.Home },
+                    )
+                    Route.TalkingVideo -> id.kenang.app.ui.talking.TalkingVideoScreen(
                         snackbar = snackbar,
                         onBack = { route = Route.Home },
                     )

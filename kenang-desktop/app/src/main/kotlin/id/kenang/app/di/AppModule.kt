@@ -49,6 +49,7 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import id.kenang.core.data.DataFolderMover
 import id.kenang.core.providers.story.FaceLock
+import id.kenang.core.providers.talking.TalkingVideoService
 import org.koin.dsl.module
 import java.io.File
 
@@ -100,6 +101,7 @@ val appModule = module {
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }
     single { MotionControlService(get(), get(), get(), get(), get(), get(), get()) }
+    single { TalkingVideoService(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { CostEstimator(get(), get(), get()) }
 
     // Phase 04 — video pipeline (generate → audio → assemble)

@@ -36,15 +36,25 @@ class TtsService(
     data class Narration(val file: File, val durationMs: Long)
 
     /** Synthesizes [text] (≤ config max chars) and returns the local MP3 + duration. */
-    suspend fun synthesize(projectId: String, text: String): AppResult<Narration> {
+    /**
+     * [voiceId] overrides the Settings default voice (Video Berbicara picks
+     * per run); [outFile] overrides the project narration path.
+     */
+    suspend fun synthesize(
+        projectId: String,
+        text: String,
+        voiceId: String? = null,
+        outFile: File? = null,
+    ): AppResult<Narration> {
         val tts = configRepository.current().tts
         // Settings → Model AI overrides (model slug + default voice).
         val slug = settings.modelTts ?: tts.slug
-        val voice = settings.defaultVoice ?: tts.voice
+        val voice = voiceId ?: settings.defaultVoice ?: tts.voice
         val trimmed = text.trim().take(tts.maxChars)
         if (trimmed.isBlank()) return AppError.Unknown("empty narration").err()
 
-        val outFile = File(File(AppDirs.projectDir(projectId), "audio").apply { mkdirs() }, "narration.mp3")
+        val outFile = outFile
+            ?: File(File(AppDirs.projectDir(projectId), "audio").apply { mkdirs() }, "narration.mp3")
 
         val body = buildJsonObject {
             put("text", trimmed)

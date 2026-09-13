@@ -206,6 +206,19 @@ tasks.register<JavaExec>("faceLockDoctor") {
     providers.gradleProperty("doctorVideo").orNull?.let { systemProperty("doctor.video", it) }
 }
 
+// Diagnostic: Video Berbicara — one real run bracketed by the fal balance.
+tasks.register<JavaExec>("talkingDoctor") {
+    group = "verification"
+    description = "Runs one real talking-video job (paid) and checks the charge"
+    mainClass.set("id.kenang.app.devtools.TalkingDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    providers.gradleProperty("doctorImage").orNull?.let { systemProperty("doctor.image", it) }
+    providers.gradleProperty("doctorScript").orNull?.let { systemProperty("doctor.script", it) }
+    providers.gradleProperty("doctorVoice").orNull?.let { systemProperty("doctor.voice", it) }
+    providers.gradleProperty("doctorModel").orNull?.let { systemProperty("doctor.model", it) }
+    providers.gradleProperty("doctorBalanceOnly").orNull?.let { systemProperty("doctor.balanceOnly", it) }
+}
+
 // Diagnostic: test every stored fal key (~$0.001 each). gradlew :app:keyDoctor
 tasks.register<JavaExec>("keyDoctor") {
     group = "verification"

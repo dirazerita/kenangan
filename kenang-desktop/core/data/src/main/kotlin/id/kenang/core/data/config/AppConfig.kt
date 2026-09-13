@@ -56,6 +56,8 @@ data class ModelCatalog(
      * "plain" sends only {image_url, video_url} (+ params).
      */
     val motion: List<ModelOption> = emptyList(),
+    /** Talking-avatar models (photo + audio -> video) for Video Berbicara. */
+    val talking: List<ModelOption> = emptyList(),
 )
 
 @Serializable

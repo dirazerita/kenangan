@@ -64,6 +64,7 @@ fun HomeScreen(
     onAbout: () -> Unit,
     onUpscale: () -> Unit = {},
     onMotionControl: () -> Unit = {},
+    onTalkingVideo: () -> Unit = {},
 ) {
     val projects = koinInject<ProjectRepository>()
     val costTracker = koinInject<CostTracker>()
@@ -128,6 +129,10 @@ fun HomeScreen(
             // reference video onto a photo.
             id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onMotionControl) {
                 Text("🎬  " + Strings.MOTION_TITLE)
+            }
+            // Standalone tool (owner 2026-09-13): a photo speaks a script.
+            id.kenang.app.ui.theme.SkeuoOutlinedButton(onClick = onTalkingVideo) {
+                Text("🗣  " + Strings.TALK_TITLE)
             }
         }
 

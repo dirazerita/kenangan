@@ -43,6 +43,7 @@ sealed class Route {
     data object About : Route()
     data object Upscale : Route()
     data object MotionControl : Route()
+    data object TalkingVideo : Route()
 }
 
 @Composable
@@ -65,6 +66,7 @@ fun App() {
             dev == "wizard" -> Route.Wizard(null)
             dev == "upscale" -> Route.Upscale
             dev == "motion" -> Route.MotionControl
+            dev == "talking" -> Route.TalkingVideo
             dev?.startsWith("storyboard:") == true -> Route.Storyboard(dev.substringAfter(":"))
             else -> null
         }
@@ -131,6 +133,7 @@ fun App() {
                         onAbout = { route = Route.About },
                         onUpscale = { route = Route.Upscale },
                         onMotionControl = { route = Route.MotionControl },
+                        onTalkingVideo = { route = Route.TalkingVideo },
                     )
                     is Route.Wizard -> WizardScreen(
                         existingProjectId = (route as Route.Wizard).projectId,
@@ -181,6 +184,10 @@ fun App() {
                         onBack = { route = Route.Home },
                     )
                     Route.MotionControl -> id.kenang.app.ui.motion.MotionControlScreen(
+                        snackbar = snackbar,
+                        onBack = { route = Route.Home },
+                    )
+                    Route.TalkingVideo -> id.kenang.app.ui.talking.TalkingVideoScreen(
                         snackbar = snackbar,
                         onBack = { route = Route.Home },
                     )
