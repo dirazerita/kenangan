@@ -125,12 +125,28 @@ class TalkingVideoService(
     fun existingClone(sample: File): ClonedVoice? =
         voiceClone.cloned().firstOrNull { it.label == cloneLabel(sample) }
 
-    /** Results folder: `<Folder Output>/VideoBerbicara/`, else the app data folder. */
+    /**
+     * Results folder, in order of preference (owner 2026-09-13: the tool has
+     * its own folder picker, like Upscale): the tool's chosen folder →
+     * `<Folder Output>/VideoBerbicara/` → app-private fallback. An unusable
+     * path (unplugged drive, no write permission) silently falls through, so
+     * a finished video is never lost to a stale setting.
+     */
     fun outputDir(): File {
-        val custom = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
-            ?.let { File(it, "VideoBerbicara") }
-            ?.takeIf { dir -> runCatching { dir.mkdirs(); dir.isDirectory }.getOrDefault(false) }
-        return custom ?: File(AppDirs.mediaRoot, "talking").apply { mkdirs() }
+        fun usable(dir: File): File? =
+            dir.takeIf { runCatching { it.mkdirs(); it.isDirectory }.getOrDefault(false) }
+
+        val own = settings.talkingOutputFolder?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { usable(File(it)) }
+        if (own != null) return own
+        val fromOutput = settings.outputFolder?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { usable(File(it, "VideoBerbicara")) }
+        return fromOutput ?: AppDirs.talking
+    }
+
+    /** Remembers the tool's own results folder; null restores the default. */
+    fun setOutputFolder(path: String?) {
+        settings.talkingOutputFolder = path
     }
 
     /**
@@ -176,7 +192,10 @@ class TalkingVideoService(
         // ---- 2. speech ----
         onPhase(Phase.SPEAKING)
         val stamp = System.currentTimeMillis()
-        val audioFile = File(outputDir(), "bicara_$stamp.mp3")
+        // Resolved ONCE: the speech and the video must land together even if
+        // the folder setting or the drive changes while the render runs.
+        val dir = outputDir()
+        val audioFile = File(dir, "bicara_$stamp.mp3")
         val narration = when (val n = tts.synthesize(COST_PROJECT, text, voiceId = voice, outFile = audioFile)) {
             is AppResult.Ok -> n.value
             is AppResult.Err -> return n
@@ -233,9 +252,16 @@ class TalkingVideoService(
 
         // ---- 4. save ----
         onPhase(Phase.SAVING)
-        val videoFile = File(outputDir(), "bicara_$stamp.mp4")
+        val bytes = runCatching { http.get(videoUrl).readRawBytes() }.getOrElse {
+            return AppError.Unknown("gagal mengunduh video hasil", it).err()
+        }
+        // The render is paid for and already in hand. If the chosen folder
+        // refuses the write (read-only, drive unplugged during the ~10-minute
+        // render), keep the video in the app folder instead of losing it —
+        // the lesson of D-051.
+        val videoFile = writeVideo(bytes, dir, "bicara_$stamp.mp4")
+            ?: return AppError.Unknown("video tidak bisa disimpan di folder mana pun").err()
         return runCatching {
-            videoFile.writeBytes(http.get(videoUrl).readRawBytes())
             val usd = pricePerSecondOf(option) * billedSeconds
             costTracker.record(
                 COST_PROJECT, submitted.requestId, option.id, submitted.keyLabel,
@@ -247,6 +273,29 @@ class TalkingVideoService(
             onSuccess = { it.ok() },
             onFailure = { AppError.Unknown("gagal menyimpan video hasil", it).err() },
         )
+    }
+
+    /**
+     * Writes [bytes] to [preferred], falling back to the app folder when that
+     * write fails. Returns the file that actually holds the video, or null
+     * when even the fallback refused.
+     */
+    private fun writeVideo(bytes: ByteArray, preferred: File, name: String): File? {
+        for (dir in listOf(preferred, AppDirs.talking).distinctBy { it.absolutePath }) {
+            val file = File(dir, name)
+            val written = runCatching {
+                dir.mkdirs()
+                file.writeBytes(bytes)
+                file.isFile && file.length() == bytes.size.toLong()
+            }.getOrDefault(false)
+            if (written) {
+                if (dir.absolutePath != preferred.absolutePath) {
+                    Napier.w("talking: '${preferred.absolutePath}' refused the write — saved to ${file.absolutePath}")
+                }
+                return file
+            }
+        }
+        return null
     }
 
     private fun cloneLabel(sample: File): String =

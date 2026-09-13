@@ -21,6 +21,8 @@ class SettingsRepository(private val db: KenangDb) {
         const val KEY_MODEL_TTS = "model_tts"
         const val KEY_MODEL_MOTION = "model_motion"
         const val KEY_MODEL_TALKING = "model_talking"
+        /** Video Berbicara: user-chosen results folder (blank = <output_folder>/VideoBerbicara). */
+        const val KEY_TALKING_OUTPUT_FOLDER = "talking_output_folder"
         const val KEY_DEFAULT_VOICE = "default_voice"
         /** Index of the last narration suggestion used, so the next project differs. */
         const val KEY_LAST_NARRATION_TEMPLATE = "last_narration_template"
@@ -77,6 +79,10 @@ class SettingsRepository(private val db: KenangDb) {
     var modelTalking: String?
         get() = getOverride(KEY_MODEL_TALKING)
         set(v) = set(KEY_MODEL_TALKING, v ?: "")
+
+    var talkingOutputFolder: String?
+        get() = getOverride(KEY_TALKING_OUTPUT_FOLDER)
+        set(v) = set(KEY_TALKING_OUTPUT_FOLDER, v ?: "")
 
     var defaultVoice: String?
         get() = getOverride(KEY_DEFAULT_VOICE)

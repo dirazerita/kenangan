@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +79,7 @@ fun TalkingVideoScreen(
     var elapsed by remember { mutableStateOf(0) }
     var result by remember { mutableStateOf<TalkingVideoService.TalkingResult?>(null) }
     var dragOver by remember { mutableStateOf(false) }
+    var outputDirText by remember { mutableStateOf(service.outputDir().absolutePath) }
 
     // Drop anywhere: images become the photo, audio becomes the voice sample.
     fun acceptDropped(files: List<File>) {
@@ -321,11 +323,31 @@ fun TalkingVideoScreen(
             LinearProgressIndicator(progress = { (elapsed / 300f).coerceAtMost(0.95f) }, modifier = Modifier.fillMaxWidth())
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            Strings.TALK_RESULT_NOTE.replace("%1", service.outputDir().absolutePath),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-        )
+        // Results-folder picker (owner 2026-09-13): the tool remembers its own
+        // destination, independent of the global Folder Output.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                Strings.TALK_RESULT_NOTE.replace("%1", outputDirText),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
+            TextButton(
+                onClick = {
+                    pickFolder(outputDirText)?.let { dir ->
+                        service.setOutputFolder(dir.absolutePath)
+                        outputDirText = service.outputDir().absolutePath
+                    }
+                },
+                enabled = !running,
+            ) { Text(Strings.TALK_CHANGE_FOLDER) }
+            TextButton(
+                onClick = {
+                    service.setOutputFolder(null)
+                    outputDirText = service.outputDir().absolutePath
+                },
+                enabled = !running,
+            ) { Text(Strings.TALK_FOLDER_RESET) }
+        }
 
         // ---------- Result ----------
         result?.let { r ->
@@ -348,6 +370,20 @@ fun TalkingVideoScreen(
                 }
             }
         }
+    }
+}
+
+/** Folder picker for the tool's results destination. */
+private fun pickFolder(current: String): File? {
+    val chooser = javax.swing.JFileChooser().apply {
+        dialogTitle = Strings.TALK_CHANGE_FOLDER
+        fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+        File(current).takeIf { it.isDirectory }?.let { currentDirectory = it }
+    }
+    return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile
+    } else {
+        null
     }
 }
 

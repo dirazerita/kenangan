@@ -153,7 +153,10 @@ class TalkingVideoService(
 
         onPhase(Phase.SPEAKING)
         val stamp = System.currentTimeMillis()
-        val audioFile = File(outputDir(), "bicara_$stamp.mp3")
+        // Resolved ONCE: the speech and the video must land together even if
+        // the folder setting or the drive changes while the render runs.
+        val dir = outputDir()
+        val audioFile = File(dir, "bicara_$stamp.mp3")
         val narration = when (val n = tts.synthesize(COST_PROJECT, text, voiceId = voice, outFile = audioFile)) {
             is AppResult.Ok -> n.value
             is AppResult.Err -> return n
@@ -206,7 +209,7 @@ class TalkingVideoService(
         val billedSeconds = payload["duration"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0 } ?: seconds
 
         onPhase(Phase.SAVING)
-        val videoFile = File(outputDir(), "bicara_$stamp.mp4")
+        val videoFile = File(dir, "bicara_$stamp.mp4")
         return runCatching {
             videoFile.writeBytes(http.get(videoUrl).readRawBytes())
             gallery.export(videoFile, "VideoBerbicara")

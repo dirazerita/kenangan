@@ -36,7 +36,7 @@ object AppDirs {
     }
 
     /** Subfolders that a data-folder move relocates, in [mediaRoot]. */
-    val MOVABLE = listOf("projects", "tools", "music", "cache", "motion", "upscale")
+    val MOVABLE = listOf("projects", "tools", "music", "cache", "motion", "upscale", "talking")
 
     val db: File get() = sub("db")
     val logs: File get() = sub("logs")
@@ -48,6 +48,7 @@ object AppDirs {
     val cache: File get() = mediaSub("cache")
     val motion: File get() = mediaSub("motion")
     val upscale: File get() = mediaSub("upscale")
+    val talking: File get() = mediaSub("talking")
 
     val dbFile: File get() = File(db, "kenang.db")
     val userConfigFile: File get() = File(config, "app-config.json")

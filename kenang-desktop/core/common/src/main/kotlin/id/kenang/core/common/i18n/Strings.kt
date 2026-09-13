@@ -75,6 +75,8 @@ object Strings {
     const val TALK_AUDIO_SAVED = "suaranya juga tersimpan di sebelahnya (.mp3)"
     const val TALK_ESTIMATE_NOTE = "±%1 dtk suara · video $%2 + suara $%3"
     const val TALK_RESULT_NOTE = "Hasil disimpan ke: %1"
+    const val TALK_CHANGE_FOLDER = "Ubah folder…"
+    const val TALK_FOLDER_RESET = "Bawaan"
     const val SB_DROP_REPLACE_HINT = "Geser foto ke kartu adegan untuk mengganti gambarnya."
     const val SB_SHEET_DIALOG_TITLE = "Pratinjau Storyboard"
     const val SB_SHEET_DIALOG_BODY = "Lembar gambar selalu dibuat (gratis). Video contoh 10 detik berisi GERAKAN NYATA hasil render 2 adegan pertama — klipnya tersimpan dan dipakai ulang gratis saat video final dibuat, jadi biayanya tidak hangus."
