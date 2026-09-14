@@ -56,8 +56,26 @@ fun main(): Unit = runBlocking {
     val before = key?.let { (billing.balance(it.key) as? AppResult.Ok)?.value?.currentBalance }
     println("   balance before: ${before?.let { "$" + "%.3f".format(it) } ?: "(not readable with this key)"}")
 
+    // -Ddoctor.speaker=<1-based index or part of the label>: who should speak.
+    val speakerPick = System.getProperty("doctor.speaker")
+    var speaker: id.kenang.core.data.story.SpeakerCandidate? = null
+    if (speakerPick != null) {
+        when (val people = service.speakers(image)) {
+            is AppResult.Ok -> {
+                println("   people found: ${people.value.size}")
+                people.value.forEachIndexed { i, p ->
+                    println("     ${i + 1}. ${p.label}  face=${p.faceBox}  person=${p.personBox}")
+                }
+                speaker = people.value.getOrNull(speakerPick.toIntOrNull()?.minus(1) ?: -1)
+                    ?: people.value.firstOrNull { it.label.contains(speakerPick, ignoreCase = true) }
+                println("   speaking: ${speaker?.label ?: "(not matched - no mask)"}")
+            }
+            is AppResult.Err -> println("   speaker detection failed: ${people.error}")
+        }
+    }
+
     val t0 = System.currentTimeMillis()
-    when (val r = service.run(image, script, voiceId = null, voiceSample = voice, option = option) { println("   phase: $it") }) {
+    when (val r = service.run(image, script, voiceId = null, voiceSample = voice, option = option, speaker = speaker) { println("   phase: $it") }) {
         is AppResult.Ok -> {
             println("OK in ${(System.currentTimeMillis() - t0) / 1000}s")
             println("   video: ${r.value.video.absolutePath} (${r.value.video.length() / 1024} KB, ${"%.1f".format(r.value.durationS)} s)")

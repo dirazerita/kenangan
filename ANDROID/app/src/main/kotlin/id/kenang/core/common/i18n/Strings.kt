@@ -56,6 +56,11 @@ object Strings {
     const val TALK_DROP_HINT = "Geser foto dan file suara dari Explorer ke layar ini."
     const val TALK_PICK_PHOTO = "Pilih foto (wajah jelas, menghadap depan)"
     const val TALK_PHOTO_NOTE = "Satu orang dengan wajah jelas. Foto setengah badan memberi gerak tangan yang natural."
+    // Who speaks in a group photo (owner 2026-09-15).
+    const val TALK_SPEAKER_LABEL = "Siapa yang bicara?"
+    const val TALK_SPEAKER_AUTO = "Otomatis"
+    const val TALK_SPEAKER_CHECKING = "Memeriksa siapa saja di foto\u2026"
+    const val TALK_SPEAKER_NOTE = "Foto ini berisi lebih dari satu orang. Pilih siapa yang bibirnya bergerak \u2014 yang lain tetap diam. Hanya untuk model OmniHuman."
     const val TALK_SCRIPT_TAB_MANUAL = "Tulis sendiri"
     const val TALK_SCRIPT_TAB_AI = "Dibuatkan AI"
     const val TALK_THEME_LABEL = "Tema ucapan"

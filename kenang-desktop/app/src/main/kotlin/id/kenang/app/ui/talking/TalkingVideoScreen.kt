@@ -85,6 +85,11 @@ fun TalkingVideoScreen(
     var theme by remember { mutableStateOf("") }
     var scriptSeconds by remember { mutableStateOf(TalkingVideoService.SCRIPT_LENGTHS[1]) }
     var writing by remember { mutableStateOf(false) }
+    // Who speaks when the photo holds more than one person (owner 2026-09-15).
+    var speakers by remember { mutableStateOf<List<id.kenang.core.data.story.SpeakerCandidate>>(emptyList()) }
+    var speaker by remember { mutableStateOf<id.kenang.core.data.story.SpeakerCandidate?>(null) }
+    var checkingSpeakers by remember { mutableStateOf(false) }
+
 
     // Drop anywhere: images become the photo, audio becomes the voice sample.
     fun acceptDropped(files: List<File>) {
@@ -100,6 +105,20 @@ fun TalkingVideoScreen(
             kotlinx.coroutines.delay(1000)
             elapsed++
         }
+    }
+
+    // One cheap vision call per chosen photo; the chooser only appears when
+    // there is actually someone to choose between.
+    LaunchedEffect(photo) {
+        speakers = emptyList()
+        speaker = null
+        val p = photo ?: return@LaunchedEffect
+        checkingSpeakers = true
+        speakers = when (val found = service.speakers(p)) {
+            is AppResult.Ok -> found.value
+            is AppResult.Err -> emptyList()
+        }
+        checkingSpeakers = false
     }
 
     val option = service.options().firstOrNull { it.selectionKey() == modelKey } ?: service.selected()
@@ -233,6 +252,41 @@ fun TalkingVideoScreen(
         }
         Spacer(Modifier.height(16.dp))
 
+        // ---------- Who speaks (group photos) ----------
+        if (checkingSpeakers || speakers.size > 1) {
+            Spacer(Modifier.height(12.dp))
+            Text(Strings.TALK_SPEAKER_LABEL, style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(6.dp))
+            if (checkingSpeakers) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CircularProgressIndicator(Modifier.width(16.dp).height(16.dp))
+                    Text(Strings.TALK_SPEAKER_CHECKING, style = MaterialTheme.typography.labelMedium)
+                }
+            } else {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = speaker == null,
+                        onClick = { speaker = null },
+                        label = { Text(Strings.TALK_SPEAKER_AUTO) },
+                        enabled = !running,
+                    )
+                    speakers.forEach { person ->
+                        FilterChip(
+                            selected = speaker?.id == person.id,
+                            onClick = { speaker = person },
+                            label = { Text(person.label) },
+                            enabled = !running && service.supportsSpeakerChoice(option),
+                        )
+                    }
+                }
+                Text(
+                    Strings.TALK_SPEAKER_NOTE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                )
+            }
+        }
+
         // ---------- Script: manual or written by the AI ----------
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
@@ -360,6 +414,7 @@ fun TalkingVideoScreen(
                                 voiceId = if (useVoiceFile) null else voiceId,
                                 voiceSample = if (useVoiceFile) voiceFile else null,
                                 option = option,
+                                speaker = speaker,
                             ) { phase = it }
                             when (r) {
                                 is AppResult.Ok -> result = r.value

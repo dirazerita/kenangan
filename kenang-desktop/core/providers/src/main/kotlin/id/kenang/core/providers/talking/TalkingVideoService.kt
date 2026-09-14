@@ -9,6 +9,8 @@ import id.kenang.core.data.AppDirs
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.config.ModelOption
+import id.kenang.core.data.story.SpeakerCandidate
+import id.kenang.core.data.story.SpeakerMask
 import id.kenang.core.data.story.UploadPrep
 import id.kenang.core.providers.CostTracker
 import id.kenang.core.providers.PriceBook
@@ -162,6 +164,17 @@ class TalkingVideoService(
             maxChars = MAX_CHARS,
         )
 
+    /**
+     * Lists the people in [photo] so the user can choose who speaks (owner
+     * 2026-09-15: a couple in one photo, only the husband should talk). One
+     * cheap vision call; an empty list means "let the model decide".
+     */
+    suspend fun speakers(photo: File): AppResult<List<SpeakerCandidate>> =
+        analysis.detectSpeakers(COST_PROJECT, photo)
+
+    /** True when [option] can be told WHICH person speaks (OmniHuman masks). */
+    fun supportsSpeakerChoice(option: ModelOption): Boolean = option.id.contains("omnihuman")
+
     /** Remembers the tool's own results folder; null restores the default. */
     fun setOutputFolder(path: String?) {
         settings.talkingOutputFolder = path
@@ -178,6 +191,8 @@ class TalkingVideoService(
         voiceId: String?,
         voiceSample: File?,
         option: ModelOption = selected(),
+        /** Who should speak in a group photo; null = the model decides. */
+        speaker: SpeakerCandidate? = null,
         onPhase: (Phase) -> Unit = {},
     ): AppResult<TalkingResult> {
         val text = script.trim()
@@ -225,12 +240,17 @@ class TalkingVideoService(
 
         // ---- 3. talking video ----
         onPhase(Phase.RENDERING)
+        // The mask must line up with the image the provider actually receives,
+        // so both are built from these exact bytes (UploadPrep may downscale).
+        val preparedImage = UploadPrep.prepareJpeg(photo)
         val imageUrl = when (
-            val up = storage.uploadBytes(UploadPrep.prepareJpeg(photo), "${photo.nameWithoutExtension}.jpg", "image/jpeg")
+            val up = storage.uploadBytes(preparedImage, "${photo.nameWithoutExtension}.jpg", "image/jpeg")
         ) {
             is AppResult.Ok -> up.value
             is AppResult.Err -> return up
         }
+        val maskUrl = speaker?.takeIf { supportsSpeakerChoice(option) }
+            ?.let { uploadSpeakerMask(preparedImage, it, stamp) }
         val audioUrl = when (val up = storage.uploadFile(narration.file)) {
             is AppResult.Ok -> up.value
             is AppResult.Err -> return up
@@ -238,6 +258,8 @@ class TalkingVideoService(
         val body = buildJsonObject {
             put("image_url", imageUrl)
             put("audio_url", audioUrl)
+            // "Only the person in the white area of the mask will speak" (fal).
+            maskUrl?.let { put("mask_url", it) }
             // OmniHuman 1.5: 1080p only for <= 30 s of audio (fal schema).
             if (option.id.endsWith("omnihuman/v1.5")) {
                 put("resolution", if (seconds <= HD_AUDIO_S) "1080p" else "720p")
@@ -314,6 +336,39 @@ class TalkingVideoService(
             }
         }
         return null
+    }
+
+    /**
+     * Renders and uploads the mask for [speaker]. Returns null when the boxes
+     * are unusable or the upload fails — the run then proceeds unmasked
+     * rather than failing, because a video of the wrong person speaking is
+     * still better than no video at all after paying for the speech.
+     */
+    private suspend fun uploadSpeakerMask(
+        preparedImage: ByteArray,
+        speaker: SpeakerCandidate,
+        stamp: Long,
+    ): String? {
+        val image = runCatching {
+            javax.imageio.ImageIO.read(java.io.ByteArrayInputStream(preparedImage))
+        }.getOrNull() ?: return null
+        val box = SpeakerMask.usableBox(speaker.personBox)
+            ?: speaker.faceBox?.let { SpeakerMask.bodyFromFace(it) }
+            ?: return null
+
+        val maskFile = SpeakerMask.render(
+            image.width, image.height, box, File(AppDirs.cache, "talking/mask_$stamp.png"),
+        ) ?: return null
+        return when (val up = storage.uploadFile(maskFile)) {
+            is AppResult.Ok -> {
+                Napier.i("talking: '${speaker.label}' will speak (mask ${image.width}x${image.height})")
+                up.value
+            }
+            is AppResult.Err -> {
+                Napier.w("talking: mask upload failed (${up.error}) - rendering without a mask")
+                null
+            }
+        }
     }
 
     private fun cloneLabel(sample: File): String =

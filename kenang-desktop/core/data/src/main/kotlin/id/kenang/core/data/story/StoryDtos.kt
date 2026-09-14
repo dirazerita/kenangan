@@ -80,6 +80,24 @@ data class SceneIdeaSuggestion(
 @Serializable
 data class TalkingScriptReply(val script: String = "")
 
+/**
+ * One person the model found in a Video Berbicara photo (owner 2026-09-15:
+ * a couple in one photo, only the husband should speak). Boxes are fractions
+ * of the frame: [x0, y0, x1, y1].
+ */
+@Serializable
+data class SpeakerCandidate(
+    val id: String = "",
+    /** Short Indonesian label the user picks from, e.g. "Pria berpeci (kiri)". */
+    val label: String = "",
+    @SerialName("face_box") val faceBox: List<Double>? = null,
+    /** The whole visible person; the mask is built from this when present. */
+    @SerialName("person_box") val personBox: List<Double>? = null,
+)
+
+@Serializable
+data class SpeakerDetection(val people: List<SpeakerCandidate> = emptyList())
+
 /** Moderation pre-check result per photo (client-side, before paid calls). */
 @Serializable
 data class ModerationResult(

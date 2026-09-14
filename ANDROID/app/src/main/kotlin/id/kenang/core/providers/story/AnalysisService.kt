@@ -16,6 +16,8 @@ import id.kenang.core.data.story.ModerationResult
 import id.kenang.core.data.story.PhotoAnalysis
 import id.kenang.core.data.story.SceneIdeaSuggestion
 import id.kenang.core.data.story.ScenePlanItem
+import id.kenang.core.data.story.SpeakerDetection
+import id.kenang.core.data.story.SpeakerCandidate
 import id.kenang.core.data.story.TalkingScriptReply
 import id.kenang.core.data.story.UploadPrep
 import id.kenang.core.db.Photo
@@ -545,6 +547,52 @@ OUTPUT
 Return only this JSON object, nothing before or after it and no code fences:
 {"script":"..."}
 The value is one plain-text paragraph of Bahasa Indonesia: the words to be spoken, and nothing else."""
+    }
+
+    /**
+     * Lists the people in a Video Berbicara photo so the user can choose who
+     * speaks (owner 2026-09-15). Labels are Indonesian and positional, since
+     * the user picks from them; boxes drive the mask sent to OmniHuman.
+     */
+    suspend fun detectSpeakers(projectId: String, photo: File): AppResult<List<SpeakerCandidate>> {
+        if (!photo.isFile) return AppError.Unknown("foto tidak ditemukan").err()
+        val uploaded = when (
+            val up = storage.uploadBytes(
+                UploadPrep.prepareJpeg(photo), "speakers_${photo.nameWithoutExtension}.jpg", "image/jpeg",
+            )
+        ) {
+            is AppResult.Ok -> up.value
+            is AppResult.Err -> return up
+        }
+
+        val prompt = """List every person whose face is visible in this photo.
+
+Return ONLY valid JSON, no markdown:
+{"people":[{"id":"p1","label":"<Indonesian>","face_box":[x0,y0,x1,y1],"person_box":[x0,y0,x1,y1]}]}
+
+- Order the people LEFT to RIGHT as they appear.
+- "label" is what an Indonesian user will read to pick this person. Describe
+  what is plainly visible plus the position, 2-5 words, e.g. "Pria berpeci (kiri)",
+  "Wanita berhijab merah muda (kanan)", "Anak laki-laki (tengah)". No names, no guesses
+  about relationships, jobs, age in years, health or religion.
+- "face_box" is tight around the face, from the top of the forehead to the chin.
+- "person_box" covers that person's whole visible body in the frame: head, torso,
+  arms and hands, down to where they are cut off by the frame edge. When two people
+  touch or overlap, give each the area that is mostly theirs — the boxes may not
+  overlap by more than a little.
+- All four numbers are FRACTIONS of the image width/height between 0 and 1.
+- Skip anyone whose face is not visible. If nobody qualifies, return {"people":[]}."""
+
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 600, imageFile = photo) { raw ->
+            json.decodeFromString(SpeakerDetection.serializer(), raw).people
+                .filter { it.faceBox != null || it.personBox != null }
+                .mapIndexed { i, p ->
+                    p.copy(
+                        id = p.id.ifBlank { "p${i + 1}" },
+                        label = p.label.ifBlank { "Orang ${i + 1}" },
+                    )
+                }
+        }
     }
 
     private suspend fun moderatePhoto(projectId: String, imageUrl: String): AppResult<ModerationResult> {
