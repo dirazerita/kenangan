@@ -24,8 +24,12 @@ import javax.imageio.ImageIO
  */
 object WatermarkImage {
 
-    /** What the watermark says. Kept here so both platforms read one source. */
-    const val TEXT = "VIDEO KENANGAN"
+    /**
+     * What the watermark says (owner 2026-09-14: the preview copy should tell
+     * the customer what to do, not what they are watching). Each word becomes
+     * its own line, stacked in the middle of the frame.
+     */
+    const val TEXT = "LAKUKAN PEMBAYARAN"
 
     /** Opaque enough to deter reuse, sheer enough to still show the memory. */
     private const val FILL_ALPHA = 0.62f
@@ -34,10 +38,13 @@ object WatermarkImage {
     /**
      * Returns a cached PNG of [width]x[height] carrying [text]. Regenerated
      * only when missing, so repeated exports pay nothing.
+     *
+     * The wording is part of the file name: when [TEXT] changes, the old
+     * cached marks in the user's data folder must not be silently reused.
      */
     fun render(width: Int, height: Int, dir: File, text: String = TEXT): File? = runCatching {
         dir.mkdirs()
-        val target = File(dir, "wm_${width}x${height}.png")
+        val target = File(dir, "wm_${width}x${height}_${textKey(text)}.png")
         if (target.isFile && target.length() > 0) return target
 
         val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
@@ -73,18 +80,24 @@ object WatermarkImage {
         g.dispose()
 
         ImageIO.write(image, "png", target)
+        // Sweep marks of an earlier wording at this size; they can never be
+        // used again and would just accumulate in the user's data folder.
+        dir.listFiles { f: File ->
+            f.name.startsWith("wm_${width}x$height" + "_") && f.name != target.name
+        }?.forEach { it.delete() }
         Napier.i("watermark rendered: ${target.name}")
         target
     }.onFailure { Napier.e("watermark render failed: ${it.message}") }.getOrNull()
 
     /**
-     * Splits [text] so it fills the frame: one line in landscape, stacked
-     * words in portrait, each sized to ~88% of the width.
+     * Splits [text] into one line per word, stacked and centred, each sized to
+     * ~88% of the width (owner 2026-09-14: "LAKUKAN" above "PEMBAYARAN", not
+     * one line). Stacking in landscape too keeps both words big enough to read
+     * at a glance.
      */
     private fun layoutLines(text: String, width: Int, height: Int): List<Pair<String, Font>> {
         val words = text.split(" ").filter { it.isNotBlank() }
-        val portrait = height > width
-        val lines = if (portrait && words.size > 1) words else listOf(text)
+        val lines = words.ifEmpty { listOf(text) }
         val maxWidth = width * 0.88
         // Also cap by height so many lines never overflow the frame.
         val maxLineHeight = height * 0.72 / lines.size
@@ -105,6 +118,9 @@ object WatermarkImage {
         }
         return best
     }
+
+    /** Short, stable per-wording key so a new [TEXT] never reuses an old PNG. */
+    private fun textKey(text: String): String = Integer.toHexString(text.hashCode())
 
     /** Arial Black when Windows has it (it usually does), else a bold sans. */
     private fun baseFont(size: Int): Font {

@@ -20,7 +20,7 @@ class WatermarkImageTest {
     @Test
     fun `renders a full-frame mark for both ratios`() {
         listOf(1080 to 1920, 1920 to 1080).forEach { (w, h) ->
-            File(dir, "wm_${w}x${h}.png").delete()
+            dir.listFiles()?.forEach { it.delete() }
             val png = WatermarkImage.render(w, h, dir)
             assertNotNull(png, "no watermark produced for ${w}x$h")
 
@@ -43,6 +43,44 @@ class WatermarkImageTest {
 
             // Corners stay clear — the memory itself must remain visible.
             assertEquals(0, image.getRGB(2, 2) ushr 24, "corner is not transparent")
+        }
+    }
+
+    /**
+     * A new wording must not reuse the PNG of the old one (owner 2026-09-14:
+     * "VIDEO KENANGAN" -> "LAKUKAN PEMBAYARAN"). The user's data folder still
+     * holds marks rendered by an earlier build.
+     */
+    @Test
+    fun `a different wording gets its own file`() {
+        val first = WatermarkImage.render(1080, 1920, dir, "SATU DUA")
+        val second = WatermarkImage.render(1080, 1920, dir, "TIGA EMPAT")
+        assertNotNull(first)
+        assertNotNull(second)
+        assertTrue(
+            first!!.absolutePath != second!!.absolutePath,
+            "a changed wording silently reused the old mark: ${first.name}",
+        )
+    }
+
+    /** The owner asked for the words stacked, one per line — not one long line. */
+    @Test
+    fun `each word is drawn on its own line`() {
+        listOf(1080 to 1920, 1920 to 1080).forEach { (w, h) ->
+            dir.listFiles()?.forEach { it.delete() }
+            val png = WatermarkImage.render(w, h, dir, "LAKUKAN PEMBAYARAN")
+            assertNotNull(png)
+            val image = ImageIO.read(png)
+
+            // Count vertical bands of ink: two words stacked = two bands.
+            var bands = 0
+            var inBand = false
+            for (y in 0 until h step 4) {
+                val hasInk = (0 until w step 4).any { x -> (image.getRGB(x, y) ushr 24) > 40 }
+                if (hasInk && !inBand) bands++
+                inBand = hasInk
+            }
+            assertEquals(2, bands, "expected two stacked words for ${w}x$h, found $bands band(s)")
         }
     }
 
