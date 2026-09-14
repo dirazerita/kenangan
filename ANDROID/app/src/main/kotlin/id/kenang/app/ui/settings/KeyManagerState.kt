@@ -205,5 +205,11 @@ class KeyManagerState(
         FalKeyStatus.AKTIF -> id.kenang.core.common.i18n.Strings.KEYS_STATUS_ACTIVE
         FalKeyStatus.CADANGAN -> id.kenang.core.common.i18n.Strings.KEYS_STATUS_BACKUP
         FalKeyStatus.SALDO_HABIS -> id.kenang.core.common.i18n.Strings.KEYS_STATUS_EXHAUSTED
+        FalKeyStatus.PERLU_TOPUP -> id.kenang.core.common.i18n.Strings.KEYS_STATUS_TOPUP
+        FalKeyStatus.DITOLAK -> id.kenang.core.common.i18n.Strings.KEYS_STATUS_REJECTED
+        FalKeyStatus.JEDA -> id.kenang.core.common.i18n.Strings.KEYS_STATUS_PAUSED
     }
+
+    /** Seconds left on a key's rest, for the chip ("jeda sebentar 45s"). */
+    fun restSeconds(label: String): Long = pool.restSeconds(label)
 }

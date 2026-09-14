@@ -46,16 +46,48 @@ class FalQueueClient(
     fun withPool(pool: FalKeyPool): FalQueueClient = FalQueueClient(http, pool, baseUrl)
 
     /**
-     * Puts the CURRENT key on cooldown and toasts the switch, so the caller's
-     * next attempt runs on the next key (owner requirement: any troubled call
-     * moves to another key instead of stopping the whole process).
+     * Moves the CURRENT key aside briefly and toasts the switch, so the
+     * caller's next attempt runs on the next key (owner requirement: any
+     * troubled call moves to another key instead of stopping the whole
+     * process).
+     *
+     * The rest is SHORT and labelled TROUBLE (owner 2026-09-14): a timeout or
+     * a content rejection says nothing about the account's money, and the
+     * ten-minute "saldo habis" this used to apply made funded keys look spent
+     * and then failed the whole run.
      */
     suspend fun rotateKey() {
         val current = keyPool.currentKey() ?: return
-        keyPool.markExhausted(current.label)
-        val next = keyPool.currentKey() ?: return
+        keyPool.markExhausted(current.label, CooldownReason.TROUBLE)
+        val next = keyPool.currentKey()
+        if (next == null) {
+            Napier.w("all fal keys are resting after provider trouble - '${current.label}' paused briefly")
+            return
+        }
         Napier.w("rotating fal key after provider trouble: '${current.label}' -> '${next.label}'")
         keyPool.emitSwitch(current.label, next.label)
+    }
+
+    /**
+     * What to report when every key is resting and none of them failed in
+     * THIS call - the reasons decide, instead of defaulting to "balance" and
+     * telling a user with money in the account that it ran out.
+     */
+    private fun restingError(): AppError {
+        val reasons = keyPool.restingReasons()
+        return when {
+            reasons.isEmpty() -> AppError.ProviderFailed(Provider.FAL, "tidak ada key fal yang tersedia")
+            reasons.any { it == CooldownReason.BALANCE || it == CooldownReason.TOPUP_LOCK } ->
+                AppError.ProviderBalance(Provider.FAL)
+            reasons.all { it == CooldownReason.REJECTED } -> AppError.InvalidKey(Provider.FAL, null)
+            else -> {
+                val wait = keyPool.allKeys().minOfOrNull { keyPool.restSeconds(it.label) } ?: 0
+                AppError.ProviderFailed(
+                    Provider.FAL,
+                    "semua key fal sedang jeda setelah gangguan penyedia - coba lagi dalam $wait detik",
+                )
+            }
+        }
     }
 
     suspend fun submit(modelSlug: String, body: JsonObject): AppResult<SubmittedFalJob> {
@@ -63,7 +95,7 @@ class FalQueueClient(
         var lastKeyError: AppError? = null
         while (true) {
             val key = keyPool.currentKey()
-                ?: return (lastKeyError ?: AppError.ProviderBalance(Provider.FAL)).err()
+                ?: return (lastKeyError ?: restingError()).err()
 
             if (previousLabel != null && previousLabel != key.label) {
                 keyPool.emitSwitch(previousLabel, key.label)
@@ -93,9 +125,19 @@ class FalQueueClient(
                     ).ok()
                 }
                 isBalanceExhausted(response.status, text) -> {
-                    Napier.w("fal key '${key.label}' balance exhausted — cooling down 10 min")
+                    // fal refuses the spend for two different reasons and the
+                    // user needs to be told which (owner 2026-09-14): a spent
+                    // balance, or an account that still shows credit but is
+                    // locked until it is topped up.
+                    val topUpLock = isTopUpLock(text)
+                    val reason = if (topUpLock) CooldownReason.TOPUP_LOCK else CooldownReason.BALANCE
+                    Napier.w(
+                        "fal key '${key.label}' refused the spend (" +
+                            (if (topUpLock) "account locked, needs top-up" else "balance exhausted") +
+                            ") - resting 10 min",
+                    )
                     lastKeyError = AppError.ProviderBalance(Provider.FAL)
-                    keyPool.markExhausted(key.label)
+                    keyPool.markExhausted(key.label, reason)
                     previousLabel = key.label
                     // loop: try the next available key
                 }
@@ -105,7 +147,7 @@ class FalQueueClient(
                     // toast the switch, and keep going with the next key.
                     Napier.w("fal key '${key.label}' rejected (HTTP ${response.status.value}) — failing over")
                     lastKeyError = AppError.InvalidKey(Provider.FAL, key.label)
-                    keyPool.markExhausted(key.label)
+                    keyPool.markExhausted(key.label, CooldownReason.REJECTED)
                     previousLabel = key.label
                     // loop: try the next available key
                 }
@@ -197,6 +239,9 @@ class FalQueueClient(
             "User is locked. Reason: TOP_UP",
             "Exhausted balance",
         )
+
+        /** fal still shows credit but blocks spending until the account is topped up. */
+        fun isTopUpLock(body: String): Boolean = body.contains("Reason: TOP_UP", ignoreCase = true)
 
         fun isBalanceExhausted(status: HttpStatusCode, body: String): Boolean =
             BALANCE_SIGNATURES.any { body.contains(it, ignoreCase = true) } ||

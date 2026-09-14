@@ -450,11 +450,19 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
                             BalanceLine(state.balances[key.label])
                         }
                         val status = state.falStatuses[key.label] ?: FalKeyStatus.CADANGAN
+                        // Show how long a rest still has to run, so a pause reads as
+                        // temporary instead of terminal (owner 2026-09-14).
+                        val rest = state.restSeconds(key.label)
                         StatusChip(
-                            state.statusLabel(status),
+                            state.statusLabel(status) + if (rest > 0) "  ${rest}s" else "",
                             color = when (status) {
                                 FalKeyStatus.AKTIF -> Color(0xFF2E7D32)
                                 FalKeyStatus.CADANGAN -> MaterialTheme.colorScheme.secondary
+                                // A brief pause after provider trouble is not a money
+                                // problem, so it must not wear the error colour.
+                                FalKeyStatus.JEDA -> MaterialTheme.colorScheme.tertiary
+                                FalKeyStatus.PERLU_TOPUP -> Color(0xFFB26A00)
+                                FalKeyStatus.DITOLAK -> MaterialTheme.colorScheme.error
                                 FalKeyStatus.SALDO_HABIS -> MaterialTheme.colorScheme.error
                             },
                         )
@@ -516,6 +524,12 @@ fun FalKeysSection(state: KeyManagerState, online: Boolean) {
                 Strings.KEYS_BALANCE_ADMIN_HINT,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            )
+            // A brief pause is provider trouble, not money (owner 2026-09-14).
+            Text(
+                Strings.KEYS_PAUSED_NOTE,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
             )
             Text(
                 Strings.KEYS_TEST_COST_NOTE,

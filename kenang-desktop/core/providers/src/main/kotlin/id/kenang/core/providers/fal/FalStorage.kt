@@ -92,7 +92,9 @@ class FalStorage(
         cached?.let { if (Instant.now().epochSecond < it.expiresAtEpochS - 30) return it.ok() }
         // Invalid/exhausted keys fail over here too (owner requirement,
         // dogfood 2026-08-27): try each available key in priority order.
-        var lastError: AppError = AppError.ProviderBalance(Provider.FAL)
+        // Neutral until a real refusal is seen (owner 2026-09-14): defaulting
+        // to "balance" reported a spent account for any upload trouble.
+        var lastError: AppError = AppError.ProviderFailed(Provider.FAL, "unggahan gagal")
         var text = ""
         while (true) {
             val key = keyPool.currentKey() ?: return lastError.err()
@@ -110,7 +112,14 @@ class FalStorage(
                 FalQueueClient.isBalanceExhausted(response.status, text)
             ) {
                 lastError = FalQueueClient.mapHttpError(response.status, text, key.label)
-                keyPool.markExhausted(key.label)
+                keyPool.markExhausted(
+                    key.label,
+                    when {
+                        FalQueueClient.isTopUpLock(text) -> CooldownReason.TOPUP_LOCK
+                        FalQueueClient.isBalanceExhausted(response.status, text) -> CooldownReason.BALANCE
+                        else -> CooldownReason.REJECTED
+                    },
+                )
                 keyPool.currentKey()?.let { next -> keyPool.emitSwitch(key.label, next.label) }
                 continue
             }

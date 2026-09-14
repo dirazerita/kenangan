@@ -183,6 +183,11 @@ object Strings {
     const val KEYS_STATUS_ACTIVE = "aktif"
     const val KEYS_STATUS_BACKUP = "cadangan"
     const val KEYS_STATUS_EXHAUSTED = "saldo habis"
+    /** Credit still shows, but fal blocks spending until the account is topped up. */
+    const val KEYS_STATUS_TOPUP = "perlu top-up"
+    const val KEYS_STATUS_REJECTED = "key ditolak"
+    const val KEYS_STATUS_PAUSED = "jeda sebentar"
+    const val KEYS_PAUSED_NOTE = "Jeda \"jeda sebentar\" hanya efek gangguan penyedia (timeout/gagal sesaat), BUKAN saldo habis \u2014 key dipakai lagi otomatis setelah hitungannya habis, atau langsung saat aplikasi dibuka ulang."
     const val KEYS_REMOVE = "Hapus"
     const val KEYS_MOVE_UP = "Naikkan"
     const val KEYS_MOVE_DOWN = "Turunkan"

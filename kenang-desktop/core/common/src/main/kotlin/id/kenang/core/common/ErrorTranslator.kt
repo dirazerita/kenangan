@@ -35,7 +35,7 @@ object ErrorTranslator {
         is AppError.ProviderBalance -> UiError(
             title = "Saldo habis",
             message = when (error.provider) {
-                Provider.FAL -> "Saldo semua key fal Anda habis. Silakan top up di fal.ai atau tambahkan key lain."
+                Provider.FAL -> "fal menolak pemakaian semua key Anda: saldonya habis, ATAU akunnya masih menampilkan saldo tetapi terkunci sampai di-top-up (fal: \"User is locked. Reason: TOP_UP\"). Buka Pengaturan untuk melihat status tiap key, lalu top up di fal.ai atau tambahkan key lain."
                 else -> "Saldo/kuota penyedia habis. Silakan periksa akun Anda."
             },
             ctaLabel = "Top up / kelola key",
