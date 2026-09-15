@@ -86,24 +86,35 @@ class KeyCooldownReasonTest {
     }
 
     @Test
-    fun `when every key is merely resting the error says so, not 'balance'`() = runTest {
+    fun `when every key is merely resting a submit still goes out on the soonest key`() = runTest {
+        // Owner 2026-09-15: six rejected requests in ten seconds had rested
+        // every key, and the remaining scenes failed unsent. A rest for
+        // TROUBLE is a guess about the key, never a reason to stop the run.
         var now = 0L
         val pool = FalKeyPool(
             vaultWith(FalKey("A", "k1"), FalKey("B", "k2")),
             troubleCooldownMillis = 90_000, clock = { now },
         )
-        val c = client(pool, MockEngine { respond("{}", HttpStatusCode.OK, jsonHeaders) })
+        val submitOk = "{\"request_id\":\"req-1\",\"status_url\":\"https://q/x/requests/req-1/status\"," +
+            "\"response_url\":\"https://q/x/requests/req-1\"}"
+        val used = mutableListOf<String>()
+        val c = client(
+            pool,
+            MockEngine { req ->
+                used += req.headers[HttpHeaders.Authorization].orEmpty()
+                respond(submitOk, HttpStatusCode.OK, jsonHeaders)
+            },
+        )
         c.rotateKey() // parks A
+        now = 1_000
         c.rotateKey() // parks B
         assertTrue(pool.availableKeys().isEmpty())
+        assertEquals("A", pool.currentKey()?.label, "the key that rested first serves next; the run does not stop")
 
         val result = c.submit("fal-ai/x", submitBody)
-        val error = assertIs<AppResult.Err>(result).error
-        val failed = assertIs<AppError.ProviderFailed>(error)
-        assertTrue(
-            failed.detail?.contains("jeda") == true,
-            "a provider hiccup must not be reported as a spent balance: ${failed.detail}",
-        )
+        assertEquals("A", assertIs<AppResult.Ok<SubmittedFalJob>>(result).value.keyLabel)
+        assertTrue(used.single().contains("k1"))
+        assertTrue(pool.restingReasons().all { it == CooldownReason.TROUBLE })
     }
 
     @Test

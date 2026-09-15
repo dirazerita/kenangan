@@ -64,8 +64,24 @@ class FalKeyPool(
         return vault.falKeys().filter { (cooldowns[it.label]?.until ?: 0L) <= now }
     }
 
-    /** The key a fresh submit would use right now, or null if all are resting. */
-    fun currentKey(): FalKey? = availableKeys().firstOrNull()
+    /**
+     * The key a fresh submit would use right now: the first key that is not
+     * resting - else, among keys resting only for TROUBLE, the one whose rest
+     * ends soonest. Owner 2026-09-15: six rejected requests in ten seconds
+     * had rested all five keys, and every later scene failed unsent with
+     * "semua key sedang jeda" while the accounts held money. A troubled call
+     * is a guess about the key, not a fact about the money, so it must never
+     * take the whole pool offline. Null when every key is resting for money
+     * or identity.
+     */
+    @Synchronized
+    fun currentKey(): FalKey? {
+        availableKeys().firstOrNull()?.let { return it }
+        val now = clock()
+        return vault.falKeys()
+            .filter { cooldowns[it.label]?.let { c -> c.until > now && c.reason == CooldownReason.TROUBLE } == true }
+            .minByOrNull { cooldowns.getValue(it.label).until }
+    }
 
     /** Key for polling an in-flight job — jobs NEVER migrate keys (AD-14). */
     @Synchronized

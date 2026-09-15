@@ -21,6 +21,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlin.random.Random
 
@@ -62,6 +67,10 @@ class FalQueueClient(
         val next = keyPool.currentKey()
         if (next == null) {
             Napier.w("all fal keys are resting after provider trouble - '${current.label}' paused briefly")
+            return
+        }
+        if (next.label == current.label) {
+            Napier.w("no other fal key is ready - continuing on '${current.label}'")
             return
         }
         Napier.w("rotating fal key after provider trouble: '${current.label}' -> '${next.label}'")
@@ -202,7 +211,18 @@ class FalQueueClient(
         var delayMs = 2000L
         while (System.currentTimeMillis() < deadline) {
             when (val st = status(job)) {
-                is AppResult.Err -> return st
+                is AppResult.Err -> when (st.error) {
+                    // A hiccup on the status endpoint (5xx, 429, a dropped
+                    // connection) is not the job failing (owner 2026-09-15):
+                    // the render is still running on fal and has been paid
+                    // for, so keep polling until the deadline.
+                    is AppError.Timeout, AppError.Offline, is AppError.ProviderFailed, is AppError.RateLimited -> {
+                        Napier.w("status poll for ${job.requestId} failed transiently (${st.error}) - retrying")
+                        delay(delayMs + Random.nextLong(0, 500))
+                        delayMs = (delayMs * 2).coerceAtMost(15_000L)
+                    }
+                    else -> return st
+                }
                 is AppResult.Ok -> when (st.value.status) {
                     "COMPLETED" -> return result(job)
                     "IN_QUEUE", "IN_PROGRESS" -> {
@@ -259,8 +279,26 @@ class FalQueueClient(
             body.contains("content", ignoreCase = true) &&
                 (body.contains("policy", ignoreCase = true) || body.contains("moderation", ignoreCase = true) || body.contains("safety", ignoreCase = true)) ->
                 AppError.ContentBlocked(body.take(300))
+            // The REQUEST is wrong (owner 2026-09-15: Kling's "Maximum three
+            // image elements are allowed" came back as 422, was treated as
+            // provider trouble, and rotated through all five keys in ten
+            // seconds). Deterministic: another key or a retry cannot fix it.
+            status.value in REQUEST_REJECTED -> AppError.BadRequest(Provider.FAL, requestDetail(body))
             else -> AppError.ProviderFailed(Provider.FAL, "HTTP ${status.value}: ${body.take(300)}")
         }
+
+        /** Statuses that say the request body itself was refused. */
+        private val REQUEST_REJECTED = setOf(400, 405, 413, 415, 422)
+
+        /** The human part of fal's validation body - `detail[].msg` when present, else the raw text. */
+        fun requestDetail(body: String): String = runCatching {
+            when (val detail = Json.parseToJsonElement(body).jsonObject["detail"]) {
+                is JsonArray -> detail.mapNotNull { it.jsonObject["msg"]?.jsonPrimitive?.contentOrNull }
+                    .joinToString("; ")
+                is JsonPrimitive -> detail.contentOrNull
+                else -> null
+            }?.takeIf { it.isNotBlank() }
+        }.getOrNull() ?: body.take(300)
 
         fun mapTransportError(t: Throwable): AppError = when (t) {
             is SocketTimeoutException, is ConnectTimeoutException,

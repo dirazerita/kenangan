@@ -187,6 +187,7 @@ fun GenerationScreen(
                 index = sceneIndex,
                 scene = scene,
                 errorCode = errorCodes[scene.scene_id],
+                errorDetail = orchestrator.errorDetail(scene.scene_id),
                 onRetry = {
                     scope.launch {
                         val project = projects.get(projectId) ?: return@launch
@@ -318,6 +319,7 @@ private fun SceneRow(
     index: Int,
     scene: Scene,
     errorCode: String?,
+    errorDetail: String? = null,
     onRetry: () -> Unit,
     onEditStoryboard: () -> Unit,
     onOpenKeySettings: () -> Unit,
@@ -379,6 +381,22 @@ private fun SceneRow(
                                 ErrorTranslator.translate(
                                     id.kenang.core.common.AppError.InvalidKey(id.kenang.core.common.Provider.FAL),
                                 ).title
+                            // Owner 2026-09-15: six scenes read "Gagal — Gagal" while
+                            // the log held the reason; every code now names itself.
+                            GenerationOrchestrator.ErrorCodes.BAD_REQUEST ->
+                                ErrorTranslator.translate(
+                                    id.kenang.core.common.AppError.BadRequest(id.kenang.core.common.Provider.FAL),
+                                ).title
+                            GenerationOrchestrator.ErrorCodes.PROVIDER_BALANCE ->
+                                ErrorTranslator.translate(
+                                    id.kenang.core.common.AppError.ProviderBalance(id.kenang.core.common.Provider.FAL),
+                                ).title
+                            GenerationOrchestrator.ErrorCodes.TIMEOUT ->
+                                ErrorTranslator.translate(id.kenang.core.common.AppError.Timeout()).title
+                            GenerationOrchestrator.ErrorCodes.PROVIDER_FAILED ->
+                                ErrorTranslator.translate(
+                                    id.kenang.core.common.AppError.ProviderFailed(id.kenang.core.common.Provider.FAL),
+                                ).title
                             else -> Strings.GEN_STATUS_FAILED
                         }
                         Text(
@@ -386,6 +404,13 @@ private fun SceneRow(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.error,
                         )
+                        errorDetail?.takeIf { it.isNotBlank() }?.let { detail ->
+                            Text(
+                                Strings.GEN_FAIL_DETAIL + ": " + detail.take(160),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         Row {
                             // Every failure is retryable (owner 2026-08-27) —
                             // retries pick the next working key via failover.

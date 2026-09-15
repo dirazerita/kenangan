@@ -1,5 +1,6 @@
 package id.kenang.core.providers.gen
 
+import id.kenang.core.data.GenJobStatus
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
@@ -9,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** Pure request-shaping rules proven against Phase 00 T4 payloads. */
 class GenerationOrchestratorTest {
@@ -49,6 +51,37 @@ class GenerationOrchestratorTest {
         assertEquals("https://cdn/img.jpg", body["image_urls"]!!.jsonArray[0].jsonPrimitive.content)
         assertEquals("@Image1 the family smiles", body["prompt"]!!.jsonPrimitive.content)
         assertEquals("16:9", body["aspect_ratio"]!!.jsonPrimitive.content)
+    }
+
+    /**
+     * Owner 2026-09-15: a rejected request was classed as provider trouble,
+     * retried with the same body and rotated through every key in seconds.
+     */
+    @Test
+    fun `a rejected request is permanent and never counts as provider trouble`() {
+        val (status, code) = GenerationOrchestrator.classify(
+            id.kenang.core.common.AppError.BadRequest(id.kenang.core.common.Provider.FAL, "Maximum three image elements are allowed."),
+        )
+        assertEquals(GenJobStatus.FAILED_PERMANENT, status)
+        assertEquals(GenerationOrchestrator.ErrorCodes.BAD_REQUEST, code)
+
+        val (s2, c2) = GenerationOrchestrator.classify(
+            id.kenang.core.common.AppError.ProviderFailed(id.kenang.core.common.Provider.FAL, "HTTP 502"),
+        )
+        assertEquals(GenJobStatus.FAILED_RETRYABLE, s2)
+        assertEquals(GenerationOrchestrator.ErrorCodes.PROVIDER_FAILED, c2)
+        assertEquals(
+            GenerationOrchestrator.ErrorCodes.TIMEOUT,
+            GenerationOrchestrator.classify(id.kenang.core.common.AppError.Offline).second,
+        )
+        assertEquals(
+            "Maximum three image elements are allowed.",
+            GenerationOrchestrator.detailOf(
+                id.kenang.core.common.AppError.BadRequest(id.kenang.core.common.Provider.FAL, "Maximum three image elements are allowed."),
+            ),
+        )
+        assertEquals(3, GenerationOrchestrator.MAX_ATTEMPTS)
+        assertTrue(GenerationOrchestrator.retryBackoffMs(2) > GenerationOrchestrator.retryBackoffMs(3))
     }
 
     @Test

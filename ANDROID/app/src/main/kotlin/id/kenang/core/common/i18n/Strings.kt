@@ -413,6 +413,7 @@ object Strings {
     const val GEN_STATUS_RUNNING = "Diproses"
     const val GEN_STATUS_DONE = "Selesai"
     const val GEN_STATUS_FAILED = "Gagal"
+    const val GEN_FAIL_DETAIL = "Keterangan penyedia"
     const val GEN_ELAPSED_PREFIX = "Berjalan "
     const val GEN_EDIT_MOTION_CTA = "Ubah gerakan di storyboard"
     const val GEN_OPEN_KEYS_CTA = "Buka Pengaturan Key"

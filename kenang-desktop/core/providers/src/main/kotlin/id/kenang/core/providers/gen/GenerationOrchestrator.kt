@@ -77,7 +77,20 @@ class GenerationOrchestrator(
         const val PROVIDER_BALANCE = "provider_balance"
         const val PROVIDER_FAILED = "provider_failed"
         const val TIMEOUT = "timeout"
+
+        /** The provider refused the request body - permanent until the request changes. */
+        const val BAD_REQUEST = "bad_request"
     }
+
+    /**
+     * Why each failed scene failed, in the provider's words, for the
+     * generation screen (owner 2026-09-15: six scenes read "Gagal - Gagal"
+     * while the log held the exact reason). Process-local: a restart clears
+     * it, the job's error_code stays in the database.
+     */
+    private val errorDetails = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun errorDetail(sceneId: String): String? = errorDetails[sceneId]
 
     data class Outcome(
         val doneScenes: Int,
@@ -195,6 +208,7 @@ class GenerationOrchestrator(
             val code = jobRepository.latestForScene(sceneId)?.error_code
             when (code) {
                 ErrorCodes.CONTENT_BLOCKED -> AppError.ContentBlocked("scene $sceneId").err()
+                ErrorCodes.BAD_REQUEST -> AppError.BadRequest(Provider.FAL, errorDetails[sceneId]).err()
                 ErrorCodes.INVALID_KEY -> AppError.InvalidKey(Provider.FAL).err()
                 ErrorCodes.PROVIDER_BALANCE -> AppError.ProviderBalance(Provider.FAL).err()
                 ErrorCodes.TIMEOUT -> AppError.Timeout().err()
@@ -228,7 +242,7 @@ class GenerationOrchestrator(
         if (sceneRepository.scene(scene.scene_id)?.status != SceneStatus.GENERATING) {
             sceneRepository.transition(scene.scene_id, SceneStatus.GENERATING)
         }
-        return submitAndFinish(projectId, ratio, scene, i2vSlug, i2vParams, attemptLeft = 2)
+        return submitAndFinish(projectId, ratio, scene, i2vSlug, i2vParams, attemptLeft = MAX_ATTEMPTS)
     }
 
     private suspend fun submitAndFinish(
@@ -249,8 +263,11 @@ class GenerationOrchestrator(
         val submitSlug = submitSlug(i2vSlug, i2vParams)
         // Face lock (owner 2026-09-12): the same face crops become Kling
         // "elements", so the identity holds while the frame is animated.
+        // Kling takes at most three elements (owner 2026-09-15: four came
+        // back as HTTP 422 "Maximum three image elements are allowed" and
+        // failed a whole six-scene run).
         val elements = if (submitSlug.contains("kling")) {
-            faceLock.refs(projectId, faceLock.photoIdsOf(scene.source_photos_json)).map { ref ->
+            faceLock.refs(projectId, faceLock.photoIdsOf(scene.source_photos_json), limit = KLING_MAX_ELEMENTS).map { ref ->
                 ElementRef(ref.description, ref.url, listOfNotNull(ref.photoUrl).ifEmpty { listOf(ref.url) })
             }
         } else emptyList()
@@ -314,6 +331,7 @@ class GenerationOrchestrator(
         jobRepository.setStatus(jobId, GenJobStatus.DONE, outputUrl = videoUrl)
         sceneRepository.setClipPath(scene.scene_id, clipFile.absolutePath)
         sceneRepository.transition(scene.scene_id, SceneStatus.DONE)
+        errorDetails.remove(scene.scene_id)
         return true
     }
 
@@ -332,21 +350,18 @@ class GenerationOrchestrator(
         error: AppError,
         attemptLeft: Int,
     ): Boolean {
-        val (status, code) = when (error) {
-            is AppError.ContentBlocked -> GenJobStatus.FAILED_PERMANENT to ErrorCodes.CONTENT_BLOCKED
-            is AppError.InvalidKey -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.INVALID_KEY
-            is AppError.ProviderBalance -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.PROVIDER_BALANCE
-            is AppError.Timeout, AppError.Offline -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.TIMEOUT
-            else -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.PROVIDER_FAILED
-        }
+        val (status, code) = classify(error)
+        errorDetails[scene.scene_id] = detailOf(error)
         Napier.w("scene ${scene.scene_id} error: $code ($error), attemptLeft=$attemptLeft")
 
+        // Only a TROUBLED call is retried, on the next key (owner
+        // requirement). A rejected request (bad_request) is identical on
+        // every key and every retry (owner 2026-09-15), so it stops here.
         val autoRetry = code in setOf(ErrorCodes.PROVIDER_FAILED, ErrorCodes.TIMEOUT) && attemptLeft > 1
         if (autoRetry) {
             jobRepository.setStatus(jobId, status, code)
-            // Owner requirement: a troubled call retries on the NEXT key.
             falClient.rotateKey()
-            delay(2_000)
+            delay(retryBackoffMs(attemptLeft))
             return submitAndFinish(projectId, ratio, scene, i2vSlug, i2vParams, attemptLeft - 1)
         }
         return failScene(scene.scene_id, jobId, status, code)
@@ -386,8 +401,11 @@ class GenerationOrchestrator(
         while (System.currentTimeMillis() < deadline) {
             when (val st = falClient.status(job)) {
                 is AppResult.Err -> when (st.error) {
-                    is AppError.Timeout, AppError.Offline ->
-                        Napier.w("status poll offline/timeout for ${job.requestId} — retrying")
+                    // A 5xx or 429 on the status endpoint is a hiccup, not
+                    // the job failing (owner 2026-09-15): the render is still
+                    // running on fal and already paid for.
+                    is AppError.Timeout, AppError.Offline, is AppError.ProviderFailed, is AppError.RateLimited ->
+                        Napier.w("status poll for ${job.requestId} failed transiently (${st.error}) — retrying")
                     else -> return st
                 }
                 is AppResult.Ok -> when (st.value.status) {
@@ -408,6 +426,45 @@ class GenerationOrchestrator(
     data class ElementRef(val description: String, val frontalUrl: String, val referenceUrls: List<String>)
 
     companion object {
+        /** Kling refuses a fourth element with HTTP 422 (seen live 2026-09-15). */
+        const val KLING_MAX_ELEMENTS = 3
+
+        /** Kling's prompt fields carry a 2500-character cap (fal schema). */
+        const val KLING_MAX_PROMPT = 2500
+
+        /** One submit plus two automatic retries for troubled calls. */
+        const val MAX_ATTEMPTS = 3
+
+        /** Longer pause before the last retry: a provider hiccup rarely clears in two seconds. */
+        internal fun retryBackoffMs(attemptLeft: Int): Long = if (attemptLeft >= MAX_ATTEMPTS) 3_000L else 8_000L
+
+        /**
+         * §4.1 error map: content_blocked and bad_request → permanent (the
+         * request must change) · invalid_key / provider_balance → pause ·
+         * provider_failed / timeout → auto-retry, then manual.
+         */
+        internal fun classify(error: AppError): Pair<String, String> = when (error) {
+            is AppError.ContentBlocked -> GenJobStatus.FAILED_PERMANENT to ErrorCodes.CONTENT_BLOCKED
+            is AppError.BadRequest -> GenJobStatus.FAILED_PERMANENT to ErrorCodes.BAD_REQUEST
+            is AppError.InvalidKey -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.INVALID_KEY
+            is AppError.ProviderBalance -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.PROVIDER_BALANCE
+            is AppError.Timeout, AppError.Offline -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.TIMEOUT
+            else -> GenJobStatus.FAILED_RETRYABLE to ErrorCodes.PROVIDER_FAILED
+        }
+
+        /** The provider's own words for the generation screen, short. */
+        internal fun detailOf(error: AppError): String = when (error) {
+            is AppError.BadRequest -> error.detail ?: "permintaan ditolak"
+            is AppError.ProviderFailed -> error.detail ?: "gangguan penyedia"
+            is AppError.ContentBlocked -> error.detail ?: "konten ditolak"
+            is AppError.Timeout -> "melebihi batas waktu"
+            AppError.Offline -> "tidak ada koneksi"
+            is AppError.RateLimited -> "penyedia membatasi permintaan"
+            is AppError.ProviderBalance -> "saldo/akun ditolak penyedia"
+            is AppError.InvalidKey -> "key ditolak"
+            else -> error.toString()
+        }.take(220)
+
         /**
          * fal exposes model variants as slug sub-paths (e.g. Wan 2.6 `/flash`);
          * config carries them as `i2v_params.variant` on the base slug so
@@ -429,6 +486,8 @@ class GenerationOrchestrator(
             elements: List<ElementRef> = emptyList(),
         ): JsonObject = buildJsonObject {
             val kling = slug.contains("kling")
+            // Never more than Kling accepts, whatever the caller passed.
+            val elements = if (kling) elements.take(KLING_MAX_ELEMENTS) else elements
             // Kling binds "@ElementN" in the prompt to each element (fal
             // schema); this mapping sentence is what turns crops into a lock.
             val elementPrefix = if (kling && elements.isNotEmpty()) {
@@ -436,7 +495,8 @@ class GenerationOrchestrator(
                     .joinToString("; ") + ". Keep every face exactly as in its element for the whole " +
                     "clip - the same person, never a look-alike. "
             } else ""
-            put("prompt", if (slug.contains("seedance")) "@Image1 $motionPrompt" else elementPrefix + motionPrompt)
+            val prompt = if (slug.contains("seedance")) "@Image1 $motionPrompt" else elementPrefix + motionPrompt
+            put("prompt", if (kling) prompt.take(KLING_MAX_PROMPT) else prompt)
             put("duration", durationS.toString())
             when {
                 kling -> {

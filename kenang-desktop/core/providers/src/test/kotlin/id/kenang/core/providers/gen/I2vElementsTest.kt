@@ -39,6 +39,27 @@ class I2vElementsTest {
         assertEquals("https://f/start.jpg", body["start_image_url"]!!.jsonPrimitive.content)
     }
 
+    /**
+     * Owner 2026-09-15: a family of six produced four references, Kling
+     * answered HTTP 422 "Maximum three image elements are allowed", and the
+     * whole six-scene run failed. The body never carries more than three.
+     */
+    @Test
+    fun `more than three references are capped to Kling's three`() {
+        val four = refs + listOf(
+            GenerationOrchestrator.ElementRef("the boy", "https://f/boy.jpg", listOf("https://f/photo.jpg")),
+            GenerationOrchestrator.ElementRef("the toddler", "https://f/toddler.jpg", listOf("https://f/photo.jpg")),
+        )
+        val body = GenerationOrchestrator.buildI2vBody(
+            "fal-ai/kling-video/v3/pro/image-to-video", "https://f/start.jpg",
+            "they smile", 5L, "16:9", null, four,
+        )
+        assertEquals(GenerationOrchestrator.KLING_MAX_ELEMENTS, body["elements"]!!.jsonArray.size)
+        val prompt = body["prompt"]!!.jsonPrimitive.content
+        assertTrue("@Element3 is the boy" in prompt, prompt)
+        assertTrue("@Element4" !in prompt, "a fourth element must not be named either: $prompt")
+    }
+
     @Test
     fun `no references leaves the kling body exactly as before`() {
         val body = GenerationOrchestrator.buildI2vBody(

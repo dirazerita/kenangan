@@ -49,6 +49,13 @@ object ErrorTranslator {
             title = "Penyedia AI bermasalah",
             message = "Terjadi gangguan di sisi penyedia AI. Ini bukan kesalahan Anda — coba lagi beberapa saat lagi.",
         )
+        is AppError.BadRequest -> UiError(
+            title = "Permintaan ditolak penyedia",
+            message = "Penyedia AI menolak isi permintaan ini - bukan soal saldo atau key" +
+                (error.detail?.takeIf { it.isNotBlank() }?.let { " (keterangan penyedia: ${it.take(200)})" } ?: "") +
+                ". Mengulang atau berganti key tidak mengubah hasilnya. Ubah adegannya; bila pesan ini " +
+                "terus muncul, perbarui aplikasi.",
+        )
         is AppError.Timeout -> UiError(
             title = "Koneksi terlalu lama",
             message = "Permintaan melebihi batas waktu. Periksa koneksi internet Anda lalu coba lagi.",

@@ -26,6 +26,14 @@ sealed class AppError(open val cause: Throwable? = null) {
     /** Provider returned a 5xx / malformed response / job failed server-side. */
     data class ProviderFailed(val provider: Provider, val detail: String? = null, override val cause: Throwable? = null) : AppError(cause)
 
+    /**
+     * The provider rejected the REQUEST itself (HTTP 400/413/415/422 - owner
+     * 2026-09-15: Kling's "Maximum three image elements are allowed"). It is
+     * the same on every key and on every retry, so it must never rotate a
+     * key or be retried automatically; the request has to change.
+     */
+    data class BadRequest(val provider: Provider, val detail: String? = null) : AppError()
+
     /** Network timeout or unreachable host. */
     data class Timeout(override val cause: Throwable? = null) : AppError(cause)
 
