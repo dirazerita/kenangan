@@ -218,6 +218,7 @@ tasks.register<JavaExec>("talkingDoctor") {
     providers.gradleProperty("doctorModel").orNull?.let { systemProperty("doctor.model", it) }
     providers.gradleProperty("doctorBalanceOnly").orNull?.let { systemProperty("doctor.balanceOnly", it) }
     providers.gradleProperty("doctorSpeaker").orNull?.let { systemProperty("doctor.speaker", it) }
+    providers.gradleProperty("doctorMaskOnly").orNull?.let { systemProperty("doctor.maskOnly", it) }
 }
 
 // Diagnostic: the Video Berbicara script writer — real LLM calls, cents.

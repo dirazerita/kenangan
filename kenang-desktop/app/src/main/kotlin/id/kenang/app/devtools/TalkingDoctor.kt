@@ -74,6 +74,36 @@ fun main(): Unit = runBlocking {
         }
     }
 
+    // -Ddoctor.maskOnly=true: detect + render the mask and stop, so the
+    // geometry can be judged without paying for a video.
+    if (System.getProperty("doctor.maskOnly") == "true") {
+        if (speaker == null) {
+            println("pass -PdoctorSpeaker=<n> together with -PdoctorMaskOnly=true")
+            exitProcess(1)
+        }
+        val prepared = id.kenang.core.data.story.UploadPrep.prepareJpeg(image)
+        val decoded = javax.imageio.ImageIO.read(java.io.ByteArrayInputStream(prepared))
+        val others = (service.speakers(image) as? AppResult.Ok)?.value.orEmpty()
+            .filter { it.id != speaker.id }
+            .mapNotNull { o ->
+                val body = o.personBox?.takeIf { b ->
+                    speaker.faceBox?.let { f -> !(b[0] < f[2] && b[2] > f[0] && b[1] < f[3] && b[3] > f[1]) } ?: true
+                }
+                body ?: o.faceBox
+            }
+        val box = id.kenang.core.data.story.SpeakerMask.speakerBox(speaker.faceBox, speaker.personBox)
+        if (box == null) {
+            println("no usable box for ${speaker.label}")
+            exitProcess(1)
+        }
+        val out = File(AppDirs.cache, "talking/masktest_${System.nanoTime()}.png")
+        val mask = id.kenang.core.data.story.SpeakerMask.render(
+            decoded.width, decoded.height, box, out, others = others, speakerFace = speaker.faceBox,
+        )
+        println("   mask: ${mask?.absolutePath ?: "(none)"}  (${decoded.width}x${decoded.height}, cut out ${others.size})")
+        exitProcess(0)
+    }
+
     val t0 = System.currentTimeMillis()
     when (val r = service.run(image, script, voiceId = null, voiceSample = voice, option = option, speaker = speaker) { println("   phase: $it") }) {
         is AppResult.Ok -> {

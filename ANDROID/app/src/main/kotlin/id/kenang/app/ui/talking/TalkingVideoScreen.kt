@@ -403,6 +403,7 @@ fun TalkingVideoScreen(
                             voiceSample = if (useVoiceFile) voiceFile else null,
                             option = option,
                             speaker = speaker,
+                            others = speakers,
                         ) { phase = it }
                         when (r) {
                             is AppResult.Ok -> result = r.value

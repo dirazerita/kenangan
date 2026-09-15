@@ -193,6 +193,8 @@ class TalkingVideoService(
         option: ModelOption = selected(),
         /** Who should speak in a group photo; null = the model decides. */
         speaker: SpeakerCandidate? = null,
+        /** The other people in that photo, cut out of the mask so they stay silent. */
+        others: List<SpeakerCandidate> = emptyList(),
         onPhase: (Phase) -> Unit = {},
     ): AppResult<TalkingResult> {
         val text = script.trim()
@@ -250,7 +252,7 @@ class TalkingVideoService(
             is AppResult.Err -> return up
         }
         val maskUrl = speaker?.takeIf { supportsSpeakerChoice(option) }
-            ?.let { uploadSpeakerMask(preparedImage, it, stamp) }
+            ?.let { uploadSpeakerMask(preparedImage, it, others, stamp) }
         val audioUrl = when (val up = storage.uploadFile(narration.file)) {
             is AppResult.Ok -> up.value
             is AppResult.Err -> return up
@@ -347,17 +349,27 @@ class TalkingVideoService(
     private suspend fun uploadSpeakerMask(
         preparedImage: ByteArray,
         speaker: SpeakerCandidate,
+        others: List<SpeakerCandidate>,
         stamp: Long,
     ): String? {
         val image = runCatching {
             javax.imageio.ImageIO.read(java.io.ByteArrayInputStream(preparedImage))
         }.getOrNull() ?: return null
-        val box = SpeakerMask.usableBox(speaker.personBox)
-            ?: speaker.faceBox?.let { SpeakerMask.bodyFromFace(it) }
-            ?: return null
+        // The face decides who speaks, and one box is all this depends on.
+        // The body box is only a fallback for a photo where no face was found.
+        val box = SpeakerMask.speakerBox(speaker.faceBox, speaker.personBox) ?: return null
+
+        // Whoever else is in the frame gets cut back out of the white area:
+        // their body when it does not sit over the speaker's face, otherwise
+        // just their face (owner 2026-09-15: a child on a lap spoke too).
+        val cutOut = others.filter { it.id != speaker.id }.mapNotNull { other ->
+            val body = other.personBox?.takeIf { !overlaps(it, speaker.faceBox) }
+            body ?: other.faceBox
+        }
 
         val maskFile = SpeakerMask.render(
             image.width, image.height, box, File(AppDirs.cache, "talking/mask_$stamp.png"),
+            others = cutOut, speakerFace = speaker.faceBox,
         ) ?: return null
         return when (val up = storage.uploadFile(maskFile)) {
             is AppResult.Ok -> {
@@ -369,6 +381,12 @@ class TalkingVideoService(
                 null
             }
         }
+    }
+
+    /** True when [a] covers any part of [b] — used to protect the speaker's face. */
+    private fun overlaps(a: List<Double>, b: List<Double>?): Boolean {
+        if (b == null || a.size != 4 || b.size != 4) return false
+        return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
     }
 
     private fun cloneLabel(sample: File): String =
