@@ -1,6 +1,8 @@
 package id.kenang.core.data.story
 
 import io.github.aakira.napier.Napier
+import java.awt.Color
+import java.awt.Font
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.File
@@ -34,6 +36,9 @@ object FaceCrops {
 
     /** Longest side of the written JPEG; the source is never upscaled. */
     private const val MAX_OUTPUT_SIDE = 1024
+
+    /** Side of one tile on the crop-check sheet. */
+    private const val SHEET_TILE = 320
 
     /**
      * Writes the crop for [box] ([x0, y0, x1, y1] as fractions) to [out] and
@@ -90,6 +95,58 @@ object FaceCrops {
             writer.dispose()
             out
         }.onFailure { Napier.w("face crop write failed: ${it.message}") }.getOrNull()
+    }
+
+    /** Pixel size of [source] without decoding the pixels; null when unreadable. */
+    fun imageSize(source: File): Pair<Int, Int>? {
+        val stream = runCatching { ImageIO.createImageInputStream(source) }.getOrNull() ?: return null
+        return stream.use { s ->
+            val readers = ImageIO.getImageReaders(s)
+            if (!readers.hasNext()) return@use null
+            val reader = readers.next()
+            try {
+                reader.input = s
+                (reader.getWidth(0) to reader.getHeight(0)).takeIf { it.first > 0 && it.second > 0 }
+            } catch (e: Exception) {
+                null
+            } finally {
+                reader.dispose()
+            }
+        }
+    }
+
+    /**
+     * A numbered contact sheet of [tiles] (crops), for the crop check: the
+     * model is asked what each numbered tile shows before the crops are sent
+     * to a paid model as somebody's face (owner 2026-09-15).
+     */
+    fun sheet(tiles: List<File>, out: File): File? {
+        if (tiles.isEmpty()) return null
+        val side = SHEET_TILE
+        val cols = minOf(4, tiles.size)
+        val rows = (tiles.size + cols - 1) / cols
+        val image = BufferedImage(cols * side, rows * side, BufferedImage.TYPE_INT_RGB)
+        val g = image.createGraphics()
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.color = Color.DARK_GRAY
+        g.fillRect(0, 0, image.width, image.height)
+        tiles.forEachIndexed { i, file ->
+            val tile = runCatching { ImageIO.read(file) }.getOrNull() ?: return@forEachIndexed
+            val x = (i % cols) * side
+            val y = (i / cols) * side
+            g.drawImage(tile, x, y, side, side, null)
+            g.color = Color.YELLOW
+            g.fillRect(x, y, 72, 60)
+            g.color = Color.BLACK
+            g.font = Font(Font.SANS_SERIF, Font.BOLD, 44)
+            g.drawString("${i + 1}", x + 14, y + 47)
+        }
+        g.dispose()
+        return runCatching {
+            out.parentFile?.mkdirs()
+            ImageIO.write(image, "jpg", out)
+            out
+        }.onFailure { Napier.w("face sheet write failed: ${it.message}") }.getOrNull()
     }
 
     /**

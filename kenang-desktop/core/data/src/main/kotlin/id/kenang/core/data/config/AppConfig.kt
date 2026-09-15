@@ -203,10 +203,22 @@ data class TierConfig(
     val provisional: Boolean = false,
     val note: String = "",
     val keyframe: String,
+    /**
+     * Keyframe model for a scene of [keyframeGroupMin] or more people
+     * (owner 2026-09-15): on a family of six the standard model re-staged
+     * the group and redrew the faces, while the pro model kept every face
+     * pixel-faithful - verified on the same scene. Null = [keyframe].
+     */
+    @SerialName("keyframe_group") val keyframeGroup: String? = null,
+    @SerialName("keyframe_group_min") val keyframeGroupMin: Int = 3,
     val i2v: String,
     /** Extra params merged into the I2V request body (e.g. generate_audio=false for Kling). */
     @SerialName("i2v_params") val i2vParams: JsonObject? = null,
-)
+) {
+    /** The keyframe model for a scene showing [people] (null = unknown). */
+    fun keyframeFor(people: Int?): String =
+        keyframeGroup?.takeIf { it.isNotBlank() && people != null && people >= keyframeGroupMin } ?: keyframe
+}
 
 @Serializable
 data class AbTestConfig(

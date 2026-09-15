@@ -219,7 +219,7 @@ fun StoryboardScreen(
                     scene = scene,
                     index = ordered.indexOf(scene),
                     lastIndex = ordered.lastIndex,
-                    regenCost = state.regenCostUsd(),
+                    regenCost = { state.regenCostUsd(it) },
                     onEdit = { editing = scene },
                     onRegen = { state.regenerateKeyframe(scene) },
                     onRetry = { state.retryKeyframe(scene) },
@@ -250,7 +250,7 @@ fun StoryboardScreen(
                         Text("✨", style = MaterialTheme.typography.headlineMedium)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            Strings.SB_ADD_AI_SCENE + " ±$" + "%.3f".format(state.regenCostUsd()),
+                            Strings.SB_ADD_AI_SCENE + " ±$" + "%.3f".format(state.addSceneCostUsd()),
                             style = MaterialTheme.typography.titleSmall,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
@@ -278,7 +278,7 @@ fun StoryboardScreen(
                         Text("🖼✨", style = MaterialTheme.typography.headlineMedium)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            Strings.SB_ADD_AIREF + " ±$" + "%.3f".format(state.regenCostUsd()),
+                            Strings.SB_ADD_AIREF + " ±$" + "%.3f".format(state.addSceneCostUsd()),
                             style = MaterialTheme.typography.titleSmall,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
@@ -377,7 +377,7 @@ private fun SceneCard(
     scene: Scene,
     index: Int,
     lastIndex: Int,
-    regenCost: Double,
+    regenCost: (people: Int?) -> Double,
     onEdit: () -> Unit,
     onRegen: () -> Unit,
     onRetry: () -> Unit,
@@ -394,10 +394,14 @@ private fun SceneCard(
     // scene has a stored face box, so its faces ride along as references.
     val faceLock = koinInject<id.kenang.core.providers.story.FaceLock>()
     var faceLocked by remember(scene.scene_id) { mutableStateOf(false) }
+    // A group scene may be routed to the pro edit model (owner 2026-09-15),
+    // so its "Buat ulang" price depends on how many people it shows.
+    var people by remember(scene.scene_id) { mutableStateOf<Int?>(null) }
     LaunchedEffect(scene.source_photos_json, faceLock.enabled) {
         val ids = faceLock.photoIdsOf(scene.source_photos_json)
         faceLocked = faceLock.enabled && ids.isNotEmpty() &&
             ids.all { faceLock.hasBoxes(scene.project_id, it) }
+        people = if (ids.size == 1) faceLock.peopleCount(scene.project_id, ids) else null
     }
     Card {
         Column {
@@ -499,7 +503,7 @@ private fun SceneCard(
                     ) {
                         Icon(Icons.Default.Refresh, null, Modifier.width(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(Strings.SB_REGEN_KEYFRAME + " ±$" + "%.3f".format(regenCost))
+                        Text(Strings.SB_REGEN_KEYFRAME + " ±$" + "%.3f".format(regenCost(people)))
                     }
                 }
                 // Owner feature 2026-08-27: swap the generated image for the

@@ -30,6 +30,7 @@ import kotlin.system.exitProcess
  *
  *   -Ddoctor.project=<id>    required
  *   -Ddoctor.keyframe=<sceneId>  also regenerate that keyframe WITH face refs (paid)
+ *   -Ddoctor.tier=<tier>         run that keyframe on another tier (e.g. premium) for a comparison
  *   -Ddoctor.video=<sceneId>     also render that scene's clip WITH elements (paid)
  */
 fun main(): Unit = runBlocking {
@@ -47,14 +48,22 @@ fun main(): Unit = runBlocking {
 
     val json = Json { ignoreUnknownKeys = true; isLenient = true }
     for (photo in photos.photos(projectId)) {
-        val refs = faceLock.refs(projectId, listOf(photo.id))
+        val refs = faceLock.refs(projectId, listOf(photo.id), limit = FaceLock.KEYFRAME_MAX_FACES)
         println("photo ${photo.id}: ${refs.size} face ref(s)")
         refs.forEach { println("   - ${it.subjectId}: ${it.file.name} (${it.file.length() / 1024} KB) <- ${it.description.take(70)}") }
+        if (refs.isNotEmpty()) {
+            val sheet = id.kenang.core.data.story.FaceCrops.sheet(
+                refs.map { it.file }, File(File(AppDirs.projectDir(projectId), "faces"), "sheet_${photo.id}.jpg"),
+            )
+            println("   sheet:   ${sheet?.absolutePath}")
+        }
 
         // Preview with the boxes drawn, from the (possibly backfilled) analysis.
         val fresh = photos.photos(projectId).firstOrNull { it.id == photo.id } ?: continue
         val analysis = fresh.analysis_json?.let { runCatching { json.decodeFromString(PhotoAnalysis.serializer(), it) }.getOrNull() }
             ?: continue
+        println("   boxes checked: ${analysis.faceBoxesChecked}; " +
+            analysis.subjects.joinToString { "${it.id}=${it.faceBox?.joinToString(",") { v -> "%.2f".format(v) } ?: "none"}" })
         val src = runCatching { ImageIO.read(File(fresh.local_path)) }.getOrNull() ?: continue
         val scale = minOf(1.0, 1200.0 / maxOf(src.width, src.height))
         val w = (src.width * scale).toInt()
@@ -79,7 +88,9 @@ fun main(): Unit = runBlocking {
     System.getProperty("doctor.keyframe")?.let { sceneId ->
         println("-- regenerating keyframe $sceneId with face refs (paid)")
         val t0 = System.currentTimeMillis()
-        when (val r = koin.get<KeyframeService>().generate(sceneId, project.tier, isRegen = true)) {
+        val tier = System.getProperty("doctor.tier")?.takeIf { it.isNotBlank() } ?: project.tier
+        println("   tier: $tier")
+        when (val r = koin.get<KeyframeService>().generate(sceneId, tier, isRegen = true)) {
             is AppResult.Ok -> println("OK in ${(System.currentTimeMillis() - t0) / 1000}s -> ${r.value.local_keyframe_path}")
             is AppResult.Err -> println("FAILED: ${r.error}")
         }

@@ -49,6 +49,16 @@ class CostEstimatorTest {
     }
 
     @Test
+    fun `a group scene's regen is priced at the group keyframe model (owner 2026-09-15)`() {
+        // standar: keyframe_group = nano-banana-pro ($0.15); two people stay at $0.039.
+        val scenes = listOf(scene("six", 5, 1), scene("two", 5, 1))
+        val est = estimator.estimate(scenes, "standar", peopleBySceneId = mapOf("six" to 6, "two" to 2))
+        assertEquals(0.15 + 0.039, est.keyframeUsd, 1e-9)
+        // Without counts nothing changes.
+        assertEquals(0.078, estimator.estimate(scenes, "standar").keyframeUsd, 1e-9)
+    }
+
+    @Test
     fun `disabled hemat resolves to standar rates (D-005 provisional)`() {
         val est = estimator.estimate(listOf(scene("a", 10, 0)), "hemat")
         assertEquals(10 * 0.084, est.usd, 1e-9)

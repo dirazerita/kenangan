@@ -3,6 +3,9 @@ package id.kenang.core.data.story
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Rect
 import io.github.aakira.napier.Napier
 import java.io.File
@@ -30,6 +33,9 @@ object FaceCrops {
 
     /** Longest side of the written JPEG; the source is never upscaled. */
     private const val MAX_OUTPUT_SIDE = 1024
+
+    /** Side of one tile on the crop-check sheet. */
+    private const val SHEET_TILE = 320
 
     /**
      * Writes the crop for [box] ([x0, y0, x1, y1] as fractions) to [out] and
@@ -92,6 +98,50 @@ object FaceCrops {
             if (scaled !== region) scaled.recycle()
             region.recycle()
         }
+    }
+
+    /** Pixel size of [source] without decoding the pixels; null when unreadable. */
+    fun imageSize(source: File): Pair<Int, Int>? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(source.absolutePath, bounds)
+        return (bounds.outWidth to bounds.outHeight).takeIf { it.first > 0 && it.second > 0 }
+    }
+
+    /**
+     * A numbered contact sheet of [tiles] (crops), for the crop check: the
+     * model is asked what each numbered tile shows before the crops are sent
+     * to a paid model as somebody's face (owner 2026-09-15). Twin of the
+     * desktop Java2D version.
+     */
+    fun sheet(tiles: List<File>, out: File): File? {
+        if (tiles.isEmpty()) return null
+        val side = SHEET_TILE
+        val cols = minOf(4, tiles.size)
+        val rows = (tiles.size + cols - 1) / cols
+        val bitmap = Bitmap.createBitmap(cols * side, rows * side, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.DKGRAY)
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+        val label = Paint().apply { color = Color.YELLOW }
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 44f
+            isFakeBoldText = true
+        }
+        tiles.forEachIndexed { i, file ->
+            val tile = BitmapFactory.decodeFile(file.absolutePath) ?: return@forEachIndexed
+            val x = (i % cols) * side
+            val y = (i / cols) * side
+            canvas.drawBitmap(tile, null, Rect(x, y, x + side, y + side), paint)
+            tile.recycle()
+            canvas.drawRect(Rect(x, y, x + 72, y + 60), label)
+            canvas.drawText("${i + 1}", x + 14f, y + 47f, text)
+        }
+        return runCatching {
+            out.parentFile?.mkdirs()
+            FileOutputStream(out).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+            out
+        }.onFailure { Napier.w("face sheet write failed: ${it.message}") }.getOrNull().also { bitmap.recycle() }
     }
 
     /**

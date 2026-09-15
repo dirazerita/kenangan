@@ -50,8 +50,8 @@ class KeyframeService(
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Estimated cost of one (re)generation for the UI chip ("±$0.04"). */
-    fun regenEstimate(tier: String): Double {
-        val model = configRepository.current().tierRouting.resolve(tier).keyframe
+    fun regenEstimate(tier: String, people: Int? = null): Double {
+        val model = configRepository.current().tierRouting.resolve(tier).keyframeFor(people)
         return priceBook.estimate(model, 1.0)?.usd ?: 0.0
     }
 
@@ -106,12 +106,18 @@ class KeyframeService(
     /** Returns (remoteUrl, localPath) on success. */
     private suspend fun runJob(scene: Scene, tier: String): AppResult<Pair<String, String>> {
         val config = configRepository.current()
-        val model = config.tierRouting.resolve(tier).keyframe
-
-        // Resolve source photo upload URLs (upload lazily if the cache is cold).
         val sourceIds: List<String> = runCatching {
             json.decodeFromString<List<String>>(scene.source_photos_json)
         }.getOrDefault(emptyList())
+        // A group of three or more is an EDIT of the photo (owner 2026-09-15):
+        // the prompt is anchored and the model may be routed to the pro edit
+        // model (config keyframe_group) - the standard one re-stages a family
+        // of six and redraws the faces. Decided at submit, so an existing
+        // storyboard gets it on "Buat ulang".
+        val people = if (sourceIds.size == 1) faceLock.peopleCount(scene.project_id, sourceIds) else null
+        val model = config.tierRouting.resolve(tier).keyframeFor(people)
+
+        // Resolve source photo upload URLs (upload lazily if the cache is cold).
         val photos = photoRepository.photos(scene.project_id).associateBy { it.id }
         val urls = mutableListOf<String>()
         for (id in sourceIds) {
@@ -133,7 +139,7 @@ class KeyframeService(
 
         // Face lock (owner 2026-09-12): full-resolution face crops ride along
         // as extra references, named in the prompt by position.
-        val faceRefs = faceLock.refs(scene.project_id, sourceIds)
+        val faceRefs = faceLock.refs(scene.project_id, sourceIds, limit = FaceLock.KEYFRAME_MAX_FACES)
         if (faceRefs.isNotEmpty()) {
             Napier.i("face lock: ${faceRefs.size} face reference(s) for scene ${scene.scene_id}")
         }
@@ -157,7 +163,9 @@ class KeyframeService(
             // (project-level negative kept as legacy fallback).
             put(
                 "prompt",
-                KeyframePrompts.ensureNoDuplicateGuard(scene.keyframe_prompt_en ?: "") +
+                KeyframePrompts.anchorGroupComposition(
+                    KeyframePrompts.ensureNoDuplicateGuard(scene.keyframe_prompt_en ?: ""), people,
+                ) +
                     KeyframePrompts.descriptionOverrideClause(scene.user_description) +
                     KeyframePrompts.negativeClause(
                         scene.negative_prompt ?: project?.negative_prompt,

@@ -12,6 +12,10 @@ import id.kenang.core.data.PhotoRepository
 import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SceneStatus
 import id.kenang.core.data.config.ConfigRepository
+import id.kenang.core.data.story.FaceBoxes
+import id.kenang.core.data.story.FaceCheck
+import id.kenang.core.data.story.FaceCrops
+import id.kenang.core.data.story.FaceTileCheck
 import id.kenang.core.data.story.ModerationResult
 import id.kenang.core.data.story.PhotoAnalysis
 import id.kenang.core.data.story.SceneIdeaSuggestion
@@ -361,13 +365,17 @@ People (keep these ids, same order):
 $listing
 Return ONLY valid JSON: {"subjects":[{"id":"s1","face_box":[x0,y0,x1,y1]}]}
 face_box values are FRACTIONS of the image width/height (0-1), tightly around the face from the
-top of the forehead to the chin. Use null for a person whose face is not visible. No markdown."""
+top of the forehead to the chin. Use null for a person whose face is not visible.
+x is HORIZONTAL (0 = left edge, 1 = right edge) and y is VERTICAL (0 = top edge, 1 = bottom edge):
+x0 and x1 are the FIRST and THIRD numbers. Never use the [ymin, xmin, ymax, xmax] order. No markdown."""
         return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 300, imageFile = file) { raw ->
             val boxes = json.decodeFromString(FaceBoxReply.serializer(), raw).subjects.associateBy { it.id }
             current.copy(
                 subjects = current.subjects.map { sub ->
                     boxes[sub.id]?.face_box?.let { sub.copy(faceBox = it) } ?: sub
                 },
+                // Fresh boxes get oriented and crop-checked again.
+                faceBoxesChecked = false,
             )
         }.also { result ->
             if (result is AppResult.Ok) {
@@ -578,11 +586,14 @@ Return ONLY valid JSON, no markdown:
   arms and hands, down to where they are cut off by the frame edge. When two people
   touch or overlap, give each the area that is mostly theirs — the boxes may not
   overlap by more than a little.
-- All four numbers are FRACTIONS of the image width/height between 0 and 1.
+- All four numbers are FRACTIONS of the image width/height between 0 and 1, in the order
+  [x0, y0, x1, y1]: x is HORIZONTAL (0 = left, 1 = right), y is VERTICAL (0 = top, 1 = bottom).
+  Never use the [ymin, xmin, ymax, xmax] order.
 - Skip anyone whose face is not visible. If nobody qualifies, return {"people":[]}."""
 
+        val size = FaceCrops.imageSize(photo)
         return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 600, imageFile = photo) { raw ->
-            json.decodeFromString(SpeakerDetection.serializer(), raw).people
+            val people = json.decodeFromString(SpeakerDetection.serializer(), raw).people
                 .filter { it.faceBox != null || it.personBox != null }
                 .mapIndexed { i, p ->
                     p.copy(
@@ -590,6 +601,54 @@ Return ONLY valid JSON, no markdown:
                         label = p.label.ifBlank { "Orang ${i + 1}" },
                     )
                 }
+            // The model may answer y-first (owner 2026-09-15: the child's box
+            // sat on her father's chest). The face boxes' geometry decides,
+            // and the body boxes follow the same reading.
+            val transposed = size != null &&
+                FaceBoxes.orientation(people.map { it.faceBox }, size.first, size.second).transposed
+            if (!transposed) people else {
+                Napier.w("speaker boxes were answered as [y0,x0,y1,x1] - axes swapped")
+                people.map { p ->
+                    p.copy(
+                        faceBox = p.faceBox?.let(FaceBoxes::swap),
+                        personBox = p.personBox?.let(FaceBoxes::swap),
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * The crop check (owner 2026-09-15): [sheet] is a numbered grid of face
+     * crops, one per entry of [people] (id to description, in tile order).
+     * The model says which tiles really show that person's face, so a crop
+     * cut with a wrong box is never sent to a paid model as their face.
+     */
+    suspend fun checkFaceCrops(
+        projectId: String,
+        sheet: File,
+        people: List<Pair<String, String>>,
+    ): AppResult<List<FaceCheck.Verdict>> {
+        if (people.isEmpty()) return AppResult.Ok(emptyList())
+        val uploaded = when (val up = storage.uploadFile(sheet)) {
+            is AppResult.Ok -> up.value
+            is AppResult.Err -> return up
+        }
+        val listing = people.mapIndexed { i, (id, desc) -> "tile ${i + 1} should be id=$id: $desc" }
+            .joinToString("\n")
+        val prompt = """This image is a contact sheet of ${people.size} numbered tiles (the number is printed in the
+top-left corner of each tile). Each tile was cut from one family photo and is SUPPOSED to show the
+face of one specific person:
+$listing
+For EVERY tile decide honestly what it shows.
+- "face": true only when the tile's main content is ONE person's face with eyes, nose and mouth
+  clearly visible (a neighbour's partial face at the edge does not matter). false when the tile
+  shows no face, only part of a face, or mostly clothes, a body, hands, feet, a wall or furniture.
+- "id": the id of the listed person whose face it is, or null when unsure.
+Return ONLY valid JSON, no markdown: {"tiles":[{"n":1,"face":true,"id":"s1"}]}"""
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 400, imageFile = sheet) { raw ->
+            json.decodeFromString(FaceTileCheck.serializer(), raw).tiles
+                .map { FaceCheck.Verdict(it.n, it.face, it.id) }
         }
     }
 
@@ -617,6 +676,8 @@ Use "none" for normal family photos (including old, damaged, black-and-white pho
 face_quality and quality_score are 0-1 floats. No markdown, no extra text.
 face_box is [x0, y0, x1, y1] as FRACTIONS of the image width/height (0-1), tightly around the face
 from the top of the forehead to the chin; null when the face is not visible.
+x is HORIZONTAL (0 = left edge, 1 = right edge) and y is VERTICAL (0 = top edge, 1 = bottom edge):
+x0 and x1 are the FIRST and THIRD numbers. Never use the [ymin, xmin, ymax, xmax] order.
 IMPORTANT — count the people carefully: create exactly ONE subjects entry per real person visible
 in the photo, no duplicates, no guesses. Downstream scenes are locked to this count, so an
 over- or under-count corrupts every generated image."""
@@ -709,6 +770,13 @@ people visible in its source photo(s): the same number of people, the same indiv
 duplicate a person into twins, and never invent extra people the photo does not show. State the
 count explicitly in subject_en (e.g. "the family of five", "the two sisters", "the man"), and
 never mention a number of people that differs from the source photo's subjects list.
+GROUP RULE (a source photo with 3 or more people): every scene derived from that photo keeps the
+group exactly as photographed — the same arrangement, the same seated or standing positions and
+poses — and varies ONLY the place and background, the light and time of day, the camera distance
+and framing, small props, and gentle expressions or hand gestures. Write keyframe_hint that way
+(e.g. "the family seated as in the photo, now on a shaded veranda at golden hour, soft smiles")
+and pick a motion_category the group can perform from that pose (never walking). For such scenes
+the variety rules' different-pose requirement does not apply: vary the place instead.
 ${if (!sceneGuidance.isNullOrBlank()) """
 USER SCENE GUIDANCE (Indonesian; the user's wishes for what the scenes should show — FOLLOW this
 direction when inventing activities and settings, translating to English in keyframe_hint; ignore any

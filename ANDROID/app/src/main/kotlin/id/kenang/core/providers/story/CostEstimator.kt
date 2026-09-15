@@ -38,7 +38,12 @@ class CostEstimator(
         return scene.duration_s * perSecond
     }
 
-    fun estimate(scenes: List<Scene>, tier: String): StoryboardEstimate {
+    fun estimate(
+        scenes: List<Scene>,
+        tier: String,
+        /** People per single-source scene: a group may be priced at the group keyframe model. */
+        peopleBySceneId: Map<String, Int> = emptyMap(),
+    ): StoryboardEstimate {
         val config = configRepository.current()
         val routed = config.tierRouting.resolve(tier)
         // Settings → Model AI override changes the real spend — reflect it here.
@@ -49,6 +54,11 @@ class CostEstimator(
         var complete = true
         val perSecond = priceBook.estimate(i2vSlug, 1.0)?.usd ?: run { complete = false; 0.0 }
         val perImage = priceBook.estimate(routed.keyframe, 1.0)?.usd ?: run { complete = false; 0.0 }
+        // A group scene may be routed to the pro edit model (owner 2026-09-15).
+        fun perImageOf(scene: Scene): Double {
+            val model = routed.keyframeFor(peopleBySceneId[scene.scene_id])
+            return if (model == routed.keyframe) perImage else priceBook.estimate(model, 1.0)?.usd ?: perImage
+        }
 
         // Formula per MASTER_PROMPT_03 §Cost estimator: upcoming I2V spend plus
         // keyframe REGENS only (first keyframes are already-spent, tracked by CostTracker).
@@ -59,9 +69,8 @@ class CostEstimator(
             .filter { scene -> scene.local_clip_path?.let { java.io.File(it).isFile } != true }
             .sumOf { it.duration_s }
         val totalDuration = scenes.sumOf { it.duration_s }
-        val totalRegens = scenes.sumOf { it.regen_count }
         val i2vUsd = billableDuration * perSecond
-        val keyframeUsd = totalRegens * perImage
+        val keyframeUsd = scenes.sumOf { it.regen_count * perImageOf(it) }
         val usd = i2vUsd + keyframeUsd
         return StoryboardEstimate(
             usd = usd,

@@ -25,6 +25,91 @@ object KeyframePrompts {
         else prompt + NO_DUPLICATE_CLAUSE
 
     /**
+     * Identity locked, composition freed — right for one or two people, whose
+     * faces the model can hold while it re-stages them (verified 2026-09-12).
+     */
+    const val FREE_COMPOSITION_CLAUSE =
+        " Preserve each person's face, age, and clothing exactly, but change the pose, body " +
+            "position, expression, camera angle and framing naturally to fit the scene — " +
+            "do NOT copy the original photo's composition."
+
+    /**
+     * From this many people on, a scene is an EDIT of the photo instead
+     * (owner 2026-09-15, Rahayu RO 1: a family of six re-staged four times
+     * came back as strangers, while the one scene the model treated as an
+     * edit of the photo kept every face and changed only the background —
+     * which is the result the owner wants).
+     */
+    const val GROUP_ANCHOR_MIN = 3
+
+    /**
+     * The group prompt, structured as an EDIT of the photo. Verified the same
+     * day that a lock phrased as a mid-prompt clause is not enough: with
+     * "sharing kue on a low wooden table" as the scene, the model still
+     * re-staged six people around a table, dropped one and redrew the faces.
+     * So the lock LEADS, the scene hint is presented as the surroundings to
+     * change, and the count is restated as "nobody removed".
+     */
+    fun groupEditPrompt(people: Int, hint: String, setting: String = ""): String {
+        val where = setting.trim().takeIf { it.isNotBlank() }?.let { ", set in $it" } ?: ""
+        val scene = hint.trim().trimEnd('.')
+        return "GROUP LOCK — EDIT this photograph (image 1) of exactly $people people. Keep all $people " +
+            "people EXACTLY as they are in image 1: the same arrangement, positions, sizes and poses, " +
+            "the same clothing, and every face pixel-faithful to image 1 — the same bone structure, " +
+            "eyes, nose, mouth, skin, hair and age — so each person is instantly recognisable to their " +
+            "family. Change ONLY the surroundings so the picture matches this description: " +
+            "\"$scene\"$where. Surroundings means the place and background, furniture and props, the " +
+            "light and time of day, and the camera distance and framing; the people themselves may " +
+            "only change their expression slightly or move a hand. Do not re-pose, reseat, rearrange, " +
+            "move or resize anyone, and never redraw a face from imagination. Nobody added, nobody " +
+            "removed — count them before finalizing: exactly $people people, the same individuals as " +
+            "image 1, each appearing once."
+    }
+
+    /** The lock as a clause, for a stored prompt whose shape cannot be rebuilt. */
+    fun groupLockClause(people: Int): String =
+        " GROUP LOCK: this is an EDIT of image 1, not a new picture. Keep all $people people EXACTLY " +
+            "as they are in image 1 — the same arrangement, positions, sizes and poses — and keep " +
+            "every face pixel-faithful to image 1: the same bone structure, eyes, nose, mouth, skin, " +
+            "hair and age, so each person is instantly recognisable to their family. Change ONLY what " +
+            "the scene needs: the surroundings and background, the light and time of day, the camera " +
+            "distance and framing, small props, and gentle changes of expression or a hand gesture. " +
+            "Do not re-pose, reseat, rearrange, move or resize anyone, and never redraw a face from " +
+            "imagination."
+
+    /**
+     * The shape [build] has written for a single-source scene since
+     * 2026-08-27, so a stored prompt can be taken apart and rebuilt.
+     */
+    private val storedShape = Regex(
+        "^(?<restore>First fully restore the old photograph:.*?sharpen softly\\. )?" +
+            "Create a new photorealistic scene of the exact same (?<n>\\d+) people" +
+            "(?:, keeping the original photo's era and setting style| in (?<setting>.+?)): (?<hint>.+?)\\." +
+            " The scene contains exactly \\d+ people" +
+            "(?:.*?(?<focus> Include ONLY the people whose faces.*?doing it alone\\.))?.*$",
+        RegexOption.DOT_MATCHES_ALL,
+    )
+
+    /**
+     * Rebuilds a prompt stored with the freed composition as
+     * [groupEditPrompt] when the scene shows [people] >= [GROUP_ANCHOR_MIN],
+     * so "Buat ulang gambar" on an existing storyboard gets the edit
+     * structure at once. A prompt whose shape cannot be parsed keeps its
+     * text with only the composition clause swapped for the lock.
+     */
+    fun anchorGroupComposition(prompt: String, people: Int?): String {
+        if (people == null || people < GROUP_ANCHOR_MIN || FREE_COMPOSITION_CLAUSE !in prompt) return prompt
+        val match = storedShape.find(prompt)
+            ?: return prompt.replace(FREE_COMPOSITION_CLAUSE, groupLockClause(people))
+        val ratioPhrase = if ("9:16 portrait" in prompt) "9:16 portrait" else "16:9 landscape"
+        val restore = match.groups["restore"]?.value ?: ""
+        val setting = match.groups["setting"]?.value ?: ""
+        val focus = match.groups["focus"]?.value ?: ""
+        return restore + groupEditPrompt(people, match.groups["hint"]!!.value, setting) + focus +
+            NO_DUPLICATE_CLAUSE + " Photorealistic, warm natural light, $ratioPhrase."
+    }
+
+    /**
      * User "negative prompt" (owner 2026-09-06: unwanted new people/objects
      * keep appearing). Nano Banana has no negative_prompt API param, so the
      * exclusion rides the prompt as a strict ban list. Applied at SUBMIT time
@@ -97,6 +182,15 @@ object KeyframePrompts {
             else ->
                 "Create a new photorealistic scene of the exact same $who in ${vibe.promptEn}: $activity"
         }
+        // A group is an EDIT of the photo, not a re-staging (owner 2026-09-15).
+        val groupPeople = exactSubjects?.takeIf {
+            !isFusion && !isPet && it >= GROUP_ANCHOR_MIN && activity.isNotEmpty()
+        }
+        if (groupPeople != null) {
+            return restoration + groupEditPrompt(groupPeople, activity, vibe.promptEn) +
+                focusClause(focusMainOnly) + NO_DUPLICATE_CLAUSE +
+                " Photorealistic, warm natural light, $ratioPhrase."
+        }
         val fusion = if (isFusion) {
             " Combine the $who from the source photos into one natural scene together. " +
                 "Exactly $subjectCount $who, no additional people."
@@ -114,11 +208,15 @@ object KeyframePrompts {
         val preservation = if (activity.isEmpty()) {
             " Preserve faces, age, body, and clothing exactly."
         } else {
-            " Preserve each person's face, age, and clothing exactly, but change the pose, body " +
-                "position, expression, camera angle and framing naturally to fit the scene — " +
-                "do NOT copy the original photo's composition."
+            FREE_COMPOSITION_CLAUSE
         }
-        val focus = if (focusMainOnly) {
+        val focus = focusClause(focusMainOnly)
+        return restoration + base + fusion + preservation + focus + NO_DUPLICATE_CLAUSE +
+            " Photorealistic, warm natural light, $ratioPhrase."
+    }
+
+    private fun focusClause(focusMainOnly: Boolean): String =
+        if (focusMainOnly) {
             " Include ONLY the people whose faces are clearly and completely visible in the source " +
                 "photo. Any person who is partially cut off by the photo edge, whose face is not " +
                 "visible, or who is unrecognizable must be OMITTED from the scene entirely — never " +
@@ -131,9 +229,6 @@ object KeyframePrompts {
                 "bystander who is not in the source photo, even if the activity wording suggests " +
                 "company; if it does, depict the source photo's person(s) doing it alone."
         } else ""
-        return restoration + base + fusion + preservation + focus + NO_DUPLICATE_CLAUSE +
-            " Photorealistic, warm natural light, $ratioPhrase."
-    }
 
     /**
      * Face references (owner 2026-09-12, "kunci wajah"): the crops are sent

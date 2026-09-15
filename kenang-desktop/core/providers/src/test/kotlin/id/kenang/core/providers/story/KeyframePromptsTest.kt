@@ -85,6 +85,93 @@ class KeyframePromptsTest {
         assertTrue("exactly 5 people" in five, five)
     }
 
+    /**
+     * Owner 2026-09-15 (Rahayu RO 1): a family of six re-staged into new
+     * compositions came back as strangers; the one scene the model treated
+     * as an edit of the photo kept every face. Three or more people are an
+     * EDIT of the photo now — the lock leads and the hint is the surroundings;
+     * one or two keep the freed composition (D-055).
+     */
+    @Test
+    fun `a group of three or more is anchored to the photo's composition`() {
+        val six = KeyframePrompts.build(
+            asli, "16:9", isFusion = false, subjectCount = 4,
+            keyframeHint = "Medium shot of the family of six sharing kue on a low wooden table.",
+            exactSubjects = 6,
+        )
+        assertTrue(six.startsWith("GROUP LOCK"), six)
+        assertTrue("Keep all 6 people EXACTLY" in six, six)
+        assertTrue("sharing kue on a low wooden table" in six, six)
+        assertTrue("exactly 6 people" in six, six)
+        assertTrue("nobody removed" in six, six)
+        assertTrue("do NOT copy the original photo's composition" !in six, six)
+        assertTrue("no twins" in six && "16:9 landscape" in six, six)
+
+        val two = KeyframePrompts.build(
+            asli, "16:9", isFusion = false, subjectCount = 2,
+            keyframeHint = "They share tea on the veranda.", exactSubjects = 2,
+        )
+        assertTrue("do NOT copy the original photo's composition" in two, two)
+        assertTrue("GROUP LOCK" !in two, two)
+
+        // Fusion scenes combine people from different photos: never anchored.
+        val fusion = KeyframePrompts.build(
+            taman, "9:16", isFusion = true, subjectCount = 3,
+            keyframeHint = "They stroll along a flower path.", exactSubjects = 3,
+        )
+        assertTrue("GROUP LOCK" !in fusion, fusion)
+
+        // A vibe becomes the setting of the surroundings, and restoration still leads.
+        val garden = KeyframePrompts.build(
+            taman, "9:16", isFusion = false, subjectCount = 3,
+            keyframeHint = "The three of them on a bench.", exactSubjects = 3, restore = true,
+        )
+        assertTrue(garden.startsWith("First fully restore the old photograph"), garden)
+        assertTrue("set in a lush tropical garden" in garden, garden)
+    }
+
+    @Test
+    fun `anchorGroupComposition rebuilds a stored prompt as an edit of the photo`() {
+        // The exact text stored for Rahayu RO 1 scene 2 (2026-09-15).
+        val stored = "First fully restore the old photograph: repair scratches, tears, stains and creases, " +
+            "remove noise and grain, correct color fading and color cast, recover natural skin tones, and " +
+            "sharpen softly. Create a new photorealistic scene of the exact same 6 people, keeping the " +
+            "original photo's era and setting style: Medium shot of the family of six sharing kue on a low " +
+            "wooden table. The scene contains exactly 6 people — count them before finalizing: exactly 6, " +
+            "the same individuals as the source photo, nobody added, nobody repeated, no extra " +
+            "similar-looking person in the background." + KeyframePrompts.FREE_COMPOSITION_CLAUSE +
+            KeyframePrompts.NO_DUPLICATE_CLAUSE + " Photorealistic, warm natural light, 16:9 landscape."
+
+        val anchored = KeyframePrompts.anchorGroupComposition(stored, 6)
+        assertTrue(anchored.startsWith("First fully restore the old photograph"), anchored)
+        assertTrue("GROUP LOCK — EDIT this photograph (image 1) of exactly 6 people" in anchored, anchored)
+        assertTrue("\"Medium shot of the family of six sharing kue on a low wooden table\"" in anchored, anchored)
+        assertTrue(KeyframePrompts.FREE_COMPOSITION_CLAUSE !in anchored, anchored)
+        assertTrue("Create a new photorealistic scene" !in anchored, anchored)
+        assertTrue("no twins" in anchored && anchored.endsWith("16:9 landscape."), anchored)
+
+        // A vibe prompt keeps its setting; the focus clause of a reference scene survives.
+        val garden = KeyframePrompts.build(
+            taman, "9:16", isFusion = false, subjectCount = 2,
+            keyframeHint = "They stroll along a flower path.", exactSubjects = 2, focusMainOnly = true,
+        )
+        val gardenAnchored = KeyframePrompts.anchorGroupComposition(garden, 4)
+        assertTrue("set in a lush tropical garden" in gardenAnchored, gardenAnchored)
+        assertTrue("must be OMITTED" in gardenAnchored, gardenAnchored)
+        assertTrue("9:16 portrait" in gardenAnchored, gardenAnchored)
+
+        assertTrue(KeyframePrompts.anchorGroupComposition(stored, 2) == stored, "two people stay free")
+        assertTrue(KeyframePrompts.anchorGroupComposition(stored, null) == stored, "unknown count changes nothing")
+        assertTrue(KeyframePrompts.anchorGroupComposition(anchored, 6) == anchored, "already anchored is left alone")
+        assertTrue(KeyframePrompts.anchorGroupComposition("", 6) == "")
+
+        // A prompt of an unknown shape still gets the lock as a clause.
+        val odd = "Something hand-written." + KeyframePrompts.FREE_COMPOSITION_CLAUSE
+        val oddAnchored = KeyframePrompts.anchorGroupComposition(odd, 3)
+        assertTrue("GROUP LOCK: this is an EDIT of image 1" in oddAnchored, oddAnchored)
+        assertTrue(oddAnchored.startsWith("Something hand-written."), oddAnchored)
+    }
+
     @Test
     fun `reference-photo scenes omit cut-off faces instead of inventing them`() {
         val prompt = KeyframePrompts.build(

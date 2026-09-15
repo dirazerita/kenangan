@@ -79,8 +79,10 @@
       },
       "standar": {
         "enabled": true,
-        "note": "LOCKED default tier (D-005). Kling audio default is ON upstream - generate_audio MUST stay false (+50% cost otherwise).",
+        "note": "LOCKED default tier (D-005). Kling audio default is ON upstream - generate_audio MUST stay false (+50% cost otherwise). Scenes of keyframe_group_min+ people use keyframe_group (D-061): the standard model re-stages a family group and redraws the faces; the pro edit model keeps them.",
         "keyframe": "fal-ai/nano-banana/edit",
+        "keyframe_group": "fal-ai/nano-banana-pro/edit",
+        "keyframe_group_min": 3,
         "i2v": "fal-ai/kling-video/v3/standard/image-to-video",
         "i2v_params": { "generate_audio": false }
       },

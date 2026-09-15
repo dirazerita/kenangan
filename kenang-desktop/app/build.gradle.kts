@@ -204,6 +204,7 @@ tasks.register<JavaExec>("faceLockDoctor") {
     providers.gradleProperty("doctorProject").orNull?.let { systemProperty("doctor.project", it) }
     providers.gradleProperty("doctorKeyframe").orNull?.let { systemProperty("doctor.keyframe", it) }
     providers.gradleProperty("doctorVideo").orNull?.let { systemProperty("doctor.video", it) }
+    providers.gradleProperty("doctorTier").orNull?.let { systemProperty("doctor.tier", it) }
 }
 
 // Diagnostic: Video Berbicara — one real run bracketed by the fal balance.

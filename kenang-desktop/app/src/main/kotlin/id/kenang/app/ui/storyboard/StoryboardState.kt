@@ -21,6 +21,8 @@ import id.kenang.core.providers.story.KeyframeService
 import id.kenang.core.providers.story.StoryboardEstimate
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.serialization.json.Json
+import id.kenang.core.data.story.PhotoAnalysis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -59,6 +61,7 @@ class StoryboardState(
     var project by mutableStateOf<Project?>(null)
     var scenes by mutableStateOf<List<Scene>>(emptyList())
     var estimate by mutableStateOf<StoryboardEstimate?>(null)
+    private var peopleByScene: Map<String, Int> = emptyMap()
     var snackMessage by mutableStateOf<String?>(null)
     var showConfirm by mutableStateOf(false)
 
@@ -72,7 +75,13 @@ class StoryboardState(
 
     fun tier(): String = project?.tier ?: config.tierRouting.defaultTier
 
-    fun regenCostUsd(): Double = keyframeService.regenEstimate(tier())
+    fun regenCostUsd(people: Int? = null): Double = keyframeService.regenEstimate(tier(), people)
+
+    /**
+     * A new AI scene derives from the project's photos, so it is priced like
+     * the largest group among them (owner 2026-09-15: six people -> pro).
+     */
+    fun addSceneCostUsd(): Double = regenCostUsd(peopleByScene.values.maxOrNull())
 
     fun start() {
         scope.launch {
@@ -94,6 +103,7 @@ class StoryboardState(
                 .forEach { sceneRepository.setKeyframeResult(it.scene_id, null, null, false) }
             sceneRepository.observeScenes(projectId).collect { list ->
                 scenes = list
+                peopleByScene = peopleCounts(list)
                 recomputeEstimate(list)
                 autoTriggerKeyframes(list)
             }
@@ -101,7 +111,26 @@ class StoryboardState(
     }
 
     private fun recomputeEstimate(list: List<Scene>) {
-        estimate = estimator.estimate(list, tier())
+        estimate = estimator.estimate(list, tier(), peopleByScene)
+    }
+
+    /**
+     * People per single-source scene (owner 2026-09-15): a group of three or
+     * more may be routed to the pro edit model, which the estimate and the
+     * "Buat ulang" chip must price.
+     */
+    private suspend fun peopleCounts(list: List<Scene>): Map<String, Int> {
+        val photos = photoRepository.photos(projectId).associateBy { it.id }
+        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+        return list.mapNotNull { scene ->
+            val ids = runCatching { json.decodeFromString<List<String>>(scene.source_photos_json) }
+                .getOrDefault(emptyList())
+            val photo = ids.singleOrNull()?.let { photos[it] } ?: return@mapNotNull null
+            val analysis = photo.analysis_json?.let { raw ->
+                runCatching { json.decodeFromString(PhotoAnalysis.serializer(), raw) }.getOrNull()
+            } ?: return@mapNotNull null
+            scene.scene_id to analysis.subjects.size
+        }.toMap()
     }
 
     /** Auto-generate keyframes for all draft/failed scenes (first storyboard entry + retries). */
@@ -516,7 +545,7 @@ class StoryboardState(
     fun allReady(): Boolean =
         scenes.isNotEmpty() && scenes.all { it.status == SceneStatus.KEYFRAME_READY || it.status == SceneStatus.CONFIRMED }
 
-    fun estimateFor(tierKey: String): StoryboardEstimate = estimator.estimate(scenes, tierKey)
+    fun estimateFor(tierKey: String): StoryboardEstimate = estimator.estimate(scenes, tierKey, peopleByScene)
 
     /** Confirm dialog "Buat Video": persist tier, confirm scenes, emit the Phase-04 event. */
     fun confirm() {

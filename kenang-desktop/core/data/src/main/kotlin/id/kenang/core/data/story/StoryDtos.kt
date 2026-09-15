@@ -13,6 +13,12 @@ data class PhotoAnalysis(
     val mood: String = "",
     @SerialName("quality_score") val qualityScore: Double = 0.0,
     val issues: List<String> = emptyList(),
+    /**
+     * The face boxes were oriented and crop-checked (owner 2026-09-15):
+     * FaceLock settles them once and stores the result. False on every
+     * analysis written before that, which settles on first use.
+     */
+    @SerialName("face_boxes_checked") val faceBoxesChecked: Boolean = false,
 ) {
     @Serializable
     data class Subject(
@@ -26,6 +32,13 @@ data class PhotoAnalysis(
          */
         @SerialName("face_box") val faceBox: List<Double>? = null,
     )
+}
+
+/** The crop check's answer per numbered tile of the sheet (owner 2026-09-15). */
+@Serializable
+data class FaceTileCheck(val tiles: List<Tile> = emptyList()) {
+    @Serializable
+    data class Tile(val n: Int = 0, val face: Boolean = false, val id: String? = null)
 }
 
 /**
