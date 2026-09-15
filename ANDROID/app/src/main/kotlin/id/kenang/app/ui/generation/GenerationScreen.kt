@@ -139,7 +139,17 @@ fun GenerationScreen(
             genError = ErrorTranslator.translate(id.kenang.core.common.AppError.Unknown("project missing"))
             ticker.cancel(); return@LaunchedEffect
         }
-        val outcome = orchestrator.run(projectId, project.tier)
+        val outcome = try {
+            orchestrator.run(projectId, project.tier)
+        } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
+            // The screen must outlive a bug in the run (owner 2026-09-15: an
+            // exception here closed the whole app).
+            io.github.aakira.napier.Napier.e("generation run crashed: $t", t)
+            ticker.cancel()
+            genError = ErrorTranslator.translate(id.kenang.core.common.AppError.Unknown(t.message))
+            return@LaunchedEffect
+        }
         ticker.cancel()
         when {
             outcome.fatal != null -> {
@@ -397,6 +407,8 @@ private fun SceneRow(
                                 ErrorTranslator.translate(
                                     id.kenang.core.common.AppError.ProviderFailed(id.kenang.core.common.Provider.FAL),
                                 ).title
+                            GenerationOrchestrator.ErrorCodes.INTERNAL ->
+                                ErrorTranslator.translate(id.kenang.core.common.AppError.Unknown()).title
                             else -> Strings.GEN_STATUS_FAILED
                         }
                         Text(

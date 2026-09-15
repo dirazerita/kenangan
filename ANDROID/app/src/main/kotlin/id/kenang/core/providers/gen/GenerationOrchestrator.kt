@@ -80,6 +80,9 @@ class GenerationOrchestrator(
 
         /** The provider refused the request body - permanent until the request changes. */
         const val BAD_REQUEST = "bad_request"
+
+        /** A bug inside the app, caught instead of closing the window; the detail says which. */
+        const val INTERNAL = "internal"
     }
 
     /**
@@ -114,6 +117,7 @@ class GenerationOrchestrator(
         val tierCfg = configRepository.current().tierRouting.resolve(tier)
         val (i2vSlug, i2vParams) = resolveI2v(tierCfg)
         val fatal = AtomicReference<AppError?>(null)
+        val skipped = java.util.concurrent.atomic.AtomicInteger(0)
         val semaphore = Semaphore(3)
 
         val pending = sceneRepository.scenes(projectId)
@@ -125,41 +129,103 @@ class GenerationOrchestrator(
                 async {
                     semaphore.withPermit {
                         if (fatal.get() != null) return@withPermit false
-                        // Revision flow (owner 2026-09-07): a scene whose clip
-                        // survived its edits needs no regeneration — reuse it,
-                        // zero cost. Edits that invalidate a clip clear
-                        // local_clip_path (motion change, new image).
-                        val existingClip = scene.local_clip_path?.let(::File)?.takeIf { it.isFile }
-                        if (existingClip != null && scene.status == SceneStatus.CONFIRMED) {
-                            Napier.i("scene ${scene.scene_id}: clip reused (revision), no cost")
-                            sceneRepository.transition(scene.scene_id, SceneStatus.GENERATING)
-                            sceneRepository.transition(scene.scene_id, SceneStatus.DONE)
-                            return@withPermit true
+                        try {
+                            runScene(project, scene, i2vSlug, i2vParams, fatal, skipped)
+                        } catch (t: Throwable) {
+                            if (t is kotlinx.coroutines.CancellationException) throw t
+                            // A bug in one scene must never cancel the other
+                            // renders or the window (owner 2026-09-15:
+                            // "illegal scene transition keyframe_ready ->
+                            // generating" closed the app with five renders
+                            // still to run). Record it, count it, carry on.
+                            Napier.e("scene ${scene.scene_id} crashed: $t", t)
+                            errorDetails[scene.scene_id] = (t.message ?: t::class.simpleName ?: "error").take(220)
+                            runCatching { markCrashed(scene.scene_id, i2vSlug) }
+                                .onFailure { Napier.e("scene ${scene.scene_id}: could not record the crash: $it", it) }
+                            false
                         }
-                        val ok = generateScene(project.id, project.ratio, scene, i2vSlug, i2vParams)
-                        if (!ok) {
-                            val latest = jobRepository.latestForScene(scene.scene_id)
-                            if (latest?.error_code in setOf(ErrorCodes.INVALID_KEY, ErrorCodes.PROVIDER_BALANCE)) {
-                                fatal.compareAndSet(
-                                    null,
-                                    if (latest?.error_code == ErrorCodes.INVALID_KEY) {
-                                        AppError.InvalidKey(Provider.FAL, latest.key_label)
-                                    } else {
-                                        AppError.ProviderBalance(Provider.FAL)
-                                    },
-                                )
-                            }
-                        }
-                        ok
                     }
                 }
             }.awaitAll()
         }
 
         val done = sceneRepository.scenes(projectId).count { it.status == SceneStatus.DONE }
-        val failed = sceneRepository.scenes(projectId).count { it.status == SceneStatus.FAILED }
+        val failed = sceneRepository.scenes(projectId).count { it.status == SceneStatus.FAILED } + skipped.get()
         Napier.i("generation outcome for $projectId: done=$done failed=$failed fatal=${fatal.get()}")
         return Outcome(done, failed, fatal.get()).also { _ -> results /* keep */ }
+    }
+
+    /** Statuses [run] can animate from; anything else has no image yet. */
+    private val generatable = setOf(SceneStatus.CONFIRMED, SceneStatus.GENERATING, SceneStatus.FAILED)
+
+    /**
+     * One scene of [run]. A scene left KEYFRAME_READY - by "Buat video
+     * adegan" or a doctor render, while the project already sat in
+     * "generating" - is confirmed here instead of thrown at (owner
+     * 2026-09-15); its surviving clip is then reused for free like any
+     * other. A scene with no image at all cannot be animated and is counted
+     * as failed without touching the others.
+     */
+    private suspend fun runScene(
+        project: id.kenang.core.db.Project,
+        scene: Scene,
+        i2vSlug: String,
+        i2vParams: JsonObject?,
+        fatal: AtomicReference<AppError?>,
+        skipped: java.util.concurrent.atomic.AtomicInteger,
+    ): Boolean {
+        var current = scene
+        if (current.status == SceneStatus.KEYFRAME_READY) {
+            sceneRepository.transition(current.scene_id, SceneStatus.CONFIRMED)
+            current = sceneRepository.scene(current.scene_id) ?: return false
+        }
+        if (current.status !in generatable) {
+            Napier.w("scene ${current.scene_id} is ${current.status} - no image to animate yet, skipped")
+            errorDetails[current.scene_id] = "gambar adegan belum ada (status ${current.status})"
+            skipped.incrementAndGet()
+            return false
+        }
+        // Revision flow (owner 2026-09-07): a scene whose clip survived its
+        // edits needs no regeneration — reuse it, zero cost. Edits that
+        // invalidate a clip clear local_clip_path (motion change, new image).
+        val existingClip = current.local_clip_path?.let(::File)?.takeIf { it.isFile }
+        if (existingClip != null && current.status == SceneStatus.CONFIRMED) {
+            Napier.i("scene ${current.scene_id}: clip reused (revision), no cost")
+            sceneRepository.transition(current.scene_id, SceneStatus.GENERATING)
+            sceneRepository.transition(current.scene_id, SceneStatus.DONE)
+            errorDetails.remove(current.scene_id)
+            return true
+        }
+        val ok = generateScene(project.id, project.ratio, current, i2vSlug, i2vParams)
+        if (!ok) {
+            val latest = jobRepository.latestForScene(current.scene_id)
+            if (latest?.error_code in setOf(ErrorCodes.INVALID_KEY, ErrorCodes.PROVIDER_BALANCE)) {
+                fatal.compareAndSet(
+                    null,
+                    if (latest?.error_code == ErrorCodes.INVALID_KEY) {
+                        AppError.InvalidKey(Provider.FAL, latest.key_label)
+                    } else {
+                        AppError.ProviderBalance(Provider.FAL)
+                    },
+                )
+            }
+        }
+        return ok
+    }
+
+    /** Leaves a crashed scene retryable, with a job row that names the crash. */
+    private suspend fun markCrashed(sceneId: String, model: String) {
+        val jobId = jobRepository.latestForScene(sceneId)?.takeIf { it.status != GenJobStatus.DONE }?.id
+            ?: jobRepository.create(sceneId, model, 0.0)
+        jobRepository.setStatus(jobId, GenJobStatus.FAILED_RETRYABLE, ErrorCodes.INTERNAL)
+        when (sceneRepository.scene(sceneId)?.status) {
+            SceneStatus.GENERATING -> sceneRepository.transition(sceneId, SceneStatus.FAILED)
+            SceneStatus.CONFIRMED -> {
+                sceneRepository.transition(sceneId, SceneStatus.GENERATING)
+                sceneRepository.transition(sceneId, SceneStatus.FAILED)
+            }
+            else -> Unit
+        }
     }
 
     /** Retries a single failed scene (manual retry button). */
@@ -209,6 +275,7 @@ class GenerationOrchestrator(
             when (code) {
                 ErrorCodes.CONTENT_BLOCKED -> AppError.ContentBlocked("scene $sceneId").err()
                 ErrorCodes.BAD_REQUEST -> AppError.BadRequest(Provider.FAL, errorDetails[sceneId]).err()
+                ErrorCodes.INTERNAL -> AppError.Unknown(errorDetails[sceneId]).err()
                 ErrorCodes.INVALID_KEY -> AppError.InvalidKey(Provider.FAL).err()
                 ErrorCodes.PROVIDER_BALANCE -> AppError.ProviderBalance(Provider.FAL).err()
                 ErrorCodes.TIMEOUT -> AppError.Timeout().err()

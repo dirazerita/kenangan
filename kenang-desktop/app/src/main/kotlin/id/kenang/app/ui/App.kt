@@ -77,6 +77,16 @@ fun App() {
 
     LaunchedEffect(Unit) { connectivity.start(this) }
 
+    // Dev only: -Dkenang.devThrow=true throws from a UI coroutine after 3 s,
+    // to prove the window survives an uncaught exception (owner 2026-09-15).
+    LaunchedEffect(Unit) {
+        if (System.getProperty("kenang.devThrow") == "true" && !CrashGuard.devThrown) {
+            CrashGuard.devThrown = true
+            kotlinx.coroutines.delay(3_000)
+            error("devThrow: uji jendela tetap terbuka")
+        }
+    }
+
     // Storyboard "Buat Video" → generation screen (subscribed for the whole
     // app lifetime — GenerationEvents has no replay, so this must outlive the
     // storyboard screen).

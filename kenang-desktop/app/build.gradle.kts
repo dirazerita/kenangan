@@ -104,6 +104,7 @@ tasks.processResources {
 // (used for docs screenshots; no effect on packaged builds).
 tasks.withType<JavaExec>().configureEach {
     providers.gradleProperty("devRoute").orNull?.let { systemProperty("kenang.devRoute", it) }
+    providers.gradleProperty("devThrow").orNull?.let { systemProperty("kenang.devThrow", it) }
 }
 
 // Scripted Phase-03 demo against real provider APIs (docs/demo-03.md).
