@@ -6,6 +6,7 @@ import id.kenang.core.common.Provider
 import id.kenang.core.common.err
 import id.kenang.core.common.ok
 import id.kenang.core.data.AppDirs
+import id.kenang.core.data.story.FaceCrops
 import id.kenang.core.data.GenJobRepository
 import id.kenang.core.data.GenJobStatus
 import id.kenang.core.data.ProjectRepository
@@ -95,6 +96,65 @@ class GenerationOrchestrator(
 
     fun errorDetail(sceneId: String): String? = errorDetails[sceneId]
 
+    /**
+     * Where a scene's render stands, for the generation screen's bars
+     * (owner 2026-09-16). fal gives no percentage for a render, so the
+     * fraction is time against [estimateS] - see [RenderTimeStats] - and
+     * [at] turns it into a value the screen can tick every second.
+     */
+    data class SceneProgress(
+        val phase: String,
+        /** When the scene was submitted (or started waiting for a slot). */
+        val startedAt: Long,
+        /** Expected seconds from submit to finished file. */
+        val estimateS: Int,
+        val queuePosition: Int? = null,
+        val attempt: Int = 1,
+    ) {
+        /** 0..1 at [nowMs]: waiting scenes idle low, a render creeps to 95%, download 97%, done 100%. */
+        fun at(nowMs: Long): Float = when (phase) {
+            Phase.WAITING -> 0f
+            Phase.QUEUED -> 0.03f
+            Phase.RENDERING -> {
+                val elapsed = ((nowMs - startedAt) / 1000.0).coerceAtLeast(0.0)
+                (0.05 + 0.90 * (elapsed / estimateS.coerceAtLeast(1))).coerceIn(0.05, 0.95).toFloat()
+            }
+            Phase.DOWNLOADING -> 0.97f
+            Phase.DONE -> 1f
+            else -> 0f
+        }
+
+        /** Seconds still expected at [nowMs], or null when the estimate has run out. */
+        fun remainingS(nowMs: Long): Int? {
+            if (phase != Phase.RENDERING && phase != Phase.QUEUED) return null
+            val left = estimateS - (nowMs - startedAt) / 1000
+            return if (left > 0) left.toInt() else null
+        }
+    }
+
+    object Phase {
+        const val WAITING = "waiting"
+        const val QUEUED = "queued"
+        const val RENDERING = "rendering"
+        const val DOWNLOADING = "downloading"
+        const val DONE = "done"
+        const val FAILED = "failed"
+    }
+
+    private val renderStats = RenderTimeStats(settings)
+    private val _progress = kotlinx.coroutines.flow.MutableStateFlow<Map<String, SceneProgress>>(emptyMap())
+    val progress: kotlinx.coroutines.flow.StateFlow<Map<String, SceneProgress>> = _progress
+
+    @Synchronized
+    private fun publish(sceneId: String, change: (SceneProgress?) -> SceneProgress) {
+        _progress.value = _progress.value + (sceneId to change(_progress.value[sceneId]))
+    }
+
+    private fun phaseOf(sceneId: String, phase: String, queuePosition: Int? = null) = publish(sceneId) { p ->
+        (p ?: SceneProgress(phase, System.currentTimeMillis(), RenderTimeStats.MIN_ESTIMATE_S))
+            .copy(phase = phase, queuePosition = queuePosition ?: p?.queuePosition?.takeIf { phase == Phase.QUEUED })
+    }
+
     data class Outcome(
         val doneScenes: Int,
         val failedScenes: Int,
@@ -123,6 +183,9 @@ class GenerationOrchestrator(
         val pending = sceneRepository.scenes(projectId)
             .sortedBy { it.order_index }
             .filter { it.status != SceneStatus.DONE }
+        pending.forEach { scene ->
+            publish(scene.scene_id) { SceneProgress(Phase.WAITING, System.currentTimeMillis(), RenderTimeStats.MIN_ESTIMATE_S) }
+        }
 
         val results = coroutineScope {
             pending.map { scene ->
@@ -194,6 +257,7 @@ class GenerationOrchestrator(
             sceneRepository.transition(current.scene_id, SceneStatus.GENERATING)
             sceneRepository.transition(current.scene_id, SceneStatus.DONE)
             errorDetails.remove(current.scene_id)
+            phaseOf(current.scene_id, Phase.DONE)
             return true
         }
         val ok = generateScene(project.id, project.ratio, current, i2vSlug, i2vParams)
@@ -299,6 +363,9 @@ class GenerationOrchestrator(
             ) {
                 Napier.i("resuming fal job ${open.backend_job_id} for scene ${scene.scene_id} (key '${open.key_label}')")
                 val resumed = SubmittedFalJob(open.backend_job_id!!, open.model!!, open.key_label!!)
+                publish(scene.scene_id) {
+                    SceneProgress(Phase.RENDERING, System.currentTimeMillis(), renderStats.estimateSeconds(open.model!!, scene.duration_s))
+                }
                 return finishJob(projectId, scene, open.id, resumed, attemptLeft = 1)
             }
             // Crashed before the submit round-tripped: sweep to FAILED and resubmit fresh.
@@ -333,9 +400,22 @@ class GenerationOrchestrator(
         // Kling takes at most three elements (owner 2026-09-15: four came
         // back as HTTP 422 "Maximum three image elements are allowed" and
         // failed a whole six-scene run).
+        // Kling refuses an element under 300x300 with HTTP 422 "Image
+        // dimensions are too small" (owner 2026-09-16, a five-person scene):
+        // a small face's crop is enlarged to the minimum first.
         val elements = if (submitSlug.contains("kling")) {
-            faceLock.refs(projectId, faceLock.photoIdsOf(scene.source_photos_json), limit = KLING_MAX_ELEMENTS).map { ref ->
-                ElementRef(ref.description, ref.url, listOfNotNull(ref.photoUrl).ifEmpty { listOf(ref.url) })
+            faceLock.refs(projectId, faceLock.photoIdsOf(scene.source_photos_json), limit = KLING_MAX_ELEMENTS).mapNotNull { ref ->
+                val enlarged = FaceCrops.ensureMinSide(
+                    ref.file, KLING_MIN_ELEMENT_SIDE,
+                    File(ref.file.parentFile, ref.file.nameWithoutExtension + "_k$KLING_MIN_ELEMENT_SIDE.jpg"),
+                )
+                val frontal = when {
+                    enlarged == null -> return@mapNotNull null.also { Napier.w("face lock: ${ref.file.name} unreadable, element skipped") }
+                    enlarged == ref.file -> ref.url
+                    else -> faceLock.uploadedUrl(enlarged)
+                        ?: return@mapNotNull null.also { Napier.w("face lock: upload of the enlarged ${ref.file.name} failed, element skipped") }
+                }
+                ElementRef(ref.description, frontal, listOfNotNull(ref.photoUrl).ifEmpty { listOf(frontal) })
             }
         } else emptyList()
         if (elements.isNotEmpty()) Napier.i("face lock: ${elements.size} element(s) for scene ${scene.scene_id}")
@@ -351,6 +431,10 @@ class GenerationOrchestrator(
         }
         // Persist request id + key BEFORE polling: force-kill resumes, never resubmits.
         jobRepository.markSubmitted(jobId, submitted.requestId, submitted.keyLabel)
+        val estimate = renderStats.estimateSeconds(submitSlug, scene.duration_s)
+        publish(scene.scene_id) { p ->
+            SceneProgress(Phase.QUEUED, System.currentTimeMillis(), estimate, attempt = MAX_ATTEMPTS - attemptLeft + 1)
+        }
         return finishJob(projectId, scene, jobId, submitted, attemptLeft)
     }
 
@@ -362,7 +446,7 @@ class GenerationOrchestrator(
         submitted: SubmittedFalJob,
         attemptLeft: Int,
     ): Boolean {
-        val payload = when (val r = pollUntilComplete(submitted, timeoutMillis = 15 * 60_000)) {
+        val payload = when (val r = pollUntilComplete(submitted, timeoutMillis = 15 * 60_000, sceneId = scene.scene_id)) {
             is AppResult.Ok -> r.value
             is AppResult.Err -> {
                 val project = projects.get(projectId)
@@ -379,6 +463,7 @@ class GenerationOrchestrator(
         val actualDurationS = video["duration"]?.jsonPrimitive?.doubleOrNull ?: scene.duration_s.toDouble()
 
         val clipFile = File(AppDirs.projectClips(projectId), "${scene.scene_id}.mp4")
+        phaseOf(scene.scene_id, Phase.DOWNLOADING)
         // overwrite: this render was just paid for — it MUST replace any clip
         // the scene had before (owner 2026-09-08, D-045).
         when (val dl = downloader.download(videoUrl, clipFile, overwrite = true)) {
@@ -399,6 +484,11 @@ class GenerationOrchestrator(
         sceneRepository.setClipPath(scene.scene_id, clipFile.absolutePath)
         sceneRepository.transition(scene.scene_id, SceneStatus.DONE)
         errorDetails.remove(scene.scene_id)
+        // The next estimate learns from this clip: submit-to-file seconds.
+        _progress.value[scene.scene_id]?.let { p ->
+            renderStats.record(model, scene.duration_s, (System.currentTimeMillis() - p.startedAt) / 1000)
+        }
+        phaseOf(scene.scene_id, Phase.DONE)
         return true
     }
 
@@ -445,6 +535,7 @@ class GenerationOrchestrator(
         if (sceneRepository.scene(sceneId)?.status == SceneStatus.GENERATING) {
             sceneRepository.transition(sceneId, SceneStatus.FAILED)
         }
+        phaseOf(sceneId, Phase.FAILED)
         return false
     }
 
@@ -462,7 +553,11 @@ class GenerationOrchestrator(
      * network failures (Offline/Timeout) do NOT abort — polling continues
      * until the deadline so a dropped connection resumes in place.
      */
-    internal suspend fun pollUntilComplete(job: SubmittedFalJob, timeoutMillis: Long): AppResult<JsonObject> {
+    internal suspend fun pollUntilComplete(
+        job: SubmittedFalJob,
+        timeoutMillis: Long,
+        sceneId: String? = null,
+    ): AppResult<JsonObject> {
         val deadline = System.currentTimeMillis() + timeoutMillis
         var delayMs = 5_000L
         while (System.currentTimeMillis() < deadline) {
@@ -477,7 +572,8 @@ class GenerationOrchestrator(
                 }
                 is AppResult.Ok -> when (st.value.status) {
                     "COMPLETED" -> return falClient.result(job).map { it.payload }
-                    "IN_QUEUE", "IN_PROGRESS" -> Unit
+                    "IN_QUEUE" -> sceneId?.let { phaseOf(it, Phase.QUEUED, st.value.queuePosition) }
+                    "IN_PROGRESS" -> sceneId?.let { phaseOf(it, Phase.RENDERING) }
                     else -> return AppError.ProviderFailed(
                         Provider.FAL, "unexpected status ${st.value.status}",
                     ).err()
@@ -495,6 +591,9 @@ class GenerationOrchestrator(
     companion object {
         /** Kling refuses a fourth element with HTTP 422 (seen live 2026-09-15). */
         const val KLING_MAX_ELEMENTS = 3
+
+        /** Kling refuses an element image under 300x300 (seen live 2026-09-16); a margin above it. */
+        const val KLING_MIN_ELEMENT_SIDE = 320
 
         /** Kling's prompt fields carry a 2500-character cap (fal schema). */
         const val KLING_MAX_PROMPT = 2500

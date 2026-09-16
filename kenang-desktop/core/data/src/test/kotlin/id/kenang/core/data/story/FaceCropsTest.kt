@@ -72,6 +72,22 @@ class FaceCropsTest {
         dir.deleteRecursively()
     }
 
+    /** Owner 2026-09-16: Kling refused a 250 px face crop ("minimum 300x300"). */
+    @Test
+    fun `a small crop is enlarged to the minimum, a large one is returned as is`() {
+        val small = photo(250, 250)
+        val enlarged = FaceCrops.ensureMinSide(small, 320, File(dir, "small_k320.jpg"))
+        assertNotNull(enlarged)
+        assertTrue(enlarged != small, "a small crop must be replaced by an enlarged copy")
+        val img = ImageIO.read(enlarged)
+        assertTrue(img.width >= 320 && img.height >= 320, "enlarged to at least 320: ${img.width}x${img.height}")
+
+        val big = photo(800, 800)
+        assertEquals(big, FaceCrops.ensureMinSide(big, 320, File(dir, "big_k320.jpg")), "a large crop needs no copy")
+        assertNull(FaceCrops.ensureMinSide(File(dir, "missing.jpg"), 320, File(dir, "x.jpg")))
+        dir.deleteRecursively()
+    }
+
     @Test
     fun `an existing crop is reused, not redrawn`() {
         val src = photo(2000, 2000)

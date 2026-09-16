@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +78,7 @@ fun GenerationScreen(
 
     var scenes by remember { mutableStateOf<List<Scene>>(emptyList()) }
     var errorCodes by remember { mutableStateOf<Map<String, String?>>(emptyMap()) }
+    val sceneProgress by orchestrator.progress.collectAsState()
     var phase by remember { mutableStateOf("scenes") } // scenes|audio|assembly
     var elapsed by remember { mutableStateOf(0L) }
     var assemblyProgress by remember { mutableStateOf(0) }
@@ -178,15 +180,25 @@ fun GenerationScreen(
         // Overall progress: at a glance, how many scenes are truly finished.
         if (scenes.isNotEmpty()) {
             val doneCount = scenes.count { it.status == SceneStatus.DONE }
+            // Owner 2026-09-16: the bar moves while scenes render, not only
+            // when one finishes - each scene contributes its own fraction.
+            val nowMs = System.currentTimeMillis() + elapsed * 0L
+            val overall = scenes.sumOf { s ->
+                when (s.status) {
+                    SceneStatus.DONE -> 1.0
+                    else -> (sceneProgress[s.scene_id]?.at(nowMs) ?: 0f).toDouble()
+                }
+            } / scenes.size
             Text(
                 Strings.GEN_PROGRESS
                     .replace("%1", doneCount.toString())
-                    .replace("%2", scenes.size.toString()),
+                    .replace("%2", scenes.size.toString()) +
+                    "  ·  ${(overall * 100).toInt()}%",
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(6.dp))
             LinearProgressIndicator(
-                progress = { if (scenes.isEmpty()) 0f else doneCount / scenes.size.toFloat() },
+                progress = { overall.toFloat().coerceIn(0f, 1f) },
                 modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
             )
             Spacer(Modifier.height(16.dp))
@@ -198,6 +210,8 @@ fun GenerationScreen(
                 scene = scene,
                 errorCode = errorCodes[scene.scene_id],
                 errorDetail = orchestrator.errorDetail(scene.scene_id),
+                progress = sceneProgress[scene.scene_id],
+                nowMs = System.currentTimeMillis() + elapsed * 0L,
                 onRetry = {
                     scope.launch {
                         val project = projects.get(projectId) ?: return@launch
@@ -330,6 +344,8 @@ private fun SceneRow(
     scene: Scene,
     errorCode: String?,
     errorDetail: String? = null,
+    progress: GenerationOrchestrator.SceneProgress? = null,
+    nowMs: Long = System.currentTimeMillis(),
     onRetry: () -> Unit,
     onEditStoryboard: () -> Unit,
     onOpenKeySettings: () -> Unit,
@@ -364,18 +380,40 @@ private fun SceneRow(
                 )
                 Spacer(Modifier.height(4.dp))
                 when (scene.status) {
-                    SceneStatus.CONFIRMED -> Text(
-                        "⏳ " + Strings.GEN_STATUS_QUEUED,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                    )
-                    SceneStatus.GENERATING -> Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(14.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            Strings.GEN_STATUS_RUNNING + "…",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.secondary,
+                    SceneStatus.CONFIRMED, SceneStatus.GENERATING -> Column {
+                        // Owner 2026-09-16: a bar per scene. fal reports no
+                        // percentage for a render, so this is time against the
+                        // running average of earlier clips (RenderTimeStats).
+                        val phase = progress?.phase
+                        val fraction = progress?.at(nowMs) ?: 0f
+                        val remaining = progress?.remainingS(nowMs)
+                        val label = when (phase) {
+                            GenerationOrchestrator.Phase.QUEUED ->
+                                "⏳ " + Strings.GEN_QUEUE_AT_PROVIDER +
+                                    (progress?.queuePosition?.let { " (" + Strings.GEN_QUEUE_POSITION.replace("%1", it.toString()) + ")" } ?: "")
+                            GenerationOrchestrator.Phase.RENDERING ->
+                                Strings.GEN_STATUS_RUNNING + "… " + (fraction * 100).toInt() + "%" +
+                                    (remaining?.let { "  ·  " + Strings.GEN_ETA.replace("%1", formatSeconds(it)) } ?: "")
+                            GenerationOrchestrator.Phase.DOWNLOADING -> Strings.GEN_DOWNLOADING + "…"
+                            GenerationOrchestrator.Phase.WAITING -> "⏳ " + Strings.GEN_WAITING_SLOT
+                            else -> if (scene.status == SceneStatus.GENERATING) Strings.GEN_STATUS_RUNNING + "…" else "⏳ " + Strings.GEN_STATUS_QUEUED
+                        } + (progress?.attempt?.takeIf { it > 1 }?.let { "  ·  " + Strings.GEN_ATTEMPT.replace("%1", it.toString()) } ?: "")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (scene.status == SceneStatus.GENERATING) {
+                                CircularProgressIndicator(Modifier.size(14.dp))
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (scene.status == SceneStatus.GENERATING) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { fraction },
+                            modifier = Modifier.fillMaxWidth().height(6.dp),
                         )
                     }
                     SceneStatus.DONE -> Text(
@@ -535,3 +573,7 @@ private fun TrimDialog(initial: String, onSave: (String) -> Unit, onCancel: () -
         dismissButton = { TextButton(onClick = onCancel) { Text(Strings.CANCEL) } },
     )
 }
+
+
+/** "1m 20s" / "45s" for the remaining-time label. */
+private fun formatSeconds(s: Int): String = if (s >= 60) "${s / 60}m ${s % 60}s" else "${s}s"

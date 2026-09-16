@@ -218,6 +218,9 @@ class FaceLock(
         runCatching { json.decodeFromString(PhotoAnalysis.serializer(), raw) }.getOrNull()
     }
 
+    /** The upload URL of [file] (a crop or a copy derived from one), cached per process. */
+    suspend fun uploadedUrl(file: File): String? = upload(file)
+
     private suspend fun upload(crop: File): String? {
         uploads[crop.absolutePath]?.let { return it }
         return when (val up = storage.uploadFile(crop)) {

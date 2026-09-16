@@ -145,6 +145,30 @@ object FaceCrops {
     }
 
     /**
+     * [source] itself when both sides reach [minSide], else an enlarged copy
+     * written to [out] (owner 2026-09-16: Kling refuses a face element under
+     * 300x300). Twin of the desktop version.
+     */
+    fun ensureMinSide(source: File, minSide: Int, out: File): File? {
+        val size = imageSize(source) ?: return null
+        if (size.first >= minSide && size.second >= minSide) return source
+        if (out.isFile && out.length() > 0) return out
+        val bitmap = BitmapFactory.decodeFile(source.absolutePath) ?: return null
+        val scale = minSide.toFloat() / minOf(bitmap.width, bitmap.height)
+        val ow = Math.ceil((bitmap.width * scale).toDouble()).toInt().coerceAtLeast(minSide)
+        val oh = Math.ceil((bitmap.height * scale).toDouble()).toInt().coerceAtLeast(minSide)
+        val scaled = Bitmap.createScaledBitmap(bitmap, ow, oh, true)
+        return runCatching {
+            out.parentFile?.mkdirs()
+            FileOutputStream(out).use { scaled.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+            out
+        }.onFailure { Napier.w("face crop enlarge failed: ${it.message}") }.getOrNull().also {
+            if (scaled !== bitmap) scaled.recycle()
+            bitmap.recycle()
+        }
+    }
+
+    /**
      * A usable box: inside the frame, positive area, and not the whole photo
      * (a model that cannot find the face sometimes answers with the frame).
      */

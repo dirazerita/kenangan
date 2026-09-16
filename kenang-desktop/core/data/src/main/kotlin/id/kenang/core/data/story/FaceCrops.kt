@@ -150,6 +150,34 @@ object FaceCrops {
     }
 
     /**
+     * [source] itself when both sides reach [minSide], else an enlarged
+     * square copy written to [out] (owner 2026-09-16: Kling refuses a face
+     * element under 300x300, and a small face in a group photo cuts to less).
+     * Enlarging adds no detail, but keeps the lock on that person. Null when
+     * the image cannot be read.
+     */
+    fun ensureMinSide(source: File, minSide: Int, out: File): File? {
+        val size = imageSize(source) ?: return null
+        if (size.first >= minSide && size.second >= minSide) return source
+        if (out.isFile && out.length() > 0) return out
+        val img = runCatching { ImageIO.read(source) }.getOrNull() ?: return null
+        val scale = minSide.toDouble() / minOf(img.width, img.height)
+        val ow = Math.ceil(img.width * scale).toInt().coerceAtLeast(minSide)
+        val oh = Math.ceil(img.height * scale).toInt().coerceAtLeast(minSide)
+        val rgb = BufferedImage(ow, oh, BufferedImage.TYPE_INT_RGB).also { target ->
+            val g = target.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            g.drawImage(img, 0, 0, ow, oh, null)
+            g.dispose()
+        }
+        return runCatching {
+            out.parentFile?.mkdirs()
+            ImageIO.write(rgb, "jpg", out)
+            out
+        }.onFailure { Napier.w("face crop enlarge failed: ${it.message}") }.getOrNull()
+    }
+
+    /**
      * A usable box: inside the frame, positive area, and not the whole photo
      * (a model that cannot find the face sometimes answers with the frame).
      */

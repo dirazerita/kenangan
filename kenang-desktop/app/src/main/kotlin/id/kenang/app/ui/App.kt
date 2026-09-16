@@ -54,7 +54,7 @@ fun App() {
     val generationEvents = koinInject<id.kenang.core.common.events.GenerationEvents>()
 
     // First launch goes straight to onboarding → Home. NO license UI (D-002).
-    // -Dkenang.devRoute=home|settings|about|onboarding|wizard|storyboard:<projectId>
+    // -Dkenang.devRoute=home|settings|about|onboarding|wizard|storyboard:<projectId>|generation:<projectId>
     // forces a start screen (dev/screenshots only).
     var route by remember {
         val dev = System.getProperty("kenang.devRoute")
@@ -68,6 +68,7 @@ fun App() {
             dev == "motion" -> Route.MotionControl
             dev == "talking" -> Route.TalkingVideo
             dev?.startsWith("storyboard:") == true -> Route.Storyboard(dev.substringAfter(":"))
+            dev?.startsWith("generation:") == true -> Route.Generation(dev.substringAfter(":"))
             else -> null
         }
         mutableStateOf(devRoute ?: if (settings.onboardingDone) Route.Home else Route.Onboarding)
