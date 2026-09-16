@@ -2,6 +2,11 @@
 
 package id.kenang.app.ui.talking
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.DisposableEffect
+import id.kenang.core.common.ErrorTranslator
+import id.kenang.core.common.AppResult
+import id.kenang.core.providers.story.TtsPreviewService
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,8 +52,6 @@ import id.kenang.app.ui.components.rememberFileBitmap
 import id.kenang.app.ui.theme.SkeuoButton
 import id.kenang.app.ui.theme.SkeuoCard
 import id.kenang.app.ui.theme.SkeuoOutlinedButton
-import id.kenang.core.common.AppResult
-import id.kenang.core.common.ErrorTranslator
 import id.kenang.core.common.i18n.Strings
 import id.kenang.core.providers.talking.TalkingVideoService
 import kotlinx.coroutines.launch
@@ -74,6 +77,45 @@ fun TalkingVideoScreen(
     var useVoiceFile by remember { mutableStateOf(false) }
     var voiceFile by remember { mutableStateOf<File?>(null) }
     var voiceId by remember { mutableStateOf(service.defaultVoiceId()) }
+    // Hear a voice before choosing it (owner 2026-09-16): one sample plays at
+    // a time; the label under the chip follows loading -> playing -> idle.
+    val ttsPreview = koinInject<TtsPreviewService>()
+    var previewLoading by remember { mutableStateOf<String?>(null) }
+    var previewPlaying by remember { mutableStateOf<String?>(null) }
+    var previewHandle by remember { mutableStateOf<AutoCloseable?>(null) }
+    fun stopPreview() {
+        runCatching { previewHandle?.close() }
+        previewHandle = null
+        previewPlaying = null
+    }
+    fun playVoice(id: String) {
+        if (previewPlaying == id) {
+            stopPreview()
+            return
+        }
+        stopPreview()
+        previewLoading = id
+        scope.launch {
+            when (val r = ttsPreview.sample(id)) {
+                is AppResult.Ok -> {
+                    previewLoading = null
+                    val handle = runCatching {
+                        ttsPreview.play(r.value) { if (previewPlaying == id) previewPlaying = null }
+                    }.getOrNull()
+                    previewHandle = handle
+                    previewPlaying = if (handle != null) id else null
+                }
+                is AppResult.Err -> {
+                    previewLoading = null
+                    snackbar.showSnackbar(
+                        Strings.TALK_VOICE_PREVIEW_FAILED + ": " +
+                            ErrorTranslator.translate(r.error).title,
+                    )
+                }
+            }
+        }
+    }
+    DisposableEffect(Unit) { onDispose { stopPreview() } }
     var running by remember { mutableStateOf(false) }
     var phase by remember { mutableStateOf<TalkingVideoService.Phase?>(null) }
     var elapsed by remember { mutableStateOf(0) }
@@ -233,17 +275,38 @@ fun TalkingVideoScreen(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             service.voices().forEach { v ->
-                                FilterChip(
-                                    selected = voiceId == v.id,
-                                    onClick = { voiceId = v.id },
-                                    label = {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    FilterChip(
+                                        selected = voiceId == v.id,
+                                        onClick = { voiceId = v.id },
+                                        label = {
+                                            Text(
+                                                (if (v.cloned) "🎤 " else "") + v.label,
+                                                style = MaterialTheme.typography.labelMedium,
+                                            )
+                                        },
+                                        enabled = !running,
+                                    )
+                                    TextButton(
+                                        onClick = { playVoice(v.id) },
+                                        enabled = !running && previewLoading != v.id,
+                                        contentPadding = PaddingValues(
+                                            horizontal = 8.dp, vertical = 0.dp,
+                                        ),
+                                        modifier = Modifier.height(24.dp),
+                                    ) {
                                         Text(
-                                            (if (v.cloned) "🎤 " else "") + v.label,
-                                            style = MaterialTheme.typography.labelMedium,
+                                            when (v.id) {
+                                                previewLoading -> Strings.TALK_VOICE_LOADING
+                                                previewPlaying -> Strings.TALK_VOICE_STOP
+                                                else -> Strings.TALK_VOICE_PLAY
+                                            },
+                                            style = MaterialTheme.typography.labelSmall,
                                         )
-                                    },
-                                    enabled = !running,
-                                )
+                                    }
+                                }
                             }
                         }
                     }

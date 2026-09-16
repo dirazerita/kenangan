@@ -126,6 +126,8 @@ data class TtsConfig(
     val voice: String,
     @SerialName("language_boost") val languageBoost: String,
     @SerialName("max_chars") val maxChars: Int = 500,
+    /** The sentence every voice sample speaks (owner 2026-09-16: hear a voice before choosing it). */
+    @SerialName("preview_text") val previewText: String = "Halo! Saya akan membacakan kenangan keluarga Anda dengan suara ini.",
     /** Selectable MiniMax system voices; [voice] stays the locked default. */
     val voices: List<TtsVoice> = emptyList(),
 )

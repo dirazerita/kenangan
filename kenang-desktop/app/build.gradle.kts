@@ -208,6 +208,23 @@ tasks.register<JavaExec>("faceLockDoctor") {
     providers.gradleProperty("doctorTier").orNull?.let { systemProperty("doctor.tier", it) }
 }
 
+// Bundled voice samples (owner 2026-09-16): gradlew :app:voiceSamples [-Ponly=id,id]
+// regenerates voices/<id>.mp3 in both apps' resources from the config voice list (paid once).
+tasks.register<JavaExec>("voiceSamples") {
+    group = "verification"
+    description = "Generates the bundled voice samples for every preset voice (paid once)"
+    mainClass.set("id.kenang.app.devtools.VoiceSampleDoctorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    systemProperty(
+        "doctor.samplesOut",
+        listOf(
+            rootProject.file("core/providers/src/main/resources/voices"),
+            rootProject.file("../ANDROID/app/src/main/resources/voices"),
+        ).joinToString(";") { it.absolutePath },
+    )
+    providers.gradleProperty("only").orNull?.let { systemProperty("doctor.only", it) }
+}
+
 // Diagnostic: Video Berbicara — one real run bracketed by the fal balance.
 tasks.register<JavaExec>("talkingDoctor") {
     group = "verification"

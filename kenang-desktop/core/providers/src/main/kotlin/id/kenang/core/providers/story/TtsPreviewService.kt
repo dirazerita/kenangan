@@ -82,17 +82,59 @@ class TtsPreviewService(
         )
     }
 
-    /** Plays an MP3 file in the background (JLayer); returns a stop handle. */
-    suspend fun play(file: File): AutoCloseable = withContext(Dispatchers.IO) {
+
+    /**
+     * The standard sample of [voiceId] for the voice list (owner 2026-09-16:
+     * a button under every voice name that plays that voice). The preset
+     * voices ship inside the app (`/voices/<id>.mp3`, generated once by the
+     * voiceSamples task) so a click is instant and free; a cloned or unknown
+     * voice is synthesised once with the config preview text and cached.
+     */
+    suspend fun sample(voiceId: String): AppResult<File> {
+        val name = sampleName(voiceId)
+        val cached = File(cacheDir, "sample_$name.mp3")
+        if (cached.isFile && cached.length() > 0) return cached.ok()
+        javaClass.getResourceAsStream("/voices/$name.mp3")?.use { input ->
+            runCatching { cached.outputStream().use { input.copyTo(it) } }
+                .onFailure { Napier.w("bundled voice sample copy failed: ${it.message}") }
+            if (cached.isFile && cached.length() > 0) return cached.ok()
+        }
+        return when (val r = preview(configRepository.current().tts.previewText, voiceId)) {
+            is AppResult.Ok -> runCatching { r.value.copyTo(cached, overwrite = true) }.getOrDefault(r.value).ok()
+            is AppResult.Err -> r
+        }
+    }
+
+    /**
+     * Plays an MP3 file in the background (JLayer); returns a stop handle.
+     * [onFinished] runs once playback ends by itself (not when stopped).
+     */
+    suspend fun play(file: File, onFinished: () -> Unit = {}): AutoCloseable = withContext(Dispatchers.IO) {
         val stream = file.inputStream()
         val player = javazoom.jl.player.Player(stream)
         val thread = Thread {
-            runCatching { player.play() }
+            val finished = runCatching { player.play() }
                 .onFailure { Napier.w("tts preview playback failed: ${it.message}") }
+                .isSuccess
+            if (finished && player.isComplete) runCatching { onFinished() }
         }.apply { isDaemon = true; start() }
         AutoCloseable {
             runCatching { player.close(); stream.close() }
             thread.interrupt()
+        }
+    }
+
+    companion object {
+        /**
+         * File name of a voice's sample. MiniMax ids differ only by case
+         * ("Lovely_Girl" is a young woman, "lovely_girl" a little girl), and
+         * a Windows file system cannot keep both apart - a short fingerprint
+         * of the exact id makes the names distinct everywhere.
+         */
+        fun sampleName(voiceId: String): String {
+            val safe = voiceId.replace(Regex("[^A-Za-z0-9_.-]"), "_")
+            val digest = java.security.MessageDigest.getInstance("SHA-1").digest(voiceId.toByteArray())
+            return safe + "-" + digest.take(3).joinToString("") { "%02x".format(it) }
         }
     }
 }

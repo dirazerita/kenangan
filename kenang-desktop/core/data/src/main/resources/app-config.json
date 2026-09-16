@@ -26,6 +26,7 @@
     "voice": "Calm_Woman",
     "language_boost": "Indonesian",
     "max_chars": 1000,
+    "preview_text": "Halo! Saya akan membacakan kenangan keluarga Anda dengan suara ini.",
     "voices": [
       { "id": "Calm_Woman", "label_id": "Wanita Tenang", "gender": "F" },
       { "id": "Wise_Woman", "label_id": "Wanita Bijak", "gender": "F" },
@@ -41,7 +42,17 @@
       { "id": "Casual_Guy", "label_id": "Pria Santai", "gender": "M" },
       { "id": "Friendly_Person", "label_id": "Suara Ramah", "gender": "N" },
       { "id": "Young_Knight", "label_id": "Pemuda Gagah", "gender": "M" },
-      { "id": "Decent_Boy", "label_id": "Pemuda Sopan", "gender": "M" }
+      { "id": "Decent_Boy", "label_id": "Pemuda Sopan", "gender": "M" },
+      {
+        "id": "cute_boy",
+        "label_id": "Anak Laki-laki",
+        "gender": "M"
+      },
+      {
+        "id": "lovely_girl",
+        "label_id": "Anak Perempuan",
+        "gender": "F"
+      }
     ]
   },
   "voice_clone": {
