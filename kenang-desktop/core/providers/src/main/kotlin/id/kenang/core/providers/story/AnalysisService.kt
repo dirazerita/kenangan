@@ -368,7 +368,7 @@ face_box values are FRACTIONS of the image width/height (0-1), tightly around th
 top of the forehead to the chin. Use null for a person whose face is not visible.
 x is HORIZONTAL (0 = left edge, 1 = right edge) and y is VERTICAL (0 = top edge, 1 = bottom edge):
 x0 and x1 are the FIRST and THIRD numbers. Never use the [ymin, xmin, ymax, xmax] order. No markdown."""
-        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 300, imageFile = file) { raw ->
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 1200, imageFile = file) { raw ->
             val boxes = json.decodeFromString(FaceBoxReply.serializer(), raw).subjects.associateBy { it.id }
             current.copy(
                 subjects = current.subjects.map { sub ->
@@ -592,7 +592,7 @@ Return ONLY valid JSON, no markdown:
 - Skip anyone whose face is not visible. If nobody qualifies, return {"people":[]}."""
 
         val size = FaceCrops.imageSize(photo)
-        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 600, imageFile = photo) { raw ->
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 1500, imageFile = photo) { raw ->
             val people = json.decodeFromString(SpeakerDetection.serializer(), raw).people
                 .filter { it.faceBox != null || it.personBox != null }
                 .mapIndexed { i, p ->
@@ -646,7 +646,7 @@ For EVERY tile decide honestly what it shows.
   shows no face, only part of a face, or mostly clothes, a body, hands, feet, a wall or furniture.
 - "id": the id of the listed person whose face it is, or null when unsure.
 Return ONLY valid JSON, no markdown: {"tiles":[{"n":1,"face":true,"id":"s1"}]}"""
-        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 400, imageFile = sheet) { raw ->
+        return visionJson(projectId, prompt, listOf(uploaded), maxTokens = 800, imageFile = sheet) { raw ->
             json.decodeFromString(FaceTileCheck.serializer(), raw).tiles
                 .map { FaceCheck.Verdict(it.n, it.face, it.id) }
         }
@@ -680,8 +680,14 @@ x is HORIZONTAL (0 = left edge, 1 = right edge) and y is VERTICAL (0 = top edge,
 x0 and x1 are the FIRST and THIRD numbers. Never use the [ymin, xmin, ymax, xmax] order.
 IMPORTANT — count the people carefully: create exactly ONE subjects entry per real person visible
 in the photo, no duplicates, no guesses. Downstream scenes are locked to this count, so an
-over- or under-count corrupts every generated image."""
-        return visionJson(projectId, prompt, listOf(imageUrl), maxTokens = 800, imageFile = File(photo.local_path)) { raw ->
+over- or under-count corrupts every generated image. A big group photo must still list EVERY
+person (up to 40).
+COMPACT OUTPUT (the response is hard-capped — an oversized reply gets cut mid-JSON and fails):
+desc at most 8 words; face_box numbers with 2 decimals; no spaces after ':' or ','; no line
+breaks inside strings; issues at most 3 short items."""
+        // Owner 2026-09-17: fourteen people with face boxes overflowed the
+        // old 800-token budget on every attempt.
+        return visionJson(projectId, prompt, listOf(imageUrl), maxTokens = ANALYSIS_TOKENS, imageFile = File(photo.local_path)) { raw ->
             json.decodeFromString(PhotoAnalysis.serializer(), raw).copy(photoId = photo.id)
         }
     }
@@ -833,12 +839,18 @@ JSON tight: no spaces after ':' or ',', no line breaks inside strings."""
         val config = configRepository.current()
         val geminiKey = keyVault.geminiKey()
         var lastError: AppError = AppError.ProviderFailed(Provider.FAL, "no attempt")
+        // A cut-off answer is asked for again more compactly and with a
+        // bigger budget (owner 2026-09-17) instead of three identical tries.
+        var askPrompt = prompt
+        var askTokens = maxTokens
+        var lastParseMessage: String? = null
 
         repeat(3) { attempt ->
-            val rawResult: AppResult<String> = if (geminiKey != null && (imageFile != null || textOnly)) {
+            val geminiReady = geminiKey != null && System.currentTimeMillis() >= geminiPausedUntil
+            val rawResult: AppResult<String> = if (geminiReady && (imageFile != null || textOnly)) {
                 val bareModel = config.analysis.resolvedGeminiModel()
                 val gemini = geminiClient.generateVisionJson(
-                    geminiKey, bareModel, prompt,
+                    geminiKey!!, bareModel, askPrompt,
                     imageFile?.readBytes(),
                 )
                 when (gemini) {
@@ -850,12 +862,16 @@ JSON tight: no spaces after ':' or ',', no line breaks inside strings."""
                         // Gemini is the OPTIONAL quality path (AD-03) — its
                         // failure must never sink analysis while fal works
                         // (dogfood 2026-08-26: Google 404'd the model id).
-                        Napier.w("gemini analysis failed (${gemini.error}) — falling back to fal VLM")
-                        falVision(projectId, prompt, imageUrls, maxTokens)
+                        // A key that is rate-limited or timing out is left
+                        // alone for a while (owner 2026-09-17: every photo
+                        // waited a full minute on it before falling back).
+                        geminiPausedUntil = System.currentTimeMillis() + GEMINI_PAUSE_MS
+                        Napier.w("gemini analysis failed (${gemini.error}) — falling back to fal VLM; gemini paused for ${GEMINI_PAUSE_MS / 60_000} min")
+                        falVision(projectId, askPrompt, imageUrls, askTokens)
                     }
                 }
             } else {
-                falVision(projectId, prompt, imageUrls, maxTokens)
+                falVision(projectId, askPrompt, imageUrls, askTokens)
             }
 
             when (rawResult) {
@@ -892,14 +908,35 @@ JSON tight: no spaces after ':' or ',', no line breaks inside strings."""
                                     return AppResult.Ok(it)
                                 }
                             }
-                            Napier.w("visionJson attempt $attempt: invalid JSON (${first.message?.take(80)}) — retrying")
-                            lastError = AppError.ProviderFailed(Provider.FAL, "invalid JSON after retries")
+                            lastParseMessage = first.message?.take(120)
+                            if (VisionRetry.looksTruncated(first.message)) {
+                                askTokens = VisionRetry.nextTokens(askTokens)
+                                askPrompt = VisionRetry.compactRetryPrompt(prompt)
+                                Napier.w("visionJson attempt $attempt: answer cut off (${first.message?.take(80)}) — retrying compactly with $askTokens tokens")
+                            } else {
+                                Napier.w("visionJson attempt $attempt: invalid JSON (${first.message?.take(80)}) — retrying")
+                            }
+                            lastError = AppError.ProviderFailed(
+                                Provider.FAL,
+                                "invalid JSON after retries" + (lastParseMessage?.let { ": $it" } ?: ""),
+                            )
                         },
                     )
                 }
             }
         }
         return AppResult.Err(lastError)
+    }
+
+    companion object {
+        /** Output budget of the per-photo analysis: forty people with face boxes fit under the router ceiling. */
+        const val ANALYSIS_TOKENS = VisionRetry.TOKEN_CEILING
+
+        /** How long a failing Gemini key is skipped before it is tried again. */
+        const val GEMINI_PAUSE_MS = 10 * 60_000L
+
+        @Volatile
+        private var geminiPausedUntil = 0L
     }
 
     /**
