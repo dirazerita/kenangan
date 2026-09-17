@@ -114,7 +114,7 @@ val appModule = module {
     single { AssemblyService(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     // Standalone photo tool (owner 2026-09-01)
-    single { UpscaleService(get(), get(), get(), get(), get(), get(), get()) }
+    single { UpscaleService(get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
 /**

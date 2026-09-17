@@ -11,4 +11,14 @@ import java.io.File
  */
 interface RatioCropper {
     fun cropToRatio(file: File, ratio: String)
+
+    /**
+     * Writes [source] centred on a canvas of [ratio] to [out], with flat
+     * mid-grey bands where the scene has to be extended (owner 2026-09-17:
+     * asked to restore AND reframe to 9:16 in one go, the edit model
+     * re-staged the whole photo - the people came back doubled, a bench
+     * vanished; with the bands drawn in advance it only has to fill them).
+     * Null when the ratio already matches or the image cannot be read.
+     */
+    fun padToRatio(source: File, ratio: String, out: File): File?
 }

@@ -21,6 +21,7 @@ import kotlin.system.exitProcess
 fun main(): Unit = runBlocking {
     Logging.init(AppDirs.logs)
     startKoin { modules(appModule) }
+    GlobalContext.get().get<id.kenang.core.data.SettingsRepository>().dataFolder?.takeIf { it.isNotBlank() }?.let { AppDirs.useMediaRoot(File(it)) }
     val service = GlobalContext.get().get<UpscaleService>()
 
     val modelKey = System.getProperty("doctor.model") ?: "fal-ai/aura-sr"
@@ -38,6 +39,18 @@ fun main(): Unit = runBlocking {
 
     // -Ddoctor.ratio=9:16|16:9 verifies the outpaint-to-ratio path (D-042).
     val ratio = System.getProperty("doctor.ratio")?.takeIf { it == "9:16" || it == "16:9" }
+    // -Ddoctor.padOnly=true: write the grey-band canvas the model would get
+    // and stop - no upload, no cost (owner 2026-09-17).
+    if (System.getProperty("doctor.padOnly") == "true") {
+        val padSource = requireNotNull(image) { "pass -PdoctorImage" }
+        val r = requireNotNull(ratio) { "pass -PdoctorRatio=9:16|16:9" }
+        val out = File(File(id.kenang.core.data.AppDirs.cache, "upscale"), "pad_${padSource.nameWithoutExtension}_${r.replace(':', 'x')}.jpg")
+        val padded = GlobalContext.get().get<id.kenang.core.data.story.RatioCropper>().padToRatio(padSource, r, out)
+        println("pad only: ${padded?.absolutePath ?: "(ratio already matches or unreadable)"}")
+        println("prompt: " + UpscaleService.restorePrompt(r, prepared = padded != null).takeLast(700))
+        System.out.flush()
+        Runtime.getRuntime().halt(0)
+    }
     ratio?.let { println("   target ratio: $it (outpaint)") }
 
     val t0 = System.currentTimeMillis()

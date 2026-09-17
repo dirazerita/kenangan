@@ -45,6 +45,7 @@ class UpscaleService(
     private val priceBook: PriceBook,
     private val costTracker: CostTracker,
     private val settings: id.kenang.core.data.SettingsRepository,
+    private val ratioCropper: id.kenang.core.data.story.RatioCropper,
 ) {
     companion object {
         /**
@@ -76,9 +77,44 @@ class UpscaleService(
                 "oversharpening halos, watermarks, text, borders."
 
         /**
+         * What must survive restoration untouched (owner 2026-09-17: the
+         * bench a baby sat on came back as a bare studio floor - the model
+         * read a dark, glare-streaked table edge as damage to reconstruct).
+         */
+        const val PRESERVE_CLAUSE =
+            " PRESERVE THE SCENE: every piece of furniture and every object stays exactly where " +
+                "and what it is — tables, benches, chairs, steps, props, floors, walls, curtains and " +
+                "backdrops — even when dark, glossy, creased, blurred or partly hidden by glare: " +
+                "repair its surface, never remove, replace or redraw it, and never turn a floor, " +
+                "table or bench into a plain studio background. Show the photograph's content edge " +
+                "to edge, nothing cropped away. If the source is a screenshot or a photo of a paper " +
+                "print, restore only the print's own content and drop what surrounds it (phone " +
+                "interface, table cloth, frame edges) — but nothing that is inside the print."
+
+        /**
+         * Outpainting onto a canvas WE prepared (owner 2026-09-17): the
+         * photo already sits on a target-ratio canvas with flat grey bands,
+         * so the model's only job outside the photo is to continue the
+         * edges. Asked to reframe by itself (ratioClause + aspect_ratio on
+         * the bare photo) it re-staged the scene and doubled the people.
+         */
+        fun outpaintClause(targetRatio: String): String {
+            val orientation = if (targetRatio == "9:16") "vertical portrait" else "horizontal landscape"
+            return " The flat grey bands along two edges of this image are NOT part of the " +
+                "photograph: they mark where the scene must be EXTENDED to fill the $targetRatio " +
+                "$orientation canvas. Fill them ONLY by continuing what already touches that edge — " +
+                "floor or ground, walls, backdrop, sky, foliage — with the same lighting, " +
+                "perspective, grain and colours and no visible seam; keep the canvas size exactly. " +
+                "Never put a person, a face, or a copy of anything from the photograph into the " +
+                "bands: the people appear exactly ONCE, at their original size and place, never " +
+                "mirrored, repeated or re-staged."
+        }
+
+        /**
          * Target-ratio recomposition (owner 2026-09-07): reframe to 9:16 or
          * 16:9 by EXTENDING the scene (outpainting), never by cropping —
-         * distilled from the owner's draft prompts.
+         * distilled from the owner's draft prompts. Kept for models whose
+         * source could not be padded (unreadable file).
          */
         fun ratioClause(targetRatio: String): String {
             val orientation = if (targetRatio == "9:16") "vertical portrait" else "horizontal landscape"
@@ -89,6 +125,14 @@ class UpscaleService(
                 "object stays fully inside the frame, and the original subjects keep their exact " +
                 "size and placement relative to each other."
         }
+
+        /** The stage-1 prompt: restoration, scene preservation, and the reframe wording that fits the source. */
+        fun restorePrompt(targetRatio: String?, prepared: Boolean): String =
+            RESTORE_PROMPT + PRESERVE_CLAUSE + when {
+                targetRatio == null -> ""
+                prepared -> outpaintClause(targetRatio)
+                else -> ratioClause(targetRatio)
+            }
 
         /** input_mode: restore (edit_prompt) then feed the result to an upscaler. */
         const val MODE_EDIT_THEN_UPSCALE = "edit_then_upscale"
@@ -144,8 +188,19 @@ class UpscaleService(
     suspend fun process(source: File, option: ModelOption, targetRatio: String? = null): AppResult<File> {
         if (!source.isFile) return AppError.Unknown("file missing: ${source.name}").err()
 
+        // Owner 2026-09-17: restore-and-reframe in one go re-staged the photo
+        // (people doubled, a bench gone). The canvas is prepared HERE: the
+        // photo sits on a target-ratio canvas with flat grey bands, and the
+        // model only has to fill them - see outpaintClause.
+        val padded = targetRatio?.takeIf { supportsRatio(option) }?.let { ratio ->
+            ratioCropper.padToRatio(
+                source, ratio,
+                File(File(AppDirs.cache, "upscale"), "pad_${source.nameWithoutExtension}_${ratio.replace(':', 'x')}.jpg"),
+            )
+        }
+        if (targetRatio != null && padded != null) Napier.i("upscale: ${source.name} padded to $targetRatio before restoration")
         val uploaded = when (val up = storage.uploadBytes(
-            UploadPrep.prepareJpeg(source),
+            UploadPrep.prepareJpeg(padded ?: source),
             "upscale_${source.nameWithoutExtension}.jpg",
             "image/jpeg",
         )) {
@@ -153,12 +208,13 @@ class UpscaleService(
             is AppResult.Err -> return up
         }
 
-        var result = runJob(uploaded, option, targetRatio)
+        val prepared = padded != null
+        var result = runJob(uploaded, option, targetRatio, prepared)
         // Troubled provider call → next key, one retry (owner requirement).
         val err = (result as? AppResult.Err)?.error
         if (err is AppError.ProviderFailed || err is AppError.Timeout || err is AppError.RateLimited) {
             falClient.rotateKey()
-            result = runJob(uploaded, option, targetRatio)
+            result = runJob(uploaded, option, targetRatio, prepared)
         }
         var imageUrl = when (result) {
             is AppResult.Ok -> result.value
@@ -208,10 +264,12 @@ class UpscaleService(
         sourceUrl: String,
         option: ModelOption,
         targetRatio: String? = null,
+        /** The source already sits on a target-ratio canvas with grey bands. */
+        prepared: Boolean = false,
     ): AppResult<String> {
         val body = if (option.inputMode == "edit_prompt" || option.inputMode == MODE_EDIT_THEN_UPSCALE) {
             buildJsonObject {
-                put("prompt", RESTORE_PROMPT + (targetRatio?.let { ratioClause(it) } ?: ""))
+                put("prompt", restorePrompt(targetRatio, prepared))
                 putJsonArray("image_urls") { add(sourceUrl) }
                 put("num_images", 1)
                 put("output_format", "png")

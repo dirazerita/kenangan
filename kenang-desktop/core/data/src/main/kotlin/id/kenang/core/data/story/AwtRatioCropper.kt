@@ -25,4 +25,36 @@ class AwtRatioCropper : RatioCropper {
             javax.imageio.ImageIO.write(copy, fmt, file)
         }.onFailure { Napier.w("ratio crop skipped: ${it.message}") }
     }
+
+    override fun padToRatio(source: File, ratio: String, out: File): File? {
+        val target = if (ratio == "16:9") 16.0 / 9.0 else 9.0 / 16.0
+        return runCatching {
+            val img = javax.imageio.ImageIO.read(source) ?: return null
+            val current = img.width.toDouble() / img.height
+            if (kotlin.math.abs(current - target) <= 0.01) return null
+            val (w, h) = canvasFor(img.width, img.height, target)
+            val canvas = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB)
+            canvas.createGraphics().apply {
+                color = java.awt.Color(PAD_GREY, PAD_GREY, PAD_GREY)
+                fillRect(0, 0, w, h)
+                drawImage(img, (w - img.width) / 2, (h - img.height) / 2, null)
+                dispose()
+            }
+            out.parentFile?.mkdirs()
+            javax.imageio.ImageIO.write(canvas, "jpg", out)
+            out
+        }.onFailure { Napier.w("ratio pad skipped: ${it.message}") }.getOrNull()
+    }
+
+    companion object {
+        /** Flat grey the prompt names as "the bands" - neither black (reads as vignette) nor white (reads as paper). */
+        const val PAD_GREY = 128
+
+        /** The smallest canvas of [target] ratio that holds a [width]x[height] image whole. */
+        fun canvasFor(width: Int, height: Int, target: Double): Pair<Int, Int> {
+            val current = width.toDouble() / height
+            return if (current > target) width to (width / target).toInt().coerceAtLeast(height)
+            else (height * target).toInt().coerceAtLeast(width) to height
+        }
+    }
 }

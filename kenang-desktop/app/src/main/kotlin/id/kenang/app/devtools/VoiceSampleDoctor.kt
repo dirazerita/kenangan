@@ -54,5 +54,6 @@ fun main(): Unit = runBlocking {
         }
     }
     println("== done, $failed failure(s)")
-    exitProcess(if (failed == 0) 0 else 2)
+    System.out.flush()
+    Runtime.getRuntime().halt(if (failed == 0) 0 else 2)
 }
