@@ -78,6 +78,14 @@ fun TalkingVideoScreen(
     var script by remember { mutableStateOf("") }
     var useVoiceFile by remember { mutableStateOf(false) }
     var voiceFile by remember { mutableStateOf<File?>(null) }
+    // "Dari file MP3": the photo lip-syncs to voiceFile as it is - no script,
+    // no cloning, no TTS (owner 2026-09-18). voiceFile is shared with the
+    // cloning mode; audioMode decides what it means.
+    var audioMode by remember { mutableStateOf(false) }
+    var audioSeconds by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(voiceFile, audioMode) {
+        audioSeconds = if (audioMode) voiceFile?.let { service.audioSeconds(it) } else null
+    }
     var voiceId by remember { mutableStateOf(service.defaultVoiceId()) }
     // Hear a voice before choosing it (owner 2026-09-16): one sample plays at
     // a time; the label under the chip follows loading -> playing -> idle.
@@ -199,8 +207,8 @@ fun TalkingVideoScreen(
     }
 
     val option = service.options().firstOrNull { it.selectionKey() == modelKey } ?: service.selected()
-    val newClone = useVoiceFile && voiceFile != null && service.existingClone(voiceFile!!) == null
-    val est = service.estimate(script.trim().length, option, withNewClone = newClone)
+    val newClone = useVoiceFile && !audioMode && voiceFile != null && service.existingClone(voiceFile!!) == null
+    val est = if (audioMode) service.estimateForAudio(audioSeconds ?: 10.0, option) else service.estimate(script.trim().length, option, withNewClone = newClone)
 
     Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -248,8 +256,9 @@ fun TalkingVideoScreen(
                 Text(Strings.TALK_VOICE_TITLE, style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = !useVoiceFile, onClick = { useVoiceFile = false }, label = { Text(Strings.TALK_VOICE_PRESET) }, enabled = !running)
-                    FilterChip(selected = useVoiceFile, onClick = { useVoiceFile = true }, label = { Text(Strings.TALK_VOICE_FILE) }, enabled = !running)
+                    FilterChip(selected = !useVoiceFile && !audioMode, onClick = { useVoiceFile = false; audioMode = false }, label = { Text(Strings.TALK_VOICE_PRESET) }, enabled = !running)
+                    FilterChip(selected = useVoiceFile && !audioMode, onClick = { useVoiceFile = true; audioMode = false }, label = { Text(Strings.TALK_VOICE_FILE) }, enabled = !running)
+                    FilterChip(selected = audioMode, onClick = { useVoiceFile = true; audioMode = true }, label = { Text(Strings.TALK_VOICE_MP3) }, enabled = !running)
                 }
                 Spacer(Modifier.height(8.dp))
                 if (useVoiceFile) {
@@ -260,14 +269,15 @@ fun TalkingVideoScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            if (voiceFile == null) "🎤  " + Strings.TALK_VOICE_FILE_PICK
-                            else "🎤  " + voiceFile!!.name + (if (!newClone) Strings.TALK_VOICE_CLONED_TAG else ""),
+                            if (voiceFile == null) (if (audioMode) "🎵  " + Strings.TALK_MP3_PICK else "🎤  " + Strings.TALK_VOICE_FILE_PICK)
+                            else if (audioMode) "🎵  " + voiceFile!!.name + (audioSeconds?.let { "  ·  " + Strings.TALK_MP3_SECONDS.replace("%1", "%.0f".format(it)) } ?: "")
+                                else "🎤  " + voiceFile!!.name + (if (!newClone) Strings.TALK_VOICE_CLONED_TAG else ""),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        Strings.TALK_VOICE_FILE_NOTE.replace("%1", "%.2f".format(service.estimate(0, option, true).cloneUsd)),
+                        if (audioMode) Strings.TALK_MP3_NOTE else Strings.TALK_VOICE_FILE_NOTE.replace("%1", "%.2f".format(service.estimate(0, option, true).cloneUsd)),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                     )
@@ -341,6 +351,7 @@ fun TalkingVideoScreen(
             }
         }
 
+        if (!audioMode) {
         // ---------- Script: manual or written by the AI ----------
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
@@ -426,6 +437,17 @@ fun TalkingVideoScreen(
         )
         Spacer(Modifier.height(12.dp))
 
+        } else {
+            Text(
+                Strings.TALK_MP3_ESTIMATE
+                    .replace("%1", "%.0f".format(est.seconds))
+                    .replace("%2", "%.2f".format(est.videoUsd)),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+
         // ---------- Model ----------
         Text(Strings.TALK_MODEL_LABEL, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(6.dp))
@@ -454,15 +476,17 @@ fun TalkingVideoScreen(
             onClick = {
                 val p = photo
                 when {
-                    p == null || script.isBlank() -> scope.launch { snackbar.showSnackbar(Strings.TALK_NEED_INPUT) }
-                    useVoiceFile && voiceFile == null -> scope.launch { snackbar.showSnackbar(Strings.TALK_NEED_VOICE_FILE) }
+                    p == null || (!audioMode && script.isBlank()) -> scope.launch { snackbar.showSnackbar(Strings.TALK_NEED_INPUT) }
+                    audioMode && voiceFile == null -> scope.launch { snackbar.showSnackbar(Strings.TALK_NEED_MP3) }
+                        useVoiceFile && !audioMode && voiceFile == null -> scope.launch { snackbar.showSnackbar(Strings.TALK_NEED_VOICE_FILE) }
                     else -> scope.launch {
                         running = true
                         result = null
                         val r = service.run(
                             p, script,
-                            voiceId = if (useVoiceFile) null else voiceId,
-                            voiceSample = if (useVoiceFile) voiceFile else null,
+                            voiceId = if (useVoiceFile || audioMode) null else voiceId,
+                            voiceSample = if (useVoiceFile && !audioMode) voiceFile else null,
+                                audioFile = if (audioMode) voiceFile else null,
                             option = option,
                             speaker = speaker,
                             others = speakers,
@@ -476,7 +500,7 @@ fun TalkingVideoScreen(
                     }
                 }
             },
-            enabled = !running && photo != null && script.isNotBlank(),
+            enabled = !running && photo != null && (if (audioMode) voiceFile != null else script.isNotBlank()),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(Strings.TALK_START + " — " + Strings.ESTIMATE_LABEL + " ±$" + "%.2f".format(est.totalUsd))
@@ -487,6 +511,7 @@ fun TalkingVideoScreen(
                 CircularProgressIndicator(Modifier.width(18.dp).height(18.dp))
                 Text(
                     when (phase) {
+                        TalkingVideoService.Phase.PREPARING -> Strings.TALK_PHASE_PREPARING
                         TalkingVideoService.Phase.CLONING -> Strings.TALK_PHASE_CLONING
                         TalkingVideoService.Phase.SPEAKING -> Strings.TALK_PHASE_SPEAKING
                         TalkingVideoService.Phase.RENDERING -> Strings.TALK_PHASE_RENDERING

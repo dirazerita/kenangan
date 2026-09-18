@@ -38,6 +38,19 @@ fun main(): Unit = runBlocking {
         exitProcess(0)
     }
 
+    // -Ddoctor.audioOnly=<file>: measure and prepare a recording the way the
+    // MP3 mode does (probe, copy/transcode/trim) and stop - no cost.
+    System.getProperty("doctor.audioOnly")?.takeIf { it.isNotBlank() }?.let { path ->
+        val probe = koin.get<id.kenang.core.data.media.AudioProbe>()
+        val src = File(path)
+        val ms = probe.durationMs(src)
+        println("audio only: ${src.name} duration=${ms?.let { "%.1f s".format(it / 1000.0) } ?: "unreadable"}")
+        val out = probe.prepare(src, File(File(id.kenang.core.data.AppDirs.cache, "talking"), "audiotest_${System.nanoTime()}.mp3"), TalkingVideoService.MAX_AUDIO_S)
+        println("prepared: ${out?.absolutePath ?: "(rejected)"} ${out?.let { "${it.length() / 1024} KB, ${probe.durationMs(it)?.let { d -> "%.1f s".format(d / 1000.0) }}" } ?: ""}")
+        System.out.flush()
+        Runtime.getRuntime().halt(0)
+    }
+
     val image = System.getProperty("doctor.image")?.let(::File)?.takeIf { it.isFile }
         ?: run { println("pass -PdoctorImage=<photo>"); exitProcess(1) }
     val script = System.getProperty("doctor.script")

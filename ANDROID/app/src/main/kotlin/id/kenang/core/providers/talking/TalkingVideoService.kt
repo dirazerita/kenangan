@@ -17,6 +17,8 @@ import id.kenang.core.providers.CostTracker
 import id.kenang.core.providers.PriceBook
 import id.kenang.core.providers.fal.FalQueueClient
 import id.kenang.core.providers.fal.FalStorage
+import id.kenang.core.data.media.AudioProbe
+import id.kenang.core.data.media.AudioIntake
 import id.kenang.core.providers.gen.TtsService
 import id.kenang.core.providers.story.AnalysisService
 import id.kenang.core.providers.voice.ClonedVoice
@@ -55,6 +57,7 @@ class TalkingVideoService(
     private val voiceClone: VoiceCloneService,
     private val gallery: GalleryExporter,
     private val analysis: AnalysisService,
+    private val audioProbe: AudioProbe,
 ) {
     companion object {
         const val COST_PROJECT = "talking"
@@ -70,7 +73,7 @@ class TalkingVideoService(
         val AUDIO_EXTENSIONS: List<String> get() = VoiceCloneService.AUDIO_EXTENSIONS
     }
 
-    enum class Phase { CLONING, SPEAKING, RENDERING, SAVING }
+    enum class Phase { PREPARING, CLONING, SPEAKING, RENDERING, SAVING }
 
     data class Estimate(val seconds: Double, val ttsUsd: Double, val videoUsd: Double, val cloneUsd: Double) {
         val totalUsd: Double get() = ttsUsd + videoUsd + cloneUsd
@@ -107,6 +110,15 @@ class TalkingVideoService(
     }
 
     fun defaultVoiceId(): String = settings.defaultVoice ?: configRepository.current().tts.voice
+
+    /** Seconds of a recording the user picked, for the estimate; null when unreadable. */
+    suspend fun audioSeconds(file: File): Double? = audioProbe.durationMs(file)?.let { it / 1000.0 }
+
+    /** Estimate for a recording of [seconds]: the video only, nothing for speech (owner 2026-09-18). */
+    fun estimateForAudio(seconds: Double, option: ModelOption = selected()): Estimate {
+        val billed = seconds.coerceIn(1.0, MAX_AUDIO_S)
+        return Estimate(billed, 0.0, pricePerSecondOf(option) * billed, 0.0)
+    }
 
     fun estimate(chars: Int, option: ModelOption = selected(), withNewClone: Boolean = false): Estimate {
         val seconds = (chars / CHARS_PER_SECOND).coerceIn(1.0, MAX_AUDIO_S)
@@ -158,47 +170,77 @@ class TalkingVideoService(
         speaker: SpeakerCandidate? = null,
         /** The other people in that photo, cut out of the mask so they stay silent. */
         others: List<SpeakerCandidate> = emptyList(),
+        /** A finished recording the photo lip-syncs to as it is - no script, no TTS (owner 2026-09-18). */
+        audioFile: File? = null,
         onPhase: (Phase) -> Unit = {},
     ): AppResult<TalkingResult> {
         val text = script.trim()
-        if (text.isBlank()) return AppError.Unknown("naskah kosong").err()
-        if (text.length > MAX_CHARS) return AppError.Unknown("naskah melebihi $MAX_CHARS karakter").err()
+        if (audioFile == null) {
+            if (text.isBlank()) return AppError.Unknown("naskah kosong").err()
+            if (text.length > MAX_CHARS) return AppError.Unknown("naskah melebihi $MAX_CHARS karakter").err()
+        }
         if (!photo.isFile) return AppError.Unknown("foto tidak ditemukan").err()
 
-        var voiceLabel: String
-        val voice: String = if (voiceSample != null) {
-            val reused = existingClone(voiceSample)
-            val cloned = if (reused != null) {
-                Napier.i("talking: reusing clone for ${voiceSample.name}")
-                reused
-            } else {
-                onPhase(Phase.CLONING)
-                when (val c = voiceClone.clone(voiceSample, cloneLabel(voiceSample))) {
-                    is AppResult.Ok -> c.value
-                    is AppResult.Err -> return c
-                }
-            }
-            voiceLabel = cloned.label
-            cloned.voiceId
-        } else {
-            val chosen = voiceId ?: defaultVoiceId()
-            voiceLabel = voices().firstOrNull { it.id == chosen }?.label ?: chosen
-            chosen
-        }
-
-        onPhase(Phase.SPEAKING)
         val stamp = System.currentTimeMillis()
         // Resolved ONCE: the speech and the video must land together even if
         // the folder setting or the drive changes while the render runs.
         val dir = outputDir()
-        val audioFile = File(dir, "bicara_$stamp.mp3")
-        val narration = when (val n = tts.synthesize(COST_PROJECT, text, voiceId = voice, outFile = audioFile)) {
-            is AppResult.Ok -> n.value
-            is AppResult.Err -> return n
-        }
-        val seconds = narration.durationMs / 1000.0
-        if (seconds > MAX_AUDIO_S) {
-            return AppError.Unknown("terlalu panjang: ${"%.0f".format(seconds)} dtk").err()
+        val voiceLabel: String
+        val narrationFile: File
+        val seconds: Double
+        if (audioFile != null) {
+            // ---- 1+2. the user's own recording (owner 2026-09-18) ----
+            if (!audioFile.isFile) return AppError.Unknown("file suara tidak ditemukan").err()
+            onPhase(Phase.PREPARING)
+            val ms = audioProbe.durationMs(audioFile)
+                ?: return AppError.Unknown("durasi file suara tidak terbaca: ${audioFile.name}").err()
+            val prepared = audioProbe.prepare(audioFile, File(dir, "bicara_$stamp.mp3"), MAX_AUDIO_S)
+                ?: return AppError.Unknown(
+                    if (ms / 1000.0 > MAX_AUDIO_S) {
+                        "file suara terlalu panjang: ${"%.0f".format(ms / 1000.0)} dtk (maksimal ${MAX_AUDIO_S.toInt()} dtk)"
+                    } else {
+                        "file suara tidak bisa dipakai: ${audioFile.name}"
+                    },
+                ).err()
+            narrationFile = prepared
+            seconds = AudioIntake.billableSeconds(ms, MAX_AUDIO_S)
+            val cut = ms / 1000.0 > MAX_AUDIO_S
+            voiceLabel = "File: ${audioFile.name}" + (if (cut) " (dipotong ${MAX_AUDIO_S.toInt()} dtk)" else "")
+            if (cut) Napier.w("talking: ${audioFile.name} is ${ms / 1000} s, cut to ${MAX_AUDIO_S.toInt()} s")
+        } else {
+            // ---- 1. voice ----
+            val voice: String = if (voiceSample != null) {
+                val reused = existingClone(voiceSample)
+                val cloned = if (reused != null) {
+                    Napier.i("talking: reusing clone for ${voiceSample.name}")
+                    reused
+                } else {
+                    onPhase(Phase.CLONING)
+                    when (val c = voiceClone.clone(voiceSample, cloneLabel(voiceSample))) {
+                        is AppResult.Ok -> c.value
+                        is AppResult.Err -> return c
+                    }
+                }
+                voiceLabel = cloned.label
+                cloned.voiceId
+            } else {
+                val chosen = voiceId ?: defaultVoiceId()
+                voiceLabel = voices().firstOrNull { it.id == chosen }?.label ?: chosen
+                chosen
+            }
+
+            // ---- 2. speech ----
+            onPhase(Phase.SPEAKING)
+            val ttsFile = File(dir, "bicara_$stamp.mp3")
+            val narration = when (val n = tts.synthesize(COST_PROJECT, text, voiceId = voice, outFile = ttsFile)) {
+                is AppResult.Ok -> n.value
+                is AppResult.Err -> return n
+            }
+            narrationFile = narration.file
+            seconds = narration.durationMs / 1000.0
+            if (seconds > MAX_AUDIO_S) {
+                return AppError.Unknown("terlalu panjang: ${"%.0f".format(seconds)} dtk").err()
+            }
         }
 
         onPhase(Phase.RENDERING)
@@ -213,7 +255,7 @@ class TalkingVideoService(
         }
         val maskUrl = speaker?.takeIf { supportsSpeakerChoice(option) }
             ?.let { uploadSpeakerMask(preparedImage, it, others, stamp) }
-        val audioUrl = when (val up = storage.uploadFile(narration.file)) {
+        val audioUrl = when (val up = storage.uploadFile(narrationFile)) {
             is AppResult.Ok -> up.value
             is AppResult.Err -> return up
         }
@@ -261,7 +303,7 @@ class TalkingVideoService(
                 billedSeconds, "per_second", usd,
             )
             Napier.i("talking video done -> ${videoFile.absolutePath} (${"%.1f".format(billedSeconds)} s)")
-            TalkingResult(videoFile, narration.file, billedSeconds, usd, voiceLabel)
+            TalkingResult(videoFile, narrationFile, billedSeconds, usd, voiceLabel)
         }.fold(
             onSuccess = { it.ok() },
             onFailure = { AppError.Unknown("gagal menyimpan video hasil", it).err() },

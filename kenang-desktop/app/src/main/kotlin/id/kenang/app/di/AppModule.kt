@@ -16,6 +16,8 @@ import id.kenang.core.data.SceneRepository
 import id.kenang.core.data.SettingsRepository
 import id.kenang.core.data.config.ConfigRepository
 import id.kenang.core.data.story.AwtRatioCropper
+import id.kenang.core.data.media.AudioProbe
+import id.kenang.core.data.media.FfmpegAudioProbe
 import id.kenang.core.data.story.RatioCropper
 import id.kenang.core.data.ffmpeg.FfmpegLocator
 import id.kenang.core.data.ffmpeg.VideoAssembler
@@ -94,6 +96,7 @@ val appModule = module {
 
     // Phase 03 — storyboard engine services
     single<RatioCropper> { AwtRatioCropper() }
+    single<AudioProbe> { FfmpegAudioProbe(get(), get()) }
     single { FalStorage(get(), get()) }
     single { AnalysisService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { FaceLock(get(), get(), get(), get()) }
@@ -101,7 +104,7 @@ val appModule = module {
     single { TtsPreviewService(get(), get(), get(), get()) }
     single { VoiceCloneService(get(), get(), get(), get(), get(), get()) }
     single { MotionControlService(get(), get(), get(), get(), get(), get(), get()) }
-    single { TalkingVideoService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { TalkingVideoService(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { CostEstimator(get(), get(), get()) }
 
     // Phase 04 — video pipeline (generate → audio → assemble)
